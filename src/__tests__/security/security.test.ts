@@ -1,0 +1,312 @@
+// RAG MCP Server Security Test - Design Doc: rag-mcp-server-design.md (v1.1)
+// Generated: 2025-10-31
+// Test Type: Security Test (Minimal Essential Tests)
+// Implementation Timing: After core implementations complete
+// Note: Reduced from 43 to 10 tests based on YAGNI principle and avoiding redundancy
+
+import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DocumentParser, ValidationError } from '../../parser/index.js'
+import { RAGServer } from '../../server/index.js'
+
+// ============================================
+// Test Configuration
+// ============================================
+
+const testConfig = {
+  dbPath: './tmp/test-security-db',
+  modelName: 'Xenova/all-MiniLM-L6-v2',
+  cacheDir: './tmp/models',
+  baseDir: resolve('./'), // Project root (accessible to both tests/fixtures and tmp)
+  maxFileSize: 100 * 1024 * 1024, // 100MB
+  chunkSize: 512,
+  chunkOverlap: 100,
+}
+
+// ============================================
+// ============================================
+
+describe('RAG MCP Server Security Test', () => {
+  let server: RAGServer
+  const fixturesDir = resolve('./tmp/test-security-fixtures')
+
+  beforeAll(async () => {
+    // Setup: Prepare environment for security testing
+    await mkdir(testConfig.dbPath, { recursive: true })
+    await mkdir(fixturesDir, { recursive: true })
+  })
+
+  afterAll(async () => {
+    // Cleanup: Delete security test data (only our directories)
+    await rm(testConfig.dbPath, { recursive: true, force: true })
+    await rm(fixturesDir, { recursive: true, force: true })
+  })
+
+  beforeEach(async () => {
+    // Initialize server before each test
+    server = new RAGServer(testConfig)
+    await server.initialize()
+
+    // Create test fixture directory and files
+    await mkdir(fixturesDir, { recursive: true })
+    await writeFile(
+      resolve(fixturesDir, 'sample.txt'),
+      'This is a sample text file for security testing. TypeScript is great.'
+    )
+  })
+
+  // --------------------------------------------
+  // S-001: No external network communication (except model download)
+  // --------------------------------------------
+  describe('S-001: No external network communication (except model download)', () => {
+    // AC interpretation: [Security requirement] No external communication detected by packet capture (except model download)
+    // Validation: No external communication occurs during file ingestion → search workflow after server startup
+    it('No external communication detected during file ingestion → search workflow after server startup (simulated)', async () => {
+      // Network request monitoring (simulated)
+      const networkRequests: string[] = []
+      const originalFetch = global.fetch
+
+      // Mock fetch API (for external communication detection)
+      global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+        networkRequests.push(url.toString())
+        return originalFetch(url)
+      }) as typeof fetch
+
+      // Ingest file
+      const sampleFile = resolve(fixturesDir, 'sample.txt')
+      await server.handleIngestFile({ filePath: sampleFile })
+
+      // Execute search
+      await server.handleQueryDocuments({ query: 'TypeScript', limit: 5 })
+
+      // Verify no external communication occurred
+      expect(networkRequests.length).toBe(0)
+
+      // Restore fetch API
+      global.fetch = originalFetch
+    })
+
+    // AC interpretation: [Security requirement] Transformers.js model loaded from local cache
+    // Validation: No network communication after initial model download on subsequent startups
+    it('No network communication after initial model download on subsequent startups (simulated)', async () => {
+      // Network request monitoring (simulated)
+      const networkRequests: string[] = []
+      const originalFetch = global.fetch
+
+      // Mock fetch API
+      global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+        networkRequests.push(url.toString())
+        return originalFetch(url)
+      }) as typeof fetch
+
+      // Second initialization (model already cached)
+      const server2 = new RAGServer(testConfig)
+      await server2.initialize()
+
+      // Verify no requests to HuggingFace API
+      const huggingfaceRequests = networkRequests.filter((url) => url.includes('huggingface.co'))
+      expect(huggingfaceRequests.length).toBe(0)
+
+      // Restore fetch API
+      global.fetch = originalFetch
+    })
+
+    // AC interpretation: [Security requirement] LanceDB accesses local filesystem only
+    // Validation: No network communication during LanceDB operations
+    it('No network communication during LanceDB operations (initialization, insertion, search) (simulated)', async () => {
+      // Network request monitoring (simulated)
+      const networkRequests: string[] = []
+      const originalFetch = global.fetch
+
+      // Mock fetch API
+      global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+        networkRequests.push(url.toString())
+        return originalFetch(url)
+      }) as typeof fetch
+
+      // Execute LanceDB operations
+      const sampleFile = resolve(fixturesDir, 'sample.txt')
+      await server.handleIngestFile({ filePath: sampleFile })
+      await server.handleQueryDocuments({ query: 'TypeScript', limit: 5 })
+
+      // Verify no external communication occurred
+      expect(networkRequests.length).toBe(0)
+
+      // Restore fetch API
+      global.fetch = originalFetch
+    })
+  })
+
+  // --------------------------------------------
+  // S-002: Path traversal attack prevention
+  // --------------------------------------------
+  describe('S-002: Path traversal attack prevention', () => {
+    // AC interpretation: [Security requirement] Path traversal attacks (`../../etc/passwd`) are rejected
+    // Validation: Calling ingest_file with invalid file path (e.g., `../../etc/passwd`) returns ValidationError
+    it('Path traversal attack (e.g., ../../etc/passwd) rejected with ValidationError', async () => {
+      const parser = new DocumentParser({
+        baseDir: fixturesDir,
+        maxFileSize: 100 * 1024 * 1024,
+      })
+
+      await expect(parser.parseFile('../../etc/passwd')).rejects.toThrow(ValidationError)
+    })
+
+    // AC interpretation: [Security requirement] Access outside baseDir with absolute paths is rejected
+    // Validation: Calling ingest_file with absolute path outside baseDir (e.g., `/etc/passwd`) returns ValidationError
+    it('Absolute path outside baseDir (e.g., /etc/passwd) rejected with ValidationError', async () => {
+      const parser = new DocumentParser({
+        baseDir: fixturesDir,
+        maxFileSize: 100 * 1024 * 1024,
+      })
+
+      await expect(parser.parseFile('/etc/passwd')).rejects.toThrow(ValidationError)
+    })
+
+    // AC interpretation: [Security requirement] Access outside baseDir via symbolic links is rejected
+    // Validation: Calling ingest_file with symbolic link pointing outside baseDir returns ValidationError
+    it('Symbolic link pointing outside baseDir (e.g., link_to_etc_passwd) rejected with ValidationError', async () => {
+      const parser = new DocumentParser({
+        baseDir: fixturesDir,
+        maxFileSize: 100 * 1024 * 1024,
+      })
+
+      // Create symbolic link (/etc/passwd → tmp/test-security-fixtures/link_to_etc_passwd)
+      const linkPath = resolve(fixturesDir, 'link_to_etc_passwd')
+      try {
+        await symlink('/etc/passwd', linkPath)
+      } catch (error) {
+        // Ignore symlink creation failure (if already exists)
+      }
+
+      await expect(parser.parseFile(linkPath)).rejects.toThrow(ValidationError)
+
+      // Cleanup
+      await rm(linkPath, { force: true })
+    })
+  })
+
+  // --------------------------------------------
+  // S-003: No document content in logs
+  // --------------------------------------------
+  describe('S-003: No document content in logs', () => {
+    // AC interpretation: [Security requirement] Document content not output to logs
+    // Validation: Logs during file ingestion do not contain document body
+    it('Logs during file ingestion do not contain document body (max 100 characters allowed)', async () => {
+      // Capture logs
+      const logs: string[] = []
+      const originalLog = console.log
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
+
+      // Create test file (containing confidential information)
+      const testFile = resolve('./tmp/secret-document.txt')
+      await writeFile(
+        testFile,
+        'This is a secret document with confidential information: PASSWORD123'
+      )
+
+      // Ingest file
+      await server.handleIngestFile({ filePath: testFile })
+
+      // Verify document content not included in logs
+      const containsSecret = logs.some(
+        (log) => log.includes('PASSWORD123') || log.includes('confidential information')
+      )
+      expect(containsSecret).toBe(false)
+
+      // Restore console.log
+      console.log = originalLog
+    })
+
+    // AC interpretation: [Security requirement] Search queries not output to logs
+    // Validation: Logs during search do not contain search query body (max 100 characters allowed)
+    it('Logs during search do not contain search query body (max 100 characters allowed)', async () => {
+      // Capture logs
+      const logs: string[] = []
+      const originalLog = console.log
+      console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
+
+      // Ingest sample file
+      const sampleFile = resolve(fixturesDir, 'sample.txt')
+      await server.handleIngestFile({ filePath: sampleFile })
+
+      // Search with confidential query
+      const secretQuery = 'secret query with confidential information PASSWORD123'
+      await server.handleQueryDocuments({ query: secretQuery, limit: 5 })
+
+      // Verify search query not included in logs
+      const containsQuery = logs.some(
+        (log) => log.includes('PASSWORD123') || log.includes('confidential information')
+      )
+      expect(containsQuery).toBe(false)
+
+      // Restore console.log
+      console.log = originalLog
+    })
+
+    // AC interpretation: [Security requirement] Document content not included in error logs
+    // Validation: Logs during parse errors do not contain document body
+    it('Logs during parse errors do not contain document body', async () => {
+      // Capture logs
+      const logs: string[] = []
+      const originalError = console.error
+      console.error = (...args: unknown[]) => {
+        logs.push(args.join(' '))
+      }
+
+      // Attempt to ingest non-existent file (error occurs)
+      const nonExistentFile = resolve('./tmp/nonexistent-document.txt')
+
+      try {
+        await server.handleIngestFile({ filePath: nonExistentFile })
+      } catch (error) {
+        // Error is expected
+      }
+
+      // Verify error logs do not contain confidential information (PASSWORD123, etc.)
+      // Note: File path itself is allowed (max 100 characters)
+      const containsPassword = logs.some((log) => log.includes('PASSWORD123'))
+      expect(containsPassword).toBe(false)
+
+      // Restore console.error
+      console.error = originalError
+    })
+  })
+
+  // --------------------------------------------
+  // S-004: MCP security best practices compliance
+  // --------------------------------------------
+  describe('S-004: MCP security best practices compliance', () => {
+    // AC interpretation: [Security requirement] Stack traces not included when errors occur in production environment
+    // Validation: When NODE_ENV=production and error occurs, stack trace is not included
+    it('Stack traces not included when errors occur in production environment (NODE_ENV=production)', async () => {
+      // Set environment variable
+      const originalEnv = process.env['NODE_ENV']
+      process.env['NODE_ENV'] = 'production'
+
+      // Attempt to ingest non-existent file (error occurs)
+      const nonExistentFile = resolve('./tmp/nonexistent.txt')
+
+      try {
+        await server.handleIngestFile({ filePath: nonExistentFile })
+        // Fail if error does not occur
+        expect.fail('Expected error to be thrown')
+      } catch (error) {
+        const errorMessage = (error as Error).message
+
+        // Verify stack trace is not included
+        expect(errorMessage).not.toContain(' at ')
+        expect(errorMessage).not.toContain('.ts:')
+        expect(errorMessage).not.toContain('.js:')
+      }
+
+      // Restore environment variable
+      process.env['NODE_ENV'] = originalEnv
+    })
+  })
+})

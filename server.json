@@ -1,0 +1,104 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.shinpr/mcp-local-rag",
+  "description": "Easy-to-setup local RAG server with minimal configuration",
+  "status": "active",
+  "vendor": "Shinsuke Kagawa",
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/shinpr/mcp-local-rag",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "registry_base_url": "https://registry.npmjs.org",
+      "identifier": "mcp-local-rag",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environment_variables": [
+        {
+          "name": "BASE_DIR",
+          "description": "Base directory for document storage (defaults to current working directory)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        },
+        {
+          "name": "DB_PATH",
+          "description": "Path to LanceDB database directory (defaults to ./lancedb/)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        },
+        {
+          "name": "CACHE_DIR",
+          "description": "Directory where Transformers.js models are cached (defaults to ./models/)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        },
+        {
+          "name": "MODEL_NAME",
+          "description": "Embedding model name (defaults to Xenova/all-MiniLM-L6-v2)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        },
+        {
+          "name": "MAX_FILE_SIZE",
+          "description": "Maximum file size in bytes (defaults to 104857600 / 100MB)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        },
+        {
+          "name": "CHUNK_SIZE",
+          "description": "Text chunk size for splitting documents (defaults to 512)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        },
+        {
+          "name": "CHUNK_OVERLAP",
+          "description": "Overlap between consecutive chunks (defaults to 100)",
+          "is_required": false,
+          "format": "string",
+          "is_secret": false
+        }
+      ],
+      "features": {
+        "tools": {
+          "supported": true,
+          "list": [
+            "query_documents",
+            "ingest_file",
+            "list_files",
+            "status"
+          ]
+        },
+        "prompts": {
+          "supported": false
+        },
+        "resources": {
+          "supported": false
+        }
+      }
+    }
+  ],
+  "tags": [
+    "rag",
+    "vector-search",
+    "lancedb",
+    "transformers",
+    "local-ai",
+    "privacy",
+    "document-search",
+    "semantic-search"
+  ],
+  "homepage": "https://github.com/shinpr/mcp-local-rag",
+  "documentation": "https://github.com/shinpr/mcp-local-rag#readme"
+}

@@ -21,7 +21,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shinpr/ai-coding-project-boilerplate.git"
+    "url": "https://github.com/shinpr/mcp-local-rag.git"
   },
   "scripts": {
     "build": "tsc && tsc-alias",

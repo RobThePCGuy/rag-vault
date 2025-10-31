@@ -1,8 +1,11 @@
 {
   "name": "mcp-local-rag",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local RAG MCP Server - Easy-to-setup document search with minimal configuration",
   "main": "dist/index.js",
+  "bin": {
+    "mcp-local-rag": "dist/index.js"
+  },
   "keywords": [
     "typescript",
     "mcp",
@@ -21,7 +24,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/shinpr/mcp-local-rag.git"
+    "url": "git+https://github.com/shinpr/mcp-local-rag.git"
   },
   "scripts": {
     "build": "tsc && tsc-alias",

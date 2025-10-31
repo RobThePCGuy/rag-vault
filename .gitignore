@@ -38,6 +38,9 @@ Thumbs.db
 *.temp
 tmp/
 
+# MCP Registry publisher files
+.mcpregistry_*
+
 # Claude Code related (development guidelines and configurations)
 CLAUDE.md
 .claude/

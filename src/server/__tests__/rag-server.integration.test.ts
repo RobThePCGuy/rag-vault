@@ -796,9 +796,7 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Validation: Only one file exists in file list
       const listResult = await localRagServer.handleListFiles()
       const files = JSON.parse(listResult.content[0].text)
-      const targetFiles = files.filter(
-        (f: { filePath: string }) => f.filePath === testFile
-      )
+      const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
     })
 
@@ -817,9 +815,7 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Validation: Only one file exists in file list (no duplicates)
       const listResult = await localRagServer.handleListFiles()
       const files = JSON.parse(listResult.content[0].text)
-      const targetFiles = files.filter(
-        (f: { filePath: string }) => f.filePath === testFile
-      )
+      const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
 
       // Validation: Timestamp is updated
@@ -842,9 +838,7 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Validation: Only one file exists in file list (atomicity guaranteed)
       const listResult = await localRagServer.handleListFiles()
       const files = JSON.parse(listResult.content[0].text)
-      const targetFiles = files.filter(
-        (f: { filePath: string }) => f.filePath === testFile
-      )
+      const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
     })
 
@@ -865,9 +859,7 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Validation: In normal case, no rollback occurs and new data exists
       const listResult = await localRagServer.handleListFiles()
       const files = JSON.parse(listResult.content[0].text)
-      const targetFiles = files.filter(
-        (f: { filePath: string }) => f.filePath === testFile
-      )
+      const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
 
       // Note: Rollback behavior on error needs to be verified in unit test

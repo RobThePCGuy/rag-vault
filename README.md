@@ -40,8 +40,8 @@ claude mcp add local-rag --scope user --env BASE_DIR=/path/to/your/documents -- 
 
 Restart your tool, then start using:
 ```
-"@mcp Ingest api-spec.pdf"
-"@mcp What does this document say about authentication?"
+"Ingest api-spec.pdf"
+"What does this document say about authentication?"
 ```
 
 That's it. No installation, no Docker, no complex setup.
@@ -82,11 +82,13 @@ The result: query responses typically under 3 seconds on a standard laptop, even
 
 ## Prerequisites
 
-You need Node.js 20 or higher. Check your version:
+You need Node.js 20 or higher (Node.js 22 or 24 recommended for LTS support). Check your version:
 
 ```bash
 node --version
 ```
+
+**Why 22 or 24?** Node.js 20 is in maintenance mode (security fixes only). Node.js 22 is in Active LTS until October 2025, and Node.js 24 is the newest LTS with support until April 2028.
 
 If you need to install or update Node.js, visit [nodejs.org](https://nodejs.org/).
 
@@ -94,9 +96,22 @@ That's all. When you configure the MCP server with `npx -y mcp-local-rag`, it au
 
 ### First Run
 
-On first launch, the embedding model downloads automatically from HuggingFace (about 90MB). This happens once—after that, it runs from your local cache.
+On first launch, the embedding model downloads automatically from HuggingFace:
+- **Download size**: ~90MB (model files)
+- **Disk usage after caching**: ~120MB (includes ONNX runtime cache)
+- **Time**: 1-2 minutes on a decent connection
 
-The download takes 1-2 minutes on a decent connection. You'll see progress in the console.
+You'll see progress in the console. The model caches in `CACHE_DIR` (default: `./models/`) for offline use.
+
+**Offline Mode**: After first run, works completely offline—no internet required.
+
+## Security
+
+**Path Restriction**: This server only accesses files within your `BASE_DIR`. Any attempt to access files outside this directory (e.g., via `../` path traversal) will be rejected.
+
+**Local Only**: All processing happens on your machine. No network requests are made after the initial model download.
+
+**Model Verification**: The embedding model downloads from HuggingFace's official repository (`Xenova/all-MiniLM-L6-v2`). Verify integrity by checking the [official model card](https://huggingface.co/Xenova/all-MiniLM-L6-v2).
 
 ## Configuration
 
@@ -168,30 +183,31 @@ claude mcp add local-rag --scope user \
 
 ### Environment Variables
 
-**BASE_DIR** - Where your documents live. The server only accesses files in this directory (and subdirectories), preventing accidental access to system files. Defaults to your current working directory.
-
-**DB_PATH** - Where to store the vector database. Defaults to `./lancedb/` in your working directory. This directory can grow large if you index many documents.
-
-**CACHE_DIR** - Where Transformers.js caches the embedding model. Defaults to `./models/`. After the first download, the model stays here for offline use.
-
-**MODEL_NAME** - Which embedding model to use. Defaults to `Xenova/all-MiniLM-L6-v2`. Advanced users can try other models from HuggingFace, but they must be compatible with Transformers.js.
-
-**MAX_FILE_SIZE** - Maximum file size in bytes. Defaults to 104857600 (100MB). Larger files are rejected to prevent memory issues.
-
-**CHUNK_SIZE** - How many characters per chunk. Defaults to 512. Larger chunks give more context but slower processing.
-
-**CHUNK_OVERLAP** - How many characters overlap between chunks. Defaults to 100. This helps preserve context across chunk boundaries.
+| Variable | Default | Description | Valid Range |
+|----------|---------|-------------|-------------|
+| `BASE_DIR` | Current directory | Document root directory. Server only accesses files within this path (prevents accidental system file access). | Any valid path |
+| `DB_PATH` | `./lancedb/` | Vector database storage location. Can grow large with many documents. | Any valid path |
+| `CACHE_DIR` | `./models/` | Model cache directory. After first download, model stays here for offline use. | Any valid path |
+| `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace model identifier. Must be Transformers.js compatible. | HF model ID |
+| `MAX_FILE_SIZE` | `104857600` (100MB) | Maximum file size in bytes. Larger files rejected to prevent memory issues. | 1MB - 500MB |
+| `CHUNK_SIZE` | `512` | Characters per chunk. Larger = more context but slower processing. | 128 - 2048 |
+| `CHUNK_OVERLAP` | `100` | Overlap between chunks. Preserves context across boundaries. | 0 - (CHUNK_SIZE/2) |
 
 ## Usage
 
-Once configured, restart your MCP client. The server appears as available tools that your AI assistant can use.
+**After configuration**, restart your MCP client:
+- **Cursor**: Fully quit and relaunch (Cmd+Q on Mac, not just closing windows)
+- **Codex**: Restart the IDE/extension
+- **Claude Code**: No restart needed—changes apply immediately
+
+The server will appear as available tools that your AI assistant can use.
 
 ### Ingesting Documents
 
-**In Cursor**, use the MCP prefix to invoke tools:
+**In Cursor**, the Composer Agent automatically uses MCP tools when needed:
 
 ```
-"@mcp Ingest the document at /Users/me/docs/api-spec.pdf"
+"Ingest the document at /Users/me/docs/api-spec.pdf"
 ```
 
 **In Codex CLI**, the assistant automatically uses configured MCP tools when needed:
@@ -206,11 +222,7 @@ codex "Ingest the document at /Users/me/docs/api-spec.pdf into the RAG system"
 "Ingest the document at /Users/me/docs/api-spec.pdf"
 ```
 
-The tool uses relative paths from your BASE_DIR. So if BASE_DIR is `/Users/me/docs`, you can just say:
-
-```
-"@mcp Ingest api-spec.pdf"
-```
+**Path Requirements**: The server requires **absolute paths** to files. Your AI assistant will typically convert natural language requests into absolute paths automatically. The `BASE_DIR` setting restricts access to only files within that directory tree for security, but you must still provide the full path.
 
 The server:
 1. Validates the file exists and is under 100MB
@@ -226,9 +238,9 @@ This takes roughly 5-10 seconds per MB on a standard laptop. You'll see a confir
 Ask questions in natural language:
 
 ```
-"@mcp What does the API documentation say about authentication?"
-"@mcp Find information about rate limiting"
-"@mcp Search for error handling best practices"
+"What does the API documentation say about authentication?"
+"Find information about rate limiting"
+"Search for error handling best practices"
 ```
 
 The server:
@@ -241,7 +253,7 @@ Results include the text content, which file it came from, and a relevance score
 You can request more results:
 
 ```
-"@mcp Search for database optimization tips, return 10 results"
+"Search for database optimization tips, return 10 results"
 ```
 
 The limit parameter accepts 1-20 results.
@@ -251,7 +263,7 @@ The limit parameter accepts 1-20 results.
 See what's indexed:
 
 ```
-"@mcp List all ingested files"
+"List all ingested files"
 ```
 
 This shows each file's path, how many chunks it produced, and when it was ingested.
@@ -259,7 +271,7 @@ This shows each file's path, how many chunks it produced, and when it was ingest
 Check system status:
 
 ```
-"@mcp Show the RAG server status"
+"Show the RAG server status"
 ```
 
 This reports total documents, total chunks, current memory usage, and uptime.
@@ -269,7 +281,7 @@ This reports total documents, total chunks, current memory usage, and uptime.
 If you update a document, ingest it again:
 
 ```
-"@mcp Re-ingest api-spec.pdf with the latest changes"
+"Re-ingest api-spec.pdf with the latest changes"
 ```
 
 The server automatically deletes old chunks for that file before adding new ones. No duplicates, no stale data.
@@ -341,23 +353,40 @@ Each module has clear boundaries:
 
 ## Performance
 
-Measured on a MacBook Pro M1 (16GB RAM):
+**Test Environment**: MacBook Pro M1 (16GB RAM), tested with v0.1.3 on Node.js 22 (January 2025)
 
-**Query response time:** Average 1.2 seconds for 10,000 indexed chunks (5 results). Well under the 3-second target for p90.
+**Query Performance**:
+- Average: 1.2 seconds for 10,000 indexed chunks (5 results)
+- Target: p90 < 3 seconds ✓
 
-**Ingestion speed:** 10MB PDF processes in about 45 seconds. Breakdown:
-- PDF parsing: ~8 seconds
-- Text chunking: ~2 seconds
-- Embedding generation: ~30 seconds
-- Database insertion: ~5 seconds
+**Ingestion Speed** (10MB PDF):
+- Total: ~45 seconds
+  - PDF parsing: ~8 seconds (17%)
+  - Text chunking: ~2 seconds (4%)
+  - Embedding generation: ~30 seconds (67%)
+  - Database insertion: ~5 seconds (11%)
 
-**Memory usage:** Peak ~800MB when ingesting a 50MB file. Stays under 1GB as designed.
+**Memory Usage**:
+- Baseline: ~200MB idle
+- Peak: ~800MB when ingesting 50MB file
+- Target: < 1GB ✓
 
-**Concurrent queries:** Handles 5 parallel queries without degradation. LanceDB's async API allows non-blocking operations.
+**Concurrent Queries**: Handles 5 parallel queries without degradation. LanceDB's async API allows non-blocking operations.
 
-Your results will vary based on hardware, especially CPU speed (since embeddings run on CPU, not GPU).
+**Note**: Your results will vary based on hardware, especially CPU speed (embeddings run on CPU, not GPU).
 
 ## Troubleshooting
+
+### "No results found" when searching
+
+**Cause**: Documents must be ingested before searching.
+
+**Solution**:
+1. First ingest documents: `"Ingest /path/to/document.pdf"`
+2. Verify ingestion: `"List all ingested files"`
+3. Then search: `"Search for [your query]"`
+
+**Common mistake**: Trying to search immediately after configuration without ingesting any documents.
 
 ### "Model download failed"
 
@@ -445,7 +474,20 @@ Cloud services (OpenAI, Pinecone, etc.) typically offer better accuracy and scal
 
 **What file formats are supported?**
 
-PDF, DOCX, TXT, and Markdown. For other formats, convert them first or open an issue requesting support.
+Currently supported:
+- **PDF**: `.pdf` (uses pdf-parse)
+- **Microsoft Word**: `.docx` (uses mammoth, not `.doc`)
+- **Plain Text**: `.txt`
+- **Markdown**: `.md`, `.markdown`
+
+**Not yet supported**:
+- Excel/CSV (`.xlsx`, `.csv`)
+- PowerPoint (`.pptx`)
+- Images with OCR (`.jpg`, `.png`)
+- HTML (`.html`)
+- Old Word documents (`.doc`)
+
+Want support for another format? [Open an issue](https://github.com/shinpr/mcp-local-rag/issues/new) with your use case.
 
 **Can I customize the embedding model?**
 
@@ -475,8 +517,6 @@ Contributions are welcome. Before submitting a PR:
 2. Ensure code quality: `npm run check:all`
 3. Add tests for new features
 4. Update documentation if you change behavior
-
-This project follows the [Conventional Commits](https://www.conventionalcommits.org/) standard for commit messages.
 
 ## License
 

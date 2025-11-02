@@ -1,6 +1,6 @@
 // Embedder implementation with Transformers.js
 
-import { env, pipeline } from '@xenova/transformers'
+import { env, pipeline } from '@huggingface/transformers'
 
 // ============================================
 // Type Definitions

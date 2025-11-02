@@ -80,21 +80,7 @@ All of this uses:
 
 The result: query responses typically under 3 seconds on a standard laptop, even with thousands of document chunks indexed.
 
-## Prerequisites
-
-You need Node.js 20 or higher (Node.js 22 or 24 recommended for LTS support). Check your version:
-
-```bash
-node --version
-```
-
-**Why 22 or 24?** Node.js 20 is in maintenance mode (security fixes only). Node.js 22 is in Active LTS until October 2025, and Node.js 24 is the newest LTS with support until April 2028.
-
-If you need to install or update Node.js, visit [nodejs.org](https://nodejs.org/).
-
-That's all. When you configure the MCP server with `npx -y mcp-local-rag`, it automatically downloads and runs the package. No manual installation needed.
-
-### First Run
+## First Run
 
 On first launch, the embedding model downloads automatically from HuggingFace:
 - **Download size**: ~90MB (model files)

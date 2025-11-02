@@ -13,11 +13,10 @@ export default defineConfig({
     testTimeout: 10000,        // 10 second timeout
     hookTimeout: 10000,        // Hook processing timeout 10 seconds
     teardownTimeout: 5000,     // Teardown timeout 5 seconds
-    pool: 'threads',           // Explicit process pool specification
+    pool: 'forks',             // Use forks instead of threads for onnxruntime-node compatibility
     poolOptions: {
-      threads: {
-        singleThread: false,   // Allow parallel execution
-        isolate: true,         // Isolate between tests
+      forks: {
+        singleFork: true,      // Single process execution to avoid onnxruntime-node threading issues
       }
     },
     coverage: {

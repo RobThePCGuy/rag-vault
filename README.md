@@ -62,13 +62,15 @@ This project solves these problems by running everything locally. Documents neve
 
 ## What You Get
 
-The server provides four tools through MCP:
+The server provides five tools through MCP:
 
 **Document ingestion** handles PDF, DOCX, TXT, and Markdown files. Point it at a file, and it extracts the text, splits it into searchable chunks, generates embeddings using a local model, and stores everything in a local vector database. If you ingest the same file again, it replaces the old version—no duplicate data.
 
 **Semantic search** lets you query in natural language. Instead of keyword matching, it understands meaning. Ask "how does authentication work" and it finds relevant sections even if they use different words like "login flow" or "credential validation."
 
 **File management** shows what you've ingested and when. You can see how many chunks each file produced and verify everything is indexed correctly.
+
+**File deletion** removes ingested documents from the vector database. When you delete a file, all its chunks and embeddings are permanently removed. This is useful for removing outdated documents or sensitive data you no longer want indexed.
 
 **System status** reports on your database—document count, total chunks, memory usage. Helpful for monitoring performance or debugging issues.
 
@@ -82,14 +84,17 @@ The result: query responses typically under 3 seconds on a standard laptop, even
 
 ## First Run
 
-On first launch, the embedding model downloads automatically from HuggingFace:
+The server starts instantly, but the embedding model downloads **on first use** (when you ingest or search for the first time):
 - **Download size**: ~90MB (model files)
 - **Disk usage after caching**: ~120MB (includes ONNX runtime cache)
 - **Time**: 1-2 minutes on a decent connection
+- **First operation delay**: Your initial ingest or search request will wait for the model download to complete
 
-You'll see progress in the console. The model caches in `CACHE_DIR` (default: `./models/`) for offline use.
+You'll see a message like "Initializing model (downloading ~90MB, may take 1-2 minutes)..." in the console. The model caches in `CACHE_DIR` (default: `./models/`) for offline use.
 
-**Offline Mode**: After first run, works completely offline—no internet required.
+**Why lazy initialization?** This approach allows the server to start immediately without upfront model loading. You only download when actually needed, making the server more responsive for quick status checks or file management operations.
+
+**Offline Mode**: After first download, works completely offline—no internet required.
 
 ## Security
 
@@ -254,6 +259,14 @@ See what's indexed:
 
 This shows each file's path, how many chunks it produced, and when it was ingested.
 
+Delete a file from the database:
+
+```
+"Delete /Users/me/docs/old-spec.pdf from the RAG system"
+```
+
+This permanently removes the file and all its chunks from the vector database. The operation is idempotent—deleting a file that doesn't exist succeeds without error.
+
 Check system status:
 
 ```
@@ -376,7 +389,14 @@ Each module has clear boundaries:
 
 ### "Model download failed"
 
-The embedding model downloads from HuggingFace on first run. If you're behind a proxy or firewall, you might need to configure network settings.
+The embedding model downloads from HuggingFace on first use (when you ingest or search for the first time). If you're behind a proxy or firewall, you might need to configure network settings.
+
+**When it happens**: Your first ingest or search operation will trigger the download. If it fails, you'll see a detailed error message with troubleshooting guidance (network issues, disk space, cache corruption).
+
+**What to do**: The error message provides specific recommendations. Common solutions:
+1. Check your internet connection and retry the operation
+2. Ensure you have sufficient disk space (~120MB needed)
+3. If problems persist, delete the cache directory and try again
 
 Alternatively, download the model manually:
 1. Visit https://huggingface.co/Xenova/all-MiniLM-L6-v2

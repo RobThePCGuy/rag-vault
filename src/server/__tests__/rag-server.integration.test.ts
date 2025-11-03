@@ -41,8 +41,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     rmSync(testDataDir, { recursive: true, force: true })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-001: MCP Protocol Integration', () => {
     // AC interpretation: [Functional requirement] Recognized as MCP server and 4 tools are properly registered
     // Validation: 4 tools (query_documents, ingest_file, list_files, status) are callable from MCP client
@@ -109,8 +107,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-002: Document Ingestion (Phase 1)', () => {
     beforeEach(async () => {
       // Prepare test documents and initialize DB before each test
@@ -171,8 +167,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-003: Vector Embedding Generation', () => {
     // AC interpretation: [Technical requirement] Text chunks are converted to 384-dimensional vectors
     // Validation: Generate embedding from text, 384-dimensional vector is returned
@@ -290,8 +284,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-004: Vector Search', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac004')
@@ -443,8 +435,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-005: Error Handling (Basic)', () => {
     // AC interpretation: [Error handling] Error message returned for non-existent file path
     // Validation: Call ingest_file with non-existent file path, FileOperationError is returned
@@ -506,8 +496,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     // Cleanup: Delete test data, close DB connection
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-006: Additional Format Support (Phase 2)', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac006')
@@ -633,8 +621,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-007: File Management', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac007')
@@ -744,8 +730,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-008: File Re-ingestion', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac008')
@@ -798,6 +782,8 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       const files = JSON.parse(listResult.content[0].text)
       const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
+      // Validation: Chunk count matches new data (not old + new)
+      expect(targetFiles[0].chunkCount).toBe(updatedChunkCount)
     })
 
     // AC interpretation: [Technical requirement] After re-ingestion, only new data exists (0 duplicate data)
@@ -806,17 +792,25 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Initial ingestion
       const testFile = resolve(localTestDataDir, 'test-no-duplicate.txt')
       writeFileSync(testFile, 'Original data. '.repeat(50))
-      await localRagServer.handleIngestFile({ filePath: testFile })
+      const result1 = await localRagServer.handleIngestFile({ filePath: testFile })
+      const ingest1 = JSON.parse(result1.content[0].text)
+      const originalChunkCount = ingest1.chunkCount
 
       // Re-ingestion
       writeFileSync(testFile, 'Updated data. '.repeat(40))
-      await localRagServer.handleIngestFile({ filePath: testFile })
+      const result2 = await localRagServer.handleIngestFile({ filePath: testFile })
+      const ingest2 = JSON.parse(result2.content[0].text)
+      const updatedChunkCount = ingest2.chunkCount
 
       // Validation: Only one file exists in file list (no duplicates)
       const listResult = await localRagServer.handleListFiles()
       const files = JSON.parse(listResult.content[0].text)
       const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
+
+      // Validation: Chunk count matches new data only (not old + new)
+      expect(targetFiles[0].chunkCount).toBe(updatedChunkCount)
+      expect(targetFiles[0].chunkCount).not.toBe(originalChunkCount + updatedChunkCount)
 
       // Validation: Timestamp is updated
       expect(targetFiles[0].timestamp).toBeDefined()
@@ -829,17 +823,25 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Here, verify that in normal case, old data is completely deleted and only new data exists
       const testFile = resolve(localTestDataDir, 'test-atomicity.txt')
       writeFileSync(testFile, 'Atomicity test data. '.repeat(50))
-      await localRagServer.handleIngestFile({ filePath: testFile })
+      const result1 = await localRagServer.handleIngestFile({ filePath: testFile })
+      const ingest1 = JSON.parse(result1.content[0].text)
+      const originalChunkCount = ingest1.chunkCount
 
       // Re-ingestion
       writeFileSync(testFile, 'Atomicity test updated. '.repeat(40))
-      await localRagServer.handleIngestFile({ filePath: testFile })
+      const result2 = await localRagServer.handleIngestFile({ filePath: testFile })
+      const ingest2 = JSON.parse(result2.content[0].text)
+      const updatedChunkCount = ingest2.chunkCount
 
       // Validation: Only one file exists in file list (atomicity guaranteed)
       const listResult = await localRagServer.handleListFiles()
       const files = JSON.parse(listResult.content[0].text)
       const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
+
+      // Validation: Chunk count proves atomicity - only new data exists (not old + new)
+      expect(targetFiles[0].chunkCount).toBe(updatedChunkCount)
+      expect(targetFiles[0].chunkCount).not.toBe(originalChunkCount + updatedChunkCount)
     })
 
     // AC interpretation: [Error handling] On error, automatic rollback from backup
@@ -850,11 +852,15 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Rollback on error requires implementation-level test (using mocks)
       const testFile = resolve(localTestDataDir, 'test-rollback.txt')
       writeFileSync(testFile, 'Rollback test data. '.repeat(50))
-      await localRagServer.handleIngestFile({ filePath: testFile })
+      const result1 = await localRagServer.handleIngestFile({ filePath: testFile })
+      const ingest1 = JSON.parse(result1.content[0].text)
+      const originalChunkCount = ingest1.chunkCount
 
       // Re-ingest normally (no error)
       writeFileSync(testFile, 'Rollback test updated. '.repeat(40))
-      await localRagServer.handleIngestFile({ filePath: testFile })
+      const result2 = await localRagServer.handleIngestFile({ filePath: testFile })
+      const ingest2 = JSON.parse(result2.content[0].text)
+      const updatedChunkCount = ingest2.chunkCount
 
       // Validation: In normal case, no rollback occurs and new data exists
       const listResult = await localRagServer.handleListFiles()
@@ -862,13 +868,15 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       const targetFiles = files.filter((f: { filePath: string }) => f.filePath === testFile)
       expect(targetFiles.length).toBe(1)
 
+      // Validation: Chunk count confirms successful re-ingestion (not old + new)
+      expect(targetFiles[0].chunkCount).toBe(updatedChunkCount)
+      expect(targetFiles[0].chunkCount).not.toBe(originalChunkCount + updatedChunkCount)
+
       // Note: Rollback behavior on error needs to be verified in unit test
       // by mocking VectorStore.insertChunks to cause error
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-009: Error Handling (Complete)', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac009')
@@ -967,6 +975,102 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
         // Restore original environment variable
         process.env['NODE_ENV'] = originalEnv
       }
+    })
+  })
+
+  describe('AC-010: File Deletion', () => {
+    let localRagServer: RAGServer
+    const localTestDbPath = resolve('./tmp/test-lancedb-ac010')
+    const localTestDataDir = resolve('./tmp/test-data-ac010')
+
+    beforeAll(async () => {
+      // Setup dedicated RAGServer for AC-010
+      mkdirSync(localTestDbPath, { recursive: true })
+      mkdirSync(localTestDataDir, { recursive: true })
+
+      localRagServer = new RAGServer({
+        dbPath: localTestDbPath,
+        modelName: 'Xenova/all-MiniLM-L6-v2',
+        cacheDir: './tmp/models',
+        baseDir: localTestDataDir,
+        maxFileSize: 100 * 1024 * 1024,
+        chunkSize: 512,
+        chunkOverlap: 100,
+      })
+
+      await localRagServer.initialize()
+    })
+
+    afterAll(async () => {
+      rmSync(localTestDbPath, { recursive: true, force: true })
+      rmSync(localTestDataDir, { recursive: true, force: true })
+    })
+
+    // AC interpretation: [Functional requirement] Deleted file no longer appears in list_files
+    // Validation: Delete ingested file, verify it no longer appears in list_files
+    it('Deleted file no longer appears in list_files', async () => {
+      const testFile = resolve(localTestDataDir, 'test-delete.txt')
+      writeFileSync(testFile, 'This file will be deleted. '.repeat(50))
+      await localRagServer.handleIngestFile({ filePath: testFile })
+
+      // Verify file exists before deletion
+      const listBefore = await localRagServer.handleListFiles()
+      const filesBefore = JSON.parse(listBefore.content[0].text)
+      expect(filesBefore.some((f: { filePath: string }) => f.filePath === testFile)).toBe(true)
+
+      // Execute deletion
+      await localRagServer.handleDeleteFile({ filePath: testFile })
+
+      // Verify file does not exist after deletion
+      const listAfter = await localRagServer.handleListFiles()
+      const filesAfter = JSON.parse(listAfter.content[0].text)
+      expect(filesAfter.some((f: { filePath: string }) => f.filePath === testFile)).toBe(false)
+    })
+
+    // AC interpretation: [Functional requirement] Deleted file content does not appear in search results
+    // Validation: Delete file, verify its content is not returned in search results
+    it('Deleted file content does not appear in search results', async () => {
+      const testFile = resolve(localTestDataDir, 'test-search-delete.txt')
+      writeFileSync(testFile, 'Unique keyword XYZABC123 for deletion test. '.repeat(30))
+      await localRagServer.handleIngestFile({ filePath: testFile })
+
+      // Search before deletion
+      const searchBefore = await localRagServer.handleQueryDocuments({
+        query: 'XYZABC123',
+        limit: 5,
+      })
+      const resultsBefore = JSON.parse(searchBefore.content[0].text)
+      expect(resultsBefore.length).toBeGreaterThan(0)
+
+      // Execute deletion
+      await localRagServer.handleDeleteFile({ filePath: testFile })
+
+      // Search after deletion
+      const searchAfter = await localRagServer.handleQueryDocuments({
+        query: 'XYZABC123',
+        limit: 5,
+      })
+      const resultsAfter = JSON.parse(searchAfter.content[0].text)
+      expect(resultsAfter.length).toBe(0)
+    })
+
+    // AC interpretation: [Functional requirement] Deleting non-existent file is idempotent
+    // Validation: Delete non-existent file, operation completes without error
+    it('Deleting non-existent file completes without error (idempotent)', async () => {
+      const nonExistentFile = resolve(localTestDataDir, 'non-existent.txt')
+
+      // Verify operation completes without error
+      await expect(
+        localRagServer.handleDeleteFile({ filePath: nonExistentFile })
+      ).resolves.toBeDefined()
+    })
+
+    // AC interpretation: [Security] Relative path deletion is rejected (S-002)
+    // Validation: Attempt deletion with relative path, ValidationError is returned
+    it('Relative path deletion rejected with error (S-002 security)', async () => {
+      await expect(
+        localRagServer.handleDeleteFile({ filePath: '../../../etc/passwd' })
+      ).rejects.toThrow('absolute path')
     })
   })
 })

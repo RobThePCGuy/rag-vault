@@ -49,6 +49,7 @@ export class EmbeddingError extends Error {
  */
 export class Embedder {
   private model: Awaited<ReturnType<typeof pipeline>> | null = null
+  private initPromise: Promise<void> | null = null
   private readonly config: EmbedderConfig
 
   constructor(config: EmbedderConfig) {
@@ -59,6 +60,11 @@ export class Embedder {
    * Initialize Transformers.js model
    */
   async initialize(): Promise<void> {
+    // Skip if already initialized
+    if (this.model) {
+      return
+    }
+
     try {
       // Set cache directory BEFORE creating pipeline
       env.cacheDir = this.config.cacheDir
@@ -76,15 +82,49 @@ export class Embedder {
   }
 
   /**
+   * Ensure model is initialized (lazy initialization)
+   * This method is called automatically by embed() and embedBatch()
+   */
+  private async ensureInitialized(): Promise<void> {
+    // Already initialized
+    if (this.model) {
+      return
+    }
+
+    // Initialization already in progress, wait for it
+    if (this.initPromise) {
+      await this.initPromise
+      return
+    }
+
+    // Start initialization
+    console.log(
+      'Embedder: First use detected. Initializing model (downloading ~90MB, may take 1-2 minutes)...'
+    )
+
+    this.initPromise = this.initialize().catch((error) => {
+      // Clear initPromise on failure to allow retry
+      this.initPromise = null
+
+      // Enhance error message with detailed guidance
+      throw new EmbeddingError(
+        `Failed to initialize embedder on first use: ${(error as Error).message}\n\nPossible causes:\n  • Network connectivity issues during model download\n  • Insufficient disk space (need ~90MB)\n  • Corrupted model cache\n\nRecommended actions:\n  1. Check your internet connection and try again\n  2. Ensure sufficient disk space is available\n  3. If problem persists, delete cache: ${this.config.cacheDir}\n  4. Then retry your query\n`,
+        error as Error
+      )
+    })
+
+    await this.initPromise
+  }
+
+  /**
    * Convert single text to embedding vector
    *
    * @param text - Text
    * @returns 384-dimensional vector
    */
   async embed(text: string): Promise<number[]> {
-    if (!this.model) {
-      throw new EmbeddingError('Embedder is not initialized. Call initialize() first.')
-    }
+    // Lazy initialization: initialize on first use if not already initialized
+    await this.ensureInitialized()
 
     try {
       // Return zero vector for empty string
@@ -119,9 +159,8 @@ export class Embedder {
    * @returns Array of 384-dimensional vectors
    */
   async embedBatch(texts: string[]): Promise<number[][]> {
-    if (!this.model) {
-      throw new EmbeddingError('Embedder is not initialized. Call initialize() first.')
-    }
+    // Lazy initialization: initialize on first use if not already initialized
+    await this.ensureInitialized()
 
     if (texts.length === 0) {
       return []

@@ -148,8 +148,8 @@ export class VectorStore {
 
       // LanceDB's delete method doesn't throw errors if targets don't exist,
       // so call delete directly
-      // Note: Field names are case-sensitive, wrap in double quotes
-      await this.table.delete(`"filePath" = '${escapedFilePath}'`)
+      // Note: Field names are case-sensitive, use backticks for camelCase fields
+      await this.table.delete(`\`filePath\` = '${escapedFilePath}'`)
       console.log(`VectorStore: Deleted chunks for file "${filePath}"`)
     } catch (error) {
       // If error occurs, output warning log

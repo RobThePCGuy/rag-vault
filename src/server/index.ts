@@ -52,6 +52,14 @@ export interface IngestFileInput {
 }
 
 /**
+ * delete_file tool input
+ */
+export interface DeleteFileInput {
+  /** File path */
+  filePath: string
+}
+
+/**
  * ingest_file tool output
  */
 export interface IngestResult {
@@ -167,6 +175,22 @@ export class RAGServer {
           },
         },
         {
+          name: 'delete_file',
+          description:
+            'Delete a previously ingested file from the vector database. Removes all chunks and embeddings associated with the specified file. File path must be an absolute path. This operation is idempotent - deleting a non-existent file completes without error.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              filePath: {
+                type: 'string',
+                description:
+                  'Absolute path to the file to delete from the database. Example: "/Users/user/documents/manual.pdf"',
+              },
+            },
+            required: ['filePath'],
+          },
+        },
+        {
           name: 'list_files',
           description:
             'List all ingested files in the vector database. Returns file paths and chunk counts for each document.',
@@ -193,6 +217,10 @@ export class RAGServer {
           case 'ingest_file':
             return await this.handleIngestFile(
               request.params.arguments as unknown as IngestFileInput
+            )
+          case 'delete_file':
+            return await this.handleDeleteFile(
+              request.params.arguments as unknown as DeleteFileInput
             )
           case 'list_files':
             return await this.handleListFiles()
@@ -411,6 +439,47 @@ export class RAGServer {
     } catch (error) {
       console.error('Failed to get status:', error)
       throw error
+    }
+  }
+
+  /**
+   * delete_file tool handler
+   */
+  async handleDeleteFile(
+    args: DeleteFileInput
+  ): Promise<{ content: [{ type: 'text'; text: string }] }> {
+    try {
+      // Validate and normalize file path (S-002 security requirement)
+      this.parser.validateFilePath(args.filePath)
+
+      // Delete chunks from vector database
+      await this.vectorStore.deleteChunks(args.filePath)
+
+      // Return success message
+      const result = {
+        filePath: args.filePath,
+        deleted: true,
+        timestamp: new Date().toISOString(),
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      }
+    } catch (error) {
+      // Error handling: suppress stack trace in production
+      const errorMessage =
+        process.env['NODE_ENV'] === 'production'
+          ? (error as Error).message
+          : (error as Error).stack || (error as Error).message
+
+      console.error('Failed to delete file:', errorMessage)
+
+      throw new Error(`Failed to delete file: ${errorMessage}`)
     }
   }
 

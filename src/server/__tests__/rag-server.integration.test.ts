@@ -41,8 +41,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     rmSync(testDataDir, { recursive: true, force: true })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-001: MCP Protocol Integration', () => {
     // AC interpretation: [Functional requirement] Recognized as MCP server and 4 tools are properly registered
     // Validation: 4 tools (query_documents, ingest_file, list_files, status) are callable from MCP client
@@ -109,8 +107,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-002: Document Ingestion (Phase 1)', () => {
     beforeEach(async () => {
       // Prepare test documents and initialize DB before each test
@@ -171,8 +167,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-003: Vector Embedding Generation', () => {
     // AC interpretation: [Technical requirement] Text chunks are converted to 384-dimensional vectors
     // Validation: Generate embedding from text, 384-dimensional vector is returned
@@ -290,8 +284,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-004: Vector Search', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac004')
@@ -443,8 +435,6 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-005: Error Handling (Basic)', () => {
     // AC interpretation: [Error handling] Error message returned for non-existent file path
     // Validation: Call ingest_file with non-existent file path, FileOperationError is returned
@@ -506,8 +496,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     // Cleanup: Delete test data, close DB connection
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-006: Additional Format Support (Phase 2)', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac006')
@@ -633,8 +621,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-007: File Management', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac007')
@@ -744,8 +730,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-008: File Re-ingestion', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac008')
@@ -893,8 +877,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-009: Error Handling (Complete)', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac009')
@@ -996,8 +978,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
     })
   })
 
-  // --------------------------------------------
-  // --------------------------------------------
   describe('AC-010: File Deletion', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac010')

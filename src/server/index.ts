@@ -238,7 +238,6 @@ export class RAGServer {
    */
   async initialize(): Promise<void> {
     await this.vectorStore.initialize()
-    await this.embedder.initialize()
     await this.chunker.initialize()
     console.log('RAGServer initialized')
   }

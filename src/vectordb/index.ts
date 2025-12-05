@@ -115,15 +115,15 @@ export class VectorStore {
       if (tableNames.includes(this.config.tableName)) {
         // Open existing table
         this.table = await this.db.openTable(this.config.tableName)
-        console.log(`VectorStore: Opened existing table "${this.config.tableName}"`)
+        console.error(`VectorStore: Opened existing table "${this.config.tableName}"`)
       } else {
         // Create new table (schema auto-defined on first data insertion)
-        console.log(
+        console.error(
           `VectorStore: Table "${this.config.tableName}" will be created on first data insertion`
         )
       }
 
-      console.log(`VectorStore initialized: ${this.config.dbPath}`)
+      console.error(`VectorStore initialized: ${this.config.dbPath}`)
     } catch (error) {
       throw new DatabaseError('Failed to initialize VectorStore', error as Error)
     }
@@ -137,7 +137,7 @@ export class VectorStore {
   async deleteChunks(filePath: string): Promise<void> {
     if (!this.table) {
       // If table doesn't exist, no deletion targets, return normally
-      console.log('VectorStore: Skipping deletion as table does not exist')
+      console.error('VectorStore: Skipping deletion as table does not exist')
       return
     }
 
@@ -150,7 +150,7 @@ export class VectorStore {
       // so call delete directly
       // Note: Field names are case-sensitive, use backticks for camelCase fields
       await this.table.delete(`\`filePath\` = '${escapedFilePath}'`)
-      console.log(`VectorStore: Deleted chunks for file "${filePath}"`)
+      console.error(`VectorStore: Deleted chunks for file "${filePath}"`)
     } catch (error) {
       // If error occurs, output warning log
       console.warn(`VectorStore: Error occurred while deleting file "${filePath}":`, error)
@@ -186,14 +186,14 @@ export class VectorStore {
         // LanceDB's createTable API accepts data as Record<string, unknown>[]
         const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
         this.table = await this.db.createTable(this.config.tableName, records)
-        console.log(`VectorStore: Created table "${this.config.tableName}"`)
+        console.error(`VectorStore: Created table "${this.config.tableName}"`)
       } else {
         // Add data to existing table
         const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
         await this.table.add(records)
       }
 
-      console.log(`VectorStore: Inserted ${chunks.length} chunks`)
+      console.error(`VectorStore: Inserted ${chunks.length} chunks`)
     } catch (error) {
       throw new DatabaseError('Failed to insert chunks', error as Error)
     }
@@ -209,7 +209,7 @@ export class VectorStore {
   async search(queryVector: number[], limit = 5): Promise<SearchResult[]> {
     if (!this.table) {
       // Return empty array if table doesn't exist
-      console.log('VectorStore: Returning empty results as table does not exist')
+      console.error('VectorStore: Returning empty results as table does not exist')
       return []
     }
 

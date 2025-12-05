@@ -19,15 +19,15 @@ async function main(): Promise<void> {
       chunkOverlap: Number.parseInt(process.env['CHUNK_OVERLAP'] || '100', 10),
     }
 
-    console.log('Starting RAG MCP Server...')
-    console.log('Configuration:', config)
+    console.error('Starting RAG MCP Server...')
+    console.error('Configuration:', config)
 
     // Start RAGServer
     const server = new RAGServer(config)
     await server.initialize()
     await server.run()
 
-    console.log('RAG MCP Server started successfully')
+    console.error('RAG MCP Server started successfully')
   } catch (error) {
     console.error('Failed to start RAG MCP Server:', error)
     process.exit(1)

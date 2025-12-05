@@ -54,7 +54,7 @@ export class DocumentChunker {
       chunkOverlap: this.config.chunkOverlap,
     })
 
-    console.log(
+    console.error(
       `DocumentChunker initialized: chunkSize=${this.config.chunkSize}, chunkOverlap=${this.config.chunkOverlap}`
     )
   }
@@ -88,7 +88,7 @@ export class DocumentChunker {
       }))
 
       const duration = Date.now() - startTime
-      console.log(`Chunked text into ${result.length} chunks in ${duration}ms`)
+      console.error(`Chunked text into ${result.length} chunks in ${duration}ms`)
 
       return result
     } catch (error) {

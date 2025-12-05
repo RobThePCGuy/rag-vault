@@ -69,10 +69,10 @@ export class Embedder {
       // Set cache directory BEFORE creating pipeline
       env.cacheDir = this.config.cacheDir
 
-      console.log(`Embedder: Setting cache directory to "${this.config.cacheDir}"`)
-      console.log(`Embedder: Loading model "${this.config.modelPath}"...`)
+      console.error(`Embedder: Setting cache directory to "${this.config.cacheDir}"`)
+      console.error(`Embedder: Loading model "${this.config.modelPath}"...`)
       this.model = await pipeline('feature-extraction', this.config.modelPath)
-      console.log('Embedder: Model loaded successfully')
+      console.error('Embedder: Model loaded successfully')
     } catch (error) {
       throw new EmbeddingError(
         `Failed to initialize Embedder: ${(error as Error).message}`,
@@ -98,7 +98,7 @@ export class Embedder {
     }
 
     // Start initialization
-    console.log(
+    console.error(
       'Embedder: First use detected. Initializing model (downloading ~90MB, may take 1-2 minutes)...'
     )
 

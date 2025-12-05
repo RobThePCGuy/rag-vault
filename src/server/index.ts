@@ -239,7 +239,7 @@ export class RAGServer {
   async initialize(): Promise<void> {
     await this.vectorStore.initialize()
     await this.chunker.initialize()
-    console.log('RAGServer initialized')
+    console.error('RAGServer initialized')
   }
 
   /**
@@ -316,7 +316,7 @@ export class RAGServer {
                 timestamp: new Date().toISOString(),
               }))
           }
-          console.log(`Backup created: ${backup?.length || 0} chunks for ${args.filePath}`)
+          console.error(`Backup created: ${backup?.length || 0} chunks for ${args.filePath}`)
         }
       } catch (error) {
         // Backup creation failure is warning only (for new files)
@@ -325,7 +325,7 @@ export class RAGServer {
 
       // Delete existing data
       await this.vectorStore.deleteChunks(args.filePath)
-      console.log(`Deleted existing chunks for: ${args.filePath}`)
+      console.error(`Deleted existing chunks for: ${args.filePath}`)
 
       // Create vector chunks
       const timestamp = new Date().toISOString()
@@ -352,7 +352,7 @@ export class RAGServer {
       // Insert vectors (transaction processing)
       try {
         await this.vectorStore.insertChunks(vectorChunks)
-        console.log(`Inserted ${vectorChunks.length} chunks for: ${args.filePath}`)
+        console.error(`Inserted ${vectorChunks.length} chunks for: ${args.filePath}`)
 
         // Delete backup on success
         backup = null
@@ -362,7 +362,7 @@ export class RAGServer {
           console.error('Ingestion failed, rolling back...', insertError)
           try {
             await this.vectorStore.insertChunks(backup)
-            console.log(`Rollback completed: ${backup.length} chunks restored`)
+            console.error(`Rollback completed: ${backup.length} chunks restored`)
           } catch (rollbackError) {
             console.error('Rollback failed:', rollbackError)
             throw new Error(
@@ -488,6 +488,6 @@ export class RAGServer {
   async run(): Promise<void> {
     const transport = new StdioServerTransport()
     await this.server.connect(transport)
-    console.log('RAGServer running on stdio transport')
+    console.error('RAGServer running on stdio transport')
   }
 }

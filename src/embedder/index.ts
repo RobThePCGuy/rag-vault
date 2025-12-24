@@ -43,7 +43,7 @@ export class EmbeddingError extends Error {
  * Embedding generation class using Transformers.js
  *
  * Responsibilities:
- * - Generate embedding vectors (384 dimensions)
+ * - Generate embedding vectors (dimension depends on model)
  * - Transformers.js wrapper
  * - Batch processing (size 8)
  */
@@ -120,16 +120,16 @@ export class Embedder {
    * Convert single text to embedding vector
    *
    * @param text - Text
-   * @returns 384-dimensional vector
+   * @returns Embedding vector (dimension depends on model)
    */
   async embed(text: string): Promise<number[]> {
     // Lazy initialization: initialize on first use if not already initialized
     await this.ensureInitialized()
 
     try {
-      // Return zero vector for empty string
+      // Fail-fast for empty string: cannot generate meaningful embedding
       if (text.length === 0) {
-        return new Array(384).fill(0)
+        throw new EmbeddingError('Cannot generate embedding for empty text')
       }
 
       // Use type assertion to avoid complex Transformers.js type definitions
@@ -145,6 +145,9 @@ export class Embedder {
       const embedding = Array.from(output.data)
       return embedding
     } catch (error) {
+      if (error instanceof EmbeddingError) {
+        throw error
+      }
       throw new EmbeddingError(
         `Failed to generate embedding: ${(error as Error).message}`,
         error as Error
@@ -156,7 +159,7 @@ export class Embedder {
    * Convert multiple texts to embedding vectors with batch processing
    *
    * @param texts - Array of texts
-   * @returns Array of 384-dimensional vectors
+   * @returns Array of embedding vectors (dimension depends on model)
    */
   async embedBatch(texts: string[]): Promise<number[][]> {
     // Lazy initialization: initialize on first use if not already initialized

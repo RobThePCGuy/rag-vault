@@ -322,7 +322,7 @@ export class RAGServer {
         if (existingFile && existingFile.chunkCount > 0) {
           // Backup existing data (retrieve via search)
           const queryVector = embeddings[0] || []
-          if (queryVector.length === 384) {
+          if (queryVector.length > 0) {
             const allChunks = await this.vectorStore.search(queryVector, undefined, 20) // Retrieve max 20 items
             backup = allChunks
               .filter((chunk) => chunk.filePath === args.filePath)

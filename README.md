@@ -179,7 +179,7 @@ claude mcp add local-rag --scope user \
 | `BASE_DIR` | Current directory | Document root directory. Server only accesses files within this path (prevents accidental system file access). | Any valid path |
 | `DB_PATH` | `./lancedb/` | Vector database storage location. Can grow large with many documents. | Any valid path |
 | `CACHE_DIR` | `./models/` | Model cache directory. After first download, model stays here for offline use. | Any valid path |
-| `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace model identifier. Must be Transformers.js compatible. See [available models](https://huggingface.co/models?library=transformers.js&pipeline_tag=feature-extraction&sort=trending). **Note:** Changing models requires re-ingesting all documents as embeddings from different models are incompatible. | HF model ID |
+| `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace model identifier. Must be Transformers.js compatible. See [available models](https://huggingface.co/models?library=transformers.js&pipeline_tag=feature-extraction&sort=trending). **Note:** Changing models requires deleting your database (`rm -rf ./lancedb/`) and re-ingesting all documents. See FAQ for details. | HF model ID |
 | `MAX_FILE_SIZE` | `104857600` (100MB) | Maximum file size in bytes. Larger files rejected to prevent memory issues. | 1MB - 500MB |
 | `CHUNK_SIZE` | `512` | Characters per chunk. Larger = more context but slower processing. | 128 - 2048 |
 | `CHUNK_OVERLAP` | `100` | Overlap between chunks. Preserves context across boundaries. | 0 - (CHUNK_SIZE/2) |
@@ -506,7 +506,18 @@ Want support for another format? [Open an issue](https://github.com/shinpr/mcp-l
 
 **Can I customize the embedding model?**
 
-Yes, set MODEL_NAME to any Transformers.js-compatible model from HuggingFace. Keep in mind that different models have different vector dimensions, so you'll need to rebuild your database if you switch.
+Yes, set MODEL_NAME to any Transformers.js-compatible model from HuggingFace.
+
+However, switching models isn't as simple as changing a config value. Each model produces vectors of a specific dimension—`all-MiniLM-L6-v2` outputs 384 dimensions, while `multilingual-e5-small` outputs 384 and `embeddinggemma-300m` outputs 768. These vectors are fundamentally incompatible with each other.
+
+When you change models, you must:
+
+1. **Delete your existing database**: `rm -rf ./lancedb/` (or your custom DB_PATH)
+2. **Re-ingest all your documents** with the new model
+
+Simply re-ingesting without deleting won't work. LanceDB locks the vector dimension when you first insert data, and that schema persists even if you delete all documents. If you try to insert 768-dimensional vectors into a database that was created with 384-dimensional vectors, you'll get a dimension mismatch error.
+
+The good news: if you do forget to delete the database, LanceDB will give you a clear error message like "Query vector size 768 does not match index column size 384"—so you'll know exactly what went wrong.
 
 **How much does accuracy depend on the model?**
 

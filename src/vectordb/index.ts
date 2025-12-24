@@ -3,6 +3,23 @@
 import { type Connection, Index, type Table, connect } from '@lancedb/lancedb'
 
 // ============================================
+// Constants
+// ============================================
+
+/**
+ * Standard deviation multiplier for detecting group boundaries.
+ * A gap is considered a "boundary" if it exceeds mean + k*std.
+ * Value of 1.5 means gaps > 1.5 standard deviations above mean are boundaries.
+ */
+const GROUPING_BOUNDARY_STD_MULTIPLIER = 1.5
+
+/** Multiplier for candidate count in hybrid search (to allow reranking) */
+const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = 2
+
+/** Maximum distance for dot product similarity (0 = identical, 2 = opposite) */
+const DOT_PRODUCT_MAX_DISTANCE = 2
+
+// ============================================
 // Type Definitions
 // ============================================
 
@@ -53,7 +70,7 @@ export interface VectorChunk {
   chunkIndex: number
   /** Chunk text */
   text: string
-  /** Embedding vector (384 dimensions) */
+  /** Embedding vector (dimension depends on model) */
   vector: number[]
   /** Metadata */
   metadata: DocumentMetadata
@@ -75,6 +92,66 @@ export interface SearchResult {
   score: number
   /** Metadata */
   metadata: DocumentMetadata
+}
+
+/**
+ * Raw result from LanceDB query (internal type)
+ */
+interface LanceDBRawResult {
+  filePath: string
+  chunkIndex: number
+  text: string
+  metadata: DocumentMetadata
+  _distance?: number
+  _score?: number
+}
+
+// ============================================
+// Type Guards
+// ============================================
+
+/**
+ * Type guard for DocumentMetadata
+ */
+function isDocumentMetadata(value: unknown): value is DocumentMetadata {
+  if (typeof value !== 'object' || value === null) return false
+  const obj = value as Record<string, unknown>
+  return (
+    typeof obj['fileName'] === 'string' &&
+    typeof obj['fileSize'] === 'number' &&
+    typeof obj['fileType'] === 'string'
+  )
+}
+
+/**
+ * Type guard for LanceDB raw search result
+ */
+function isLanceDBRawResult(value: unknown): value is LanceDBRawResult {
+  if (typeof value !== 'object' || value === null) return false
+  const obj = value as Record<string, unknown>
+  return (
+    typeof obj['filePath'] === 'string' &&
+    typeof obj['chunkIndex'] === 'number' &&
+    typeof obj['text'] === 'string' &&
+    isDocumentMetadata(obj['metadata'])
+  )
+}
+
+/**
+ * Convert LanceDB raw result to SearchResult with type validation
+ * @throws DatabaseError if the result is invalid
+ */
+function toSearchResult(raw: unknown): SearchResult {
+  if (!isLanceDBRawResult(raw)) {
+    throw new DatabaseError('Invalid search result format from LanceDB')
+  }
+  return {
+    filePath: raw.filePath,
+    chunkIndex: raw.chunkIndex,
+    text: raw.text,
+    score: raw._distance ?? raw._score ?? 0,
+    metadata: raw.metadata,
+  }
 }
 
 // ============================================
@@ -168,6 +245,9 @@ export class VectorStore {
       // Note: Field names are case-sensitive, use backticks for camelCase fields
       await this.table.delete(`\`filePath\` = '${escapedFilePath}'`)
       console.error(`VectorStore: Deleted chunks for file "${filePath}"`)
+
+      // Rebuild FTS index after deleting data
+      await this.rebuildFtsIndex()
     } catch (error) {
       // If error occurs, output warning log
       console.warn(`VectorStore: Error occurred while deleting file "${filePath}":`, error)
@@ -211,6 +291,9 @@ export class VectorStore {
         // Add data to existing table
         const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
         await this.table.add(records)
+
+        // Rebuild FTS index after adding new data
+        await this.rebuildFtsIndex()
       }
 
       console.error(`VectorStore: Inserted ${chunks.length} chunks`)
@@ -243,56 +326,83 @@ export class VectorStore {
   }
 
   /**
-   * Apply grouping algorithm to filter results using statistical threshold
+   * Rebuild FTS index after data changes (insert/delete)
+   * LanceDB OSS requires explicit optimize() call to update FTS index
+   */
+  private async rebuildFtsIndex(): Promise<void> {
+    if (!this.table || !this.ftsEnabled) {
+      return
+    }
+
+    try {
+      // Optimize table to rebuild indexes including FTS
+      await this.table.optimize()
+      console.error('VectorStore: FTS index rebuilt successfully')
+    } catch (error) {
+      // Log warning but don't fail the operation
+      console.warn('VectorStore: FTS index rebuild failed:', error)
+    }
+  }
+
+  /**
+   * Apply grouping algorithm to filter results by detecting group boundaries.
    *
-   * Uses mean + k*std to detect statistically significant gaps between results.
-   * This approach is more robust than simple "largest gap" detection.
+   * Uses statistical threshold (mean + k*std) to identify significant gaps (group boundaries).
+   * - 'similar': Returns only the first group (cuts at first boundary)
+   * - 'related': Returns up to 2 groups (cuts at second boundary)
    *
    * @param results - Search results sorted by distance (ascending)
-   * @param mode - Grouping mode ('similar' = stricter threshold, 'related' = looser threshold)
+   * @param mode - Grouping mode ('similar' = 1 group, 'related' = 2 groups)
    * @returns Filtered results
    */
   private applyGrouping(results: SearchResult[], mode: GroupingMode): SearchResult[] {
-    if (results.length <= 2) return results
+    if (results.length <= 1) return results
 
-    // Calculate gaps between consecutive results
-    const gaps: number[] = []
+    // Calculate gaps between consecutive results with their indices
+    const gaps: { index: number; gap: number }[] = []
     for (let i = 0; i < results.length - 1; i++) {
       const current = results[i]
       const next = results[i + 1]
       if (current !== undefined && next !== undefined) {
-        gaps.push(next.score - current.score)
+        gaps.push({ index: i + 1, gap: next.score - current.score })
       }
     }
 
     if (gaps.length === 0) return results
 
-    // Calculate mean and standard deviation
-    const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length
-    const variance = gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length
+    // Calculate statistical threshold to identify significant gaps (group boundaries)
+    const gapValues = gaps.map((g) => g.gap)
+    const mean = gapValues.reduce((a, b) => a + b, 0) / gapValues.length
+    const variance = gapValues.reduce((a, b) => a + (b - mean) ** 2, 0) / gapValues.length
     const std = Math.sqrt(variance)
+    const threshold = mean + GROUPING_BOUNDARY_STD_MULTIPLIER * std
 
-    // Set threshold based on mode
-    // 'similar': stricter (mean + 2*std) - only cut at very significant gaps
-    // 'related': looser (mean + 1.5*std) - include more related results
-    const multiplier = mode === 'similar' ? 2 : 1.5
-    const threshold = mean + multiplier * std
+    // Find all significant gaps (group boundaries)
+    const boundaries = gaps.filter((g) => g.gap > threshold).map((g) => g.index)
 
-    // Find the first gap that exceeds the threshold
-    const cutIndex = gaps.findIndex((g) => g > threshold)
+    // If no boundaries found, return all results
+    if (boundaries.length === 0) return results
 
-    // If no significant gap found, return all results
-    if (cutIndex === -1) return results
+    // Determine how many groups to include based on mode
+    // 'similar': 1 group (cut at first boundary)
+    // 'related': 2 groups (cut at second boundary, or return all if only 1 boundary)
+    const groupsToInclude = mode === 'similar' ? 1 : 2
+    const boundaryIndex = groupsToInclude - 1
 
-    // Return results up to (and including) the index before the gap
-    return results.slice(0, cutIndex + 1)
+    // If we don't have enough boundaries, return all results for 'related' mode
+    if (boundaryIndex >= boundaries.length) {
+      return mode === 'related' ? results : results.slice(0, boundaries[0])
+    }
+
+    // Cut at the appropriate boundary
+    return results.slice(0, boundaries[boundaryIndex])
   }
 
   /**
    * Execute vector search with quality filtering
    * Supports hybrid search (BM25 + vector) when FTS index is enabled
    *
-   * @param queryVector - Query vector (384 dimensions)
+   * @param queryVector - Query vector (dimension depends on model)
    * @param queryText - Optional query text for hybrid search (BM25)
    * @param limit - Number of results to retrieve (default 10)
    * @returns Array of search results (sorted by distance ascending, filtered by quality settings)
@@ -304,12 +414,6 @@ export class VectorStore {
       return []
     }
 
-    if (queryVector.length !== 384) {
-      throw new DatabaseError(
-        `Invalid query vector dimension: expected 384, got ${queryVector.length}`
-      )
-    }
-
     if (limit < 1 || limit > 20) {
       throw new DatabaseError(`Invalid limit: expected 1-20, got ${limit}`)
     }
@@ -317,21 +421,24 @@ export class VectorStore {
     try {
       let rawResults: Record<string, unknown>[]
 
-      // Use hybrid search if FTS is enabled and query text is provided
-      if (this.ftsEnabled && queryText && queryText.trim().length > 0) {
+      // Use hybrid search if FTS is enabled, query text is provided, and hybridWeight > 0
+      const hybridWeight = this.config.hybridWeight ?? 0.6
+      if (this.ftsEnabled && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
         try {
+          const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER
+
           // Hybrid search: combine FTS (BM25) and vector search
           rawResults = await this.table
             .search(queryText, 'fts', 'text')
             .select(['filePath', 'chunkIndex', 'text', 'metadata'])
-            .limit(limit * 2) // Get more candidates for reranking
+            .limit(candidateLimit) // Get more candidates for reranking
             .toArray()
 
           // Also perform vector search
           const vectorResults = await this.table
             .vectorSearch(queryVector)
             .distanceType('dot')
-            .limit(limit * 2)
+            .limit(candidateLimit)
             .toArray()
 
           // Combine and rerank using linear combination (70% vector, 30% FTS)
@@ -359,14 +466,13 @@ export class VectorStore {
         rawResults = await query.toArray()
       }
 
-      // Convert to SearchResult format
-      let results: SearchResult[] = rawResults.map((result) => ({
-        filePath: result['filePath'] as string,
-        chunkIndex: result['chunkIndex'] as number,
-        text: result['text'] as string,
-        score: (result['_distance'] as number) ?? (result['_score'] as number) ?? 0,
-        metadata: result['metadata'] as DocumentMetadata,
-      }))
+      // Convert to SearchResult format with type validation
+      let results: SearchResult[] = rawResults.map((result) => toSearchResult(result))
+
+      // Apply maxDistance filter (for hybrid search results that weren't filtered at query level)
+      if (this.config.maxDistance !== undefined) {
+        results = results.filter((result) => result.score <= this.config.maxDistance!)
+      }
 
       // Apply grouping filter if configured
       if (this.config.grouping && results.length > 1) {
@@ -401,7 +507,7 @@ export class VectorStore {
       const key = `${result['filePath']}:${result['chunkIndex']}`
       const distance = (result['_distance'] as number) ?? 1
       // Convert distance to similarity score (0-1 range, higher is better)
-      const vectorScore = Math.max(0, 1 - distance / 2)
+      const vectorScore = Math.max(0, 1 - distance / DOT_PRODUCT_MAX_DISTANCE)
       scoreMap.set(key, { result, score: vectorScore * vectorWeight })
     }
 
@@ -527,7 +633,8 @@ export class VectorStore {
         memoryUsage,
         uptime,
         ftsIndexEnabled: this.ftsEnabled,
-        searchMode: this.ftsEnabled ? 'hybrid' : 'vector-only',
+        searchMode:
+          this.ftsEnabled && (this.config.hybridWeight ?? 0.6) > 0 ? 'hybrid' : 'vector-only',
       }
     } catch (error) {
       throw new DatabaseError('Failed to get status', error as Error)

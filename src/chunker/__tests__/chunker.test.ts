@@ -47,6 +47,59 @@ describe('DocumentChunker', () => {
   })
 
   // --------------------------------------------
+  // Short chunk filtering behavior
+  // --------------------------------------------
+  describe('Short chunk filtering', () => {
+    it('should not include chunks shorter than 50 characters', async () => {
+      // Arrange: Text that would create short chunks due to paragraph breaks
+      // Simulates PDF page markers like "-- 5 of 121 --" surrounded by \n\n
+      const textWithShortChunks = `${'A'.repeat(200)}\n\n-- 5 of 121 --\n\n${'B'.repeat(200)}`
+
+      // Act
+      const result = await chunker.chunkText(textWithShortChunks)
+
+      // Assert: No chunk should be shorter than 50 characters
+      const shortChunks = result.filter((chunk) => chunk.text.length < 50)
+      expect(shortChunks).toHaveLength(0)
+    })
+
+    it('should include chunk with exactly 50 characters', async () => {
+      // Arrange: Text that creates a chunk with exactly 50 characters
+      const exactText = 'A'.repeat(50)
+
+      // Act
+      const result = await chunker.chunkText(exactText)
+
+      // Assert: Should have at least one chunk
+      expect(result.length).toBeGreaterThan(0)
+    })
+
+    it('should return empty array when all potential chunks are shorter than 50 characters', async () => {
+      // Arrange: Very short text that would create only short chunks
+      const shortText = 'Short.'
+
+      // Act
+      const result = await chunker.chunkText(shortText)
+
+      // Assert: Should return empty array
+      expect(result).toEqual([])
+    })
+
+    it('should maintain correct chunk indices after filtering', async () => {
+      // Arrange: Text that creates mixed-length chunks
+      const text = `${'A'.repeat(100)}\n\nShort\n\n${'B'.repeat(100)}\n\nX\n\n${'C'.repeat(100)}`
+
+      // Act
+      const result = await chunker.chunkText(text)
+
+      // Assert: Indices should be sequential starting from 0
+      result.forEach((chunk, i) => {
+        expect(chunk.index).toBe(i)
+      })
+    })
+  })
+
+  // --------------------------------------------
   // Error Case: Uninitialized chunker
   // --------------------------------------------
   describe('Error handling', () => {

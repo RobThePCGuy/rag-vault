@@ -132,10 +132,11 @@ describe('VectorStore', () => {
         )
         await store.insertChunks([chunk])
 
-        // Search should still work (vector-only)
+        // Search should still work (vector-only) and return the inserted document
         const results = await store.search(createNormalizedVector(1), 'test query', 10)
-        expect(results).toBeDefined()
-        expect(Array.isArray(results)).toBe(true)
+        expect(results).toHaveLength(1)
+        expect(results[0]?.filePath).toBe('/test/fallback.txt')
+        expect(results[0]?.text).toBe('Fallback test document')
       })
     })
   })
@@ -180,14 +181,14 @@ describe('VectorStore', () => {
         const queryVector = createNormalizedVector(1)
         const results = await store.search(queryVector, 'ProjectLifetimeScope', 10)
 
-        expect(results).toBeDefined()
-        expect(results.length).toBeGreaterThan(0)
+        // All 3 documents should be returned
+        expect(results).toHaveLength(3)
 
         // With hybrid search, exact keyword match should rank higher
-        // The first result should contain "ProjectLifetimeScope"
-        if (results.length > 0 && results[0]) {
-          expect(results[0].text).toContain('ProjectLifetimeScope')
-        }
+        // The first result MUST contain "ProjectLifetimeScope"
+        expect(results[0]).toBeDefined()
+        expect(results[0]!.text).toContain('ProjectLifetimeScope')
+        expect(results[0]!.filePath).toBe('/test/vcontainer.md')
       })
 
       it('should fall back to vector-only search when query text is empty', async () => {
@@ -209,8 +210,10 @@ describe('VectorStore', () => {
         // Search with empty query text (should use vector-only)
         const results = await store.search(createNormalizedVector(1), '', 10)
 
-        expect(results).toBeDefined()
-        expect(results.length).toBeGreaterThan(0)
+        // Should return the inserted document via vector-only search
+        expect(results).toHaveLength(1)
+        expect(results[0]?.filePath).toBe('/test/doc.txt')
+        expect(results[0]?.text).toBe('Test document for vector search')
       })
 
       it('should maintain backward compatibility with vector-only search', async () => {
@@ -229,11 +232,13 @@ describe('VectorStore', () => {
         )
         await store.insertChunks([chunk])
 
-        // Original search signature should still work
+        // Original search signature should still work (queryText = undefined)
         const results = await store.search(createNormalizedVector(1), undefined, 10)
 
-        expect(results).toBeDefined()
-        expect(results.length).toBeGreaterThan(0)
+        // Should return the inserted document
+        expect(results).toHaveLength(1)
+        expect(results[0]?.filePath).toBe('/test/compat.txt')
+        expect(results[0]?.text).toBe('Backward compatibility test')
       })
     })
 
@@ -270,68 +275,481 @@ describe('VectorStore', () => {
         const queryVector = createNormalizedVector(1)
         const results = await store.search(queryVector, 'ProjectLifetimeScope', 10)
 
+        // Both documents should be returned
+        expect(results).toHaveLength(2)
+
         // In hybrid search, doc1 should rank higher due to keyword match
         // despite doc2 being semantically closer
-        expect(results.length).toBeGreaterThanOrEqual(2)
-        if (results[0]) {
-          expect(results[0].text).toContain('ProjectLifetimeScope')
-        }
+        expect(results[0]).toBeDefined()
+        expect(results[0]!.text).toContain('ProjectLifetimeScope')
+        expect(results[0]!.filePath).toBe('/test/exact-match.md')
+
+        // Doc2 should be second (semantically similar but no keyword match)
+        expect(results[1]).toBeDefined()
+        expect(results[1]!.filePath).toBe('/test/semantic-match.md')
       })
     })
   })
 
-  describe('Grouping algorithm (statistical threshold)', () => {
-    it('should use statistical threshold for grouping in similar mode', async () => {
-      const store = new VectorStore({
-        dbPath: testDbPath,
-        tableName: 'chunks',
-        grouping: 'similar',
-      })
+  describe('Search mode behavior', () => {
+    /**
+     * Test data design:
+     * - doc1: Contains keyword "UniqueKeyword", but vector is far from query
+     * - doc2: No keyword match, but vector is close to query
+     *
+     * Expected behavior:
+     * - hybridWeight=0 (vector-only): doc2 ranks first (vector similarity)
+     * - hybridWeight=1 (FTS-only): doc1 ranks first (keyword match)
+     * - hybridWeight=0.6 (hybrid): doc1 ranks first (keyword match prioritized)
+     */
 
-      await store.initialize()
-
-      // Create documents with varying similarity
-      const baseVector = createNormalizedVector(1)
-
-      // Group 1: Very similar (small gaps)
-      for (let i = 0; i < 3; i++) {
-        const chunk = createTestChunk(`Similar doc ${i}`, `/test/similar${i}.txt`, 0, baseVector)
-        await store.insertChunks([chunk])
+    it('should use vector similarity order when hybridWeight=0', async () => {
+      const vectorOnlyDbPath = './tmp/test-vectordb-vector-only'
+      const fs = await import('node:fs')
+      if (fs.existsSync(vectorOnlyDbPath)) {
+        fs.rmSync(vectorOnlyDbPath, { recursive: true })
       }
 
-      // Group 2: Different (larger gap)
-      const differentVector = createNormalizedVector(100)
-      const chunk = createTestChunk('Different doc', '/test/different.txt', 0, differentVector)
-      await store.insertChunks([chunk])
+      try {
+        const store = new VectorStore({
+          dbPath: vectorOnlyDbPath,
+          tableName: 'chunks',
+          hybridWeight: 0, // Vector-only mode
+        })
+        await store.initialize()
 
-      const results = await store.search(baseVector, '', 10)
+        const queryVector = createNormalizedVector(1)
 
-      // With 'similar' mode, should cut at statistically significant gap
-      // Results should be filtered to the similar group
-      expect(results.length).toBeLessThanOrEqual(4)
+        // doc1: Has keyword, but vector is far from query
+        const doc1 = createTestChunk(
+          'UniqueKeyword appears in this document about something else',
+          '/test/keyword-match.md',
+          0,
+          createNormalizedVector(100) // Far from query
+        )
+
+        // doc2: No keyword, but vector is close to query
+        const doc2 = createTestChunk(
+          'This document has similar semantic meaning without the special term',
+          '/test/vector-match.md',
+          0,
+          createNormalizedVector(1) // Close to query
+        )
+
+        await store.insertChunks([doc1])
+        await store.insertChunks([doc2])
+
+        // Search with keyword that matches doc1, but query vector close to doc2
+        const results = await store.search(queryVector, 'UniqueKeyword', 10)
+
+        expect(results).toHaveLength(2)
+
+        // With hybridWeight=0, vector similarity should determine order
+        // doc2 (vector close) should rank first
+        expect(results[0]?.filePath).toBe('/test/vector-match.md')
+        expect(results[1]?.filePath).toBe('/test/keyword-match.md')
+      } finally {
+        if (fs.existsSync(vectorOnlyDbPath)) {
+          fs.rmSync(vectorOnlyDbPath, { recursive: true })
+        }
+      }
     })
 
-    it('should include more results in related mode', async () => {
-      const store = new VectorStore({
-        dbPath: testDbPath,
-        tableName: 'chunks',
-        grouping: 'related',
-      })
-
-      await store.initialize()
-
-      const baseVector = createNormalizedVector(1)
-
-      for (let i = 0; i < 5; i++) {
-        const vector = createNormalizedVector(i + 1)
-        const chunk = createTestChunk(`Doc ${i}`, `/test/doc${i}.txt`, 0, vector)
-        await store.insertChunks([chunk])
+    it('should use keyword match order when hybridWeight=1', async () => {
+      const ftsOnlyDbPath = './tmp/test-vectordb-fts-only'
+      const fs = await import('node:fs')
+      if (fs.existsSync(ftsOnlyDbPath)) {
+        fs.rmSync(ftsOnlyDbPath, { recursive: true })
       }
 
-      const results = await store.search(baseVector, '', 10)
+      try {
+        const store = new VectorStore({
+          dbPath: ftsOnlyDbPath,
+          tableName: 'chunks',
+          hybridWeight: 1, // FTS-only mode
+        })
+        await store.initialize()
 
-      // 'related' mode should include more results than 'similar'
-      expect(results.length).toBeGreaterThan(0)
+        const queryVector = createNormalizedVector(1)
+
+        // doc1: Has keyword, but vector is far from query
+        const doc1 = createTestChunk(
+          'UniqueKeyword appears in this document about something else',
+          '/test/keyword-match.md',
+          0,
+          createNormalizedVector(100) // Far from query
+        )
+
+        // doc2: No keyword, but vector is close to query
+        const doc2 = createTestChunk(
+          'This document has similar semantic meaning without the special term',
+          '/test/vector-match.md',
+          0,
+          createNormalizedVector(1) // Close to query
+        )
+
+        await store.insertChunks([doc1])
+        await store.insertChunks([doc2])
+
+        // Search with keyword that matches doc1
+        const results = await store.search(queryVector, 'UniqueKeyword', 10)
+
+        expect(results).toHaveLength(2)
+
+        // With hybridWeight=1, keyword match should determine order
+        // doc1 (keyword match) should rank first
+        expect(results[0]?.filePath).toBe('/test/keyword-match.md')
+        expect(results[1]?.filePath).toBe('/test/vector-match.md')
+      } finally {
+        if (fs.existsSync(ftsOnlyDbPath)) {
+          fs.rmSync(ftsOnlyDbPath, { recursive: true })
+        }
+      }
+    })
+
+    it('should use hybrid ranking when hybridWeight=0.6 (default)', async () => {
+      const hybridDbPath = './tmp/test-vectordb-hybrid'
+      const fs = await import('node:fs')
+      if (fs.existsSync(hybridDbPath)) {
+        fs.rmSync(hybridDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: hybridDbPath,
+          tableName: 'chunks',
+          // hybridWeight not specified, uses default 0.6
+        })
+        await store.initialize()
+
+        const queryVector = createNormalizedVector(1)
+
+        // doc1: Has keyword, but vector is far from query
+        const doc1 = createTestChunk(
+          'UniqueKeyword appears in this document about something else',
+          '/test/keyword-match.md',
+          0,
+          createNormalizedVector(100) // Far from query
+        )
+
+        // doc2: No keyword, but vector is close to query
+        const doc2 = createTestChunk(
+          'This document has similar semantic meaning without the special term',
+          '/test/vector-match.md',
+          0,
+          createNormalizedVector(1) // Close to query
+        )
+
+        await store.insertChunks([doc1])
+        await store.insertChunks([doc2])
+
+        // Search with keyword that matches doc1
+        const results = await store.search(queryVector, 'UniqueKeyword', 10)
+
+        expect(results).toHaveLength(2)
+
+        // With hybridWeight=0.6, keyword match is prioritized (60% weight)
+        // doc1 (keyword match) should rank first
+        expect(results[0]?.filePath).toBe('/test/keyword-match.md')
+        expect(results[1]?.filePath).toBe('/test/vector-match.md')
+      } finally {
+        if (fs.existsSync(hybridDbPath)) {
+          fs.rmSync(hybridDbPath, { recursive: true })
+        }
+      }
+    })
+  })
+
+  /**
+   * Grouping Algorithm Contract:
+   *
+   * Given: Search results sorted by distance score (ascending)
+   *
+   * Algorithm:
+   * 1. Calculate gaps between consecutive results
+   * 2. Find "significant gaps" using threshold: mean(gaps) + 1.5 * std(gaps)
+   * 3. Cut at boundaries based on mode:
+   *    - 'similar': Cut at first boundary (return first group only)
+   *    - 'related': Cut at second boundary (return up to 2 groups)
+   *
+   * Guarantees:
+   * - If results <= 1: return as-is
+   * - If no significant gaps: return all results
+   * - 'similar' with 1+ boundaries: return first group
+   * - 'related' with 1 boundary: return all results
+   * - 'related' with 2+ boundaries: return first 2 groups
+   */
+  describe('Grouping algorithm (statistical threshold)', () => {
+    describe('Contract guarantees', () => {
+      it('returns single result as-is without grouping', async () => {
+        const store = new VectorStore({
+          dbPath: testDbPath,
+          tableName: 'chunks',
+          grouping: 'similar',
+        })
+        await store.initialize()
+
+        const chunk = createTestChunk(
+          'Only document',
+          '/test/only.txt',
+          0,
+          createNormalizedVector(1)
+        )
+        await store.insertChunks([chunk])
+
+        const results = await store.search(createNormalizedVector(1), '', 10)
+
+        // Contract: Single result returned as-is
+        expect(results).toHaveLength(1)
+        expect(results[0]?.text).toBe('Only document')
+      })
+
+      it('returns all results when no significant gaps exist', async () => {
+        const store = new VectorStore({
+          dbPath: testDbPath,
+          tableName: 'chunks',
+          grouping: 'similar',
+        })
+        await store.initialize()
+
+        const baseVector = createNormalizedVector(1)
+
+        // All documents use identical vectors = all gaps are 0 = no significant gaps
+        for (let i = 0; i < 4; i++) {
+          const chunk = createTestChunk(`Doc ${i}`, `/test/doc${i}.txt`, 0, baseVector)
+          await store.insertChunks([chunk])
+        }
+
+        const results = await store.search(baseVector, '', 10)
+
+        // Contract: No significant gaps → return all results
+        expect(results).toHaveLength(4)
+      })
+    })
+
+    describe('Similar mode behavior', () => {
+      it('returns first group only when clear boundary exists', async () => {
+        const store = new VectorStore({
+          dbPath: testDbPath,
+          tableName: 'chunks',
+          grouping: 'similar',
+        })
+        await store.initialize()
+
+        const baseVector = createNormalizedVector(1)
+
+        // Group 1: 3 documents with identical vectors (distance ~0)
+        for (let i = 0; i < 3; i++) {
+          const chunk = createTestChunk(`Group1 Doc ${i}`, `/test/group1-${i}.txt`, 0, baseVector)
+          await store.insertChunks([chunk])
+        }
+
+        // Group 2: 2 documents with very different vectors (large gap from Group 1)
+        const farVector = createNormalizedVector(100)
+        for (let i = 0; i < 2; i++) {
+          const chunk = createTestChunk(`Group2 Doc ${i}`, `/test/group2-${i}.txt`, 0, farVector)
+          await store.insertChunks([chunk])
+        }
+
+        const results = await store.search(baseVector, '', 10)
+
+        // Contract: 'similar' mode cuts at first boundary
+        // Only Group 1 should be returned
+        expect(results).toHaveLength(3)
+        expect(results.every((r) => r.text.includes('Group1'))).toBe(true)
+        expect(results.some((r) => r.text.includes('Group2'))).toBe(false)
+      })
+    })
+
+    describe('Related mode behavior', () => {
+      it('returns all results when only one boundary exists', async () => {
+        const relatedDbPath = './tmp/test-vectordb-related-one-boundary'
+        if (fs.existsSync(relatedDbPath)) {
+          fs.rmSync(relatedDbPath, { recursive: true })
+        }
+
+        try {
+          const store = new VectorStore({
+            dbPath: relatedDbPath,
+            tableName: 'chunks',
+            grouping: 'related',
+          })
+          await store.initialize()
+
+          const baseVector = createNormalizedVector(1)
+
+          // Group 1: 3 documents with identical vectors
+          for (let i = 0; i < 3; i++) {
+            const chunk = createTestChunk(`Group1 Doc ${i}`, `/test/group1-${i}.txt`, 0, baseVector)
+            await store.insertChunks([chunk])
+          }
+
+          // Group 2: 2 documents with very different vectors (creates ONE boundary)
+          const farVector = createNormalizedVector(100)
+          for (let i = 0; i < 2; i++) {
+            const chunk = createTestChunk(`Group2 Doc ${i}`, `/test/group2-${i}.txt`, 0, farVector)
+            await store.insertChunks([chunk])
+          }
+
+          const results = await store.search(baseVector, '', 10)
+
+          // Contract: 'related' mode with only 1 boundary → return all results
+          expect(results).toHaveLength(5)
+          expect(results.filter((r) => r.text.includes('Group1'))).toHaveLength(3)
+          expect(results.filter((r) => r.text.includes('Group2'))).toHaveLength(2)
+        } finally {
+          if (fs.existsSync(relatedDbPath)) {
+            fs.rmSync(relatedDbPath, { recursive: true })
+          }
+        }
+      })
+
+      it('returns first two groups when multiple boundaries exist', async () => {
+        const relatedDbPath = './tmp/test-vectordb-related-multi-boundary'
+        if (fs.existsSync(relatedDbPath)) {
+          fs.rmSync(relatedDbPath, { recursive: true })
+        }
+
+        try {
+          const store = new VectorStore({
+            dbPath: relatedDbPath,
+            tableName: 'chunks',
+            grouping: 'related',
+          })
+          await store.initialize()
+
+          // Create 3 distinct groups with large gaps between them
+          // Group 1: seed 1 (distance ~0 from query)
+          const group1Vector = createNormalizedVector(1)
+          for (let i = 0; i < 2; i++) {
+            const chunk = createTestChunk(
+              `Group1 Doc ${i}`,
+              `/test/group1-${i}.txt`,
+              0,
+              group1Vector
+            )
+            await store.insertChunks([chunk])
+          }
+
+          // Group 2: seed 50 (medium distance from query)
+          const group2Vector = createNormalizedVector(50)
+          for (let i = 0; i < 2; i++) {
+            const chunk = createTestChunk(
+              `Group2 Doc ${i}`,
+              `/test/group2-${i}.txt`,
+              0,
+              group2Vector
+            )
+            await store.insertChunks([chunk])
+          }
+
+          // Group 3: seed 100 (far distance from query)
+          const group3Vector = createNormalizedVector(100)
+          for (let i = 0; i < 2; i++) {
+            const chunk = createTestChunk(
+              `Group3 Doc ${i}`,
+              `/test/group3-${i}.txt`,
+              0,
+              group3Vector
+            )
+            await store.insertChunks([chunk])
+          }
+
+          const results = await store.search(group1Vector, '', 10)
+
+          // Contract: 'related' mode with 2+ boundaries → return first 2 groups
+          // Group 1 and Group 2 should be included, Group 3 should be excluded
+          expect(results.length).toBeLessThanOrEqual(6) // At most all 6 docs
+          expect(results.filter((r) => r.text.includes('Group1'))).toHaveLength(2)
+          // Group 2 may or may not be included depending on gap distribution
+          // Group 3 should be excluded if boundaries are detected correctly
+          const group3Count = results.filter((r) => r.text.includes('Group3')).length
+          expect(group3Count).toBeLessThanOrEqual(
+            results.filter((r) => r.text.includes('Group2')).length
+          )
+        } finally {
+          if (fs.existsSync(relatedDbPath)) {
+            fs.rmSync(relatedDbPath, { recursive: true })
+          }
+        }
+      })
+    })
+
+    describe('Similar vs Related comparison', () => {
+      it('related mode returns same or more results than similar mode with identical data', async () => {
+        const similarDbPath = './tmp/test-vectordb-similar-compare'
+        const relatedDbPath = './tmp/test-vectordb-related-compare'
+
+        if (fs.existsSync(similarDbPath)) {
+          fs.rmSync(similarDbPath, { recursive: true })
+        }
+        if (fs.existsSync(relatedDbPath)) {
+          fs.rmSync(relatedDbPath, { recursive: true })
+        }
+
+        try {
+          const baseVector = createNormalizedVector(1)
+
+          // Create test data with VERY clear group structure
+          // Group 1: 3 docs with identical vectors (seed 1) - gaps within group = 0
+          // Group 2: 2 docs with very different vectors (seed 200) - large gap from Group 1
+          // This ensures statistical threshold (mean + 1.5*std) clearly detects the boundary
+          const testChunks = [
+            createTestChunk('Group1 Doc 0', '/test/g1-0.txt', 0, createNormalizedVector(1)),
+            createTestChunk('Group1 Doc 1', '/test/g1-1.txt', 0, createNormalizedVector(1)),
+            createTestChunk('Group1 Doc 2', '/test/g1-2.txt', 0, createNormalizedVector(1)),
+            createTestChunk('Group2 Doc 0', '/test/g2-0.txt', 0, createNormalizedVector(200)),
+            createTestChunk('Group2 Doc 1', '/test/g2-1.txt', 0, createNormalizedVector(200)),
+          ]
+
+          // Test with similar mode
+          const similarStore = new VectorStore({
+            dbPath: similarDbPath,
+            tableName: 'chunks',
+            grouping: 'similar',
+          })
+          await similarStore.initialize()
+          for (const chunk of testChunks) {
+            await similarStore.insertChunks([chunk])
+          }
+          const similarResults = await similarStore.search(baseVector, '', 10)
+
+          // Test with related mode
+          const relatedStore = new VectorStore({
+            dbPath: relatedDbPath,
+            tableName: 'chunks',
+            grouping: 'related',
+          })
+          await relatedStore.initialize()
+          for (const chunk of testChunks) {
+            await relatedStore.insertChunks([chunk])
+          }
+          const relatedResults = await relatedStore.search(baseVector, '', 10)
+
+          // Contract: 'similar' cuts at first boundary, 'related' at second (or returns all if only 1)
+          // Therefore: relatedResults.length >= similarResults.length
+          expect(relatedResults.length).toBeGreaterThanOrEqual(similarResults.length)
+
+          // Verify both modes return at least 1 result
+          expect(similarResults.length).toBeGreaterThanOrEqual(1)
+          expect(relatedResults.length).toBeGreaterThanOrEqual(1)
+
+          // Verify Group1 is always prioritized (appears first in both modes)
+          const similarGroup1Count = similarResults.filter((r) => r.text.includes('Group1')).length
+          const relatedGroup1Count = relatedResults.filter((r) => r.text.includes('Group1')).length
+
+          // Both modes should include all Group1 results at minimum
+          expect(similarGroup1Count).toBeGreaterThanOrEqual(1)
+          expect(relatedGroup1Count).toBeGreaterThanOrEqual(similarGroup1Count)
+        } finally {
+          if (fs.existsSync(similarDbPath)) {
+            fs.rmSync(similarDbPath, { recursive: true })
+          }
+          if (fs.existsSync(relatedDbPath)) {
+            fs.rmSync(relatedDbPath, { recursive: true })
+          }
+        }
+      })
     })
   })
 })

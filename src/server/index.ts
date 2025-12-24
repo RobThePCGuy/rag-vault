@@ -35,6 +35,8 @@ export interface RAGServerConfig {
   maxDistance?: number
   /** Grouping mode for quality filtering (optional) */
   grouping?: GroupingMode
+  /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only, default 0.6) */
+  hybridWeight?: number
 }
 
 /**
@@ -126,6 +128,9 @@ export class RAGServer {
     }
     if (config.grouping !== undefined) {
       vectorStoreConfig.grouping = config.grouping
+    }
+    if (config.hybridWeight !== undefined) {
+      vectorStoreConfig.hybridWeight = config.hybridWeight
     }
     this.vectorStore = new VectorStore(vectorStoreConfig)
     this.embedder = new Embedder({
@@ -267,8 +272,8 @@ export class RAGServer {
       // Generate query embedding
       const queryVector = await this.embedder.embed(args.query)
 
-      // Vector search
-      const searchResults = await this.vectorStore.search(queryVector, args.limit || 10)
+      // Hybrid search (vector + BM25 keyword matching)
+      const searchResults = await this.vectorStore.search(queryVector, args.query, args.limit || 10)
 
       // Format results
       const results: QueryResult[] = searchResults.map((result) => ({
@@ -318,7 +323,7 @@ export class RAGServer {
           // Backup existing data (retrieve via search)
           const queryVector = embeddings[0] || []
           if (queryVector.length === 384) {
-            const allChunks = await this.vectorStore.search(queryVector, 20) // Retrieve max 20 items
+            const allChunks = await this.vectorStore.search(queryVector, undefined, 20) // Retrieve max 20 items
             backup = allChunks
               .filter((chunk) => chunk.filePath === args.filePath)
               .map((chunk) => ({

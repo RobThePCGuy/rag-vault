@@ -33,6 +33,21 @@ function parseMaxDistance(value: string | undefined): number | undefined {
 }
 
 /**
+ * Parse hybrid weight from environment variable
+ */
+function parseHybridWeight(value: string | undefined): number | undefined {
+  if (!value) return undefined
+  const parsed = Number.parseFloat(value)
+  if (Number.isNaN(parsed) || parsed < 0 || parsed > 1) {
+    console.error(
+      `Invalid RAG_HYBRID_WEIGHT value: "${value}". Expected 0.0-1.0. Using default (0.6).`
+    )
+    return undefined
+  }
+  return parsed
+}
+
+/**
  * Entry point - Start RAG MCP Server
  */
 async function main(): Promise<void> {
@@ -51,11 +66,15 @@ async function main(): Promise<void> {
     // Add quality filter settings only if defined
     const maxDistance = parseMaxDistance(process.env['RAG_MAX_DISTANCE'])
     const grouping = parseGroupingMode(process.env['RAG_GROUPING'])
+    const hybridWeight = parseHybridWeight(process.env['RAG_HYBRID_WEIGHT'])
     if (maxDistance !== undefined) {
       config.maxDistance = maxDistance
     }
     if (grouping !== undefined) {
       config.grouping = grouping
+    }
+    if (hybridWeight !== undefined) {
+      config.hybridWeight = hybridWeight
     }
 
     console.error('Starting RAG MCP Server...')

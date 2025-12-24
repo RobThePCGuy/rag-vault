@@ -185,6 +185,7 @@ claude mcp add local-rag --scope user \
 | `CHUNK_OVERLAP` | `100` | Overlap between chunks. Preserves context across boundaries. | 0 - (CHUNK_SIZE/2) |
 | `RAG_MAX_DISTANCE` | (not set) | Maximum distance threshold for search results. Results with distance greater than this value are excluded. Lower values mean stricter filtering (e.g., `0.5` for high relevance only). | Positive number |
 | `RAG_GROUPING` | (not set) | Grouping mode for quality filtering. `similar` returns only the most similar group (stops at first distance jump). `related` includes related groups (stops at second distance jump). | `similar` or `related` |
+| `RAG_HYBRID_WEIGHT` | `0.6` | Balance between keyword (BM25) and semantic search. `0.0` = pure semantic, `1.0` = pure keyword. Default `0.6` prioritizes keyword matches—ideal for code/technical terms. Use `0.3-0.4` for natural language queries. | `0.0` - `1.0` |
 
 ## Usage
 
@@ -236,10 +237,11 @@ Ask questions in natural language:
 "Search for error handling best practices"
 ```
 
-The server:
-1. Converts your query to an embedding vector
-2. Searches the vector database for similar chunks
-3. Returns the top 10 matches with similarity scores (default)
+The server uses **hybrid search** combining:
+1. **Keyword matching (BM25)**: Finds exact term matches—crucial for code terms like `ProjectLifetimeScope` or error codes
+2. **Semantic search**: Understands meaning, so "authentication" finds "login flow" content
+
+This hybrid approach means searching for `useEffect` finds documents containing that exact term, not just semantically similar React concepts.
 
 Results include the text content, which file it came from, and a relevance score. Your AI assistant then uses these results to answer your question.
 
@@ -463,9 +465,13 @@ Each chunk goes through the Transformers.js embedding model, which converts text
 
 Vectors are stored in LanceDB, a columnar vector database that works with local files. No server process, no complex setup. It's just a directory with data files.
 
-When you search, your query becomes a vector using the same model. LanceDB finds the chunks with vectors most similar to your query vector (using cosine similarity). The top matches return to your MCP client with their original text and metadata.
+When you search, the server performs **hybrid search**:
+1. Your query becomes a vector using the same embedding model
+2. LanceDB performs both keyword search (BM25) and vector similarity search
+3. Results are combined using a weighted linear combination (default: 60% keyword, 40% semantic)
+4. The top matches return to your MCP client with their original text and metadata
 
-The beauty of this approach: semantically similar text has similar vectors, even if the words are different. "authentication process" and "how users log in" will match each other, unlike keyword search.
+This hybrid approach gets the best of both worlds: exact keyword matches (essential for code terms, error codes, function names) and semantic understanding (so "authentication" finds "login flow" content). The default weight prioritizes keyword matches, which works well for developer documentation where exact terms matter.
 
 ## FAQ
 

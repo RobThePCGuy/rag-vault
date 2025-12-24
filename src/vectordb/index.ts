@@ -1,6 +1,6 @@
 // VectorStore implementation with LanceDB integration
 
-import { type Connection, type Table, connect } from '@lancedb/lancedb'
+import { type Connection, Index, type Table, connect } from '@lancedb/lancedb'
 
 // ============================================
 // Type Definitions
@@ -25,6 +25,8 @@ export interface VectorStoreConfig {
   maxDistance?: number
   /** Grouping mode for quality filtering (optional) */
   grouping?: GroupingMode
+  /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only, default 0.6) */
+  hybridWeight?: number
 }
 
 /**
@@ -69,7 +71,7 @@ export interface SearchResult {
   chunkIndex: number
   /** Chunk text */
   text: string
-  /** Similarity score (0-1, higher means more similar) */
+  /** Distance score using dot product (0 = identical, 1 = orthogonal, 2 = opposite) */
   score: number
   /** Metadata */
   metadata: DocumentMetadata
@@ -108,6 +110,7 @@ export class VectorStore {
   private db: Connection | null = null
   private table: Table | null = null
   private readonly config: VectorStoreConfig
+  private ftsEnabled = false
 
   constructor(config: VectorStoreConfig) {
     this.config = config
@@ -127,6 +130,9 @@ export class VectorStore {
         // Open existing table
         this.table = await this.db.openTable(this.config.tableName)
         console.error(`VectorStore: Opened existing table "${this.config.tableName}"`)
+
+        // Ensure FTS index exists (migration for existing databases)
+        await this.ensureFtsIndex()
       } else {
         // Create new table (schema auto-defined on first data insertion)
         console.error(
@@ -198,6 +204,9 @@ export class VectorStore {
         const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
         this.table = await this.db.createTable(this.config.tableName, records)
         console.error(`VectorStore: Created table "${this.config.tableName}"`)
+
+        // Create FTS index for hybrid search
+        await this.ensureFtsIndex()
       } else {
         // Add data to existing table
         const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
@@ -211,60 +220,84 @@ export class VectorStore {
   }
 
   /**
-   * Apply grouping algorithm to filter results by distance jumps
+   * Ensure FTS index exists for hybrid search
+   * Creates the index if it doesn't exist, falls back gracefully on error
+   */
+  private async ensureFtsIndex(): Promise<void> {
+    if (!this.table || this.ftsEnabled) {
+      return
+    }
+
+    try {
+      // Create FTS index on the 'text' column
+      await this.table.createIndex('text', {
+        config: Index.fts(),
+      })
+      this.ftsEnabled = true
+      console.error('VectorStore: FTS index created successfully')
+    } catch (error) {
+      // FTS index creation failed, continue with vector-only search
+      console.error('VectorStore: FTS index creation failed, using vector-only search:', error)
+      this.ftsEnabled = false
+    }
+  }
+
+  /**
+   * Apply grouping algorithm to filter results using statistical threshold
+   *
+   * Uses mean + k*std to detect statistically significant gaps between results.
+   * This approach is more robust than simple "largest gap" detection.
    *
    * @param results - Search results sorted by distance (ascending)
-   * @param mode - Grouping mode ('similar' = 1 group, 'related' = 2 groups)
+   * @param mode - Grouping mode ('similar' = stricter threshold, 'related' = looser threshold)
    * @returns Filtered results
    */
   private applyGrouping(results: SearchResult[], mode: GroupingMode): SearchResult[] {
-    if (results.length <= 1) return results
-
-    const groups = mode === 'similar' ? 1 : 2
+    if (results.length <= 2) return results
 
     // Calculate gaps between consecutive results
-    const gaps: { index: number; gap: number }[] = []
+    const gaps: number[] = []
     for (let i = 0; i < results.length - 1; i++) {
       const current = results[i]
       const next = results[i + 1]
-      if (current && next) {
-        gaps.push({
-          index: i + 1,
-          gap: next.score - current.score,
-        })
+      if (current !== undefined && next !== undefined) {
+        gaps.push(next.score - current.score)
       }
     }
 
-    // Sort gaps by size (descending) and take top (groups - 1)
-    const sortedGaps = [...gaps].sort((a, b) => b.gap - a.gap)
-    const cutPoints = sortedGaps
-      .slice(0, groups - 1)
-      .map((g) => g.index)
-      .sort((a, b) => a - b)
+    if (gaps.length === 0) return results
 
-    // If no cut points or insufficient gaps, return all results
-    if (cutPoints.length === 0) {
-      // For 'similar' mode with 1 group, cut at the first significant gap
-      const firstGap = sortedGaps[0]
-      if (mode === 'similar' && firstGap) {
-        // Find the largest gap
-        return results.slice(0, firstGap.index)
-      }
-      return results
-    }
+    // Calculate mean and standard deviation
+    const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length
+    const variance = gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length
+    const std = Math.sqrt(variance)
 
-    // Return results up to the first cut point
-    return results.slice(0, cutPoints[0])
+    // Set threshold based on mode
+    // 'similar': stricter (mean + 2*std) - only cut at very significant gaps
+    // 'related': looser (mean + 1.5*std) - include more related results
+    const multiplier = mode === 'similar' ? 2 : 1.5
+    const threshold = mean + multiplier * std
+
+    // Find the first gap that exceeds the threshold
+    const cutIndex = gaps.findIndex((g) => g > threshold)
+
+    // If no significant gap found, return all results
+    if (cutIndex === -1) return results
+
+    // Return results up to (and including) the index before the gap
+    return results.slice(0, cutIndex + 1)
   }
 
   /**
    * Execute vector search with quality filtering
+   * Supports hybrid search (BM25 + vector) when FTS index is enabled
    *
    * @param queryVector - Query vector (384 dimensions)
+   * @param queryText - Optional query text for hybrid search (BM25)
    * @param limit - Number of results to retrieve (default 10)
    * @returns Array of search results (sorted by distance ascending, filtered by quality settings)
    */
-  async search(queryVector: number[], limit = 10): Promise<SearchResult[]> {
+  async search(queryVector: number[], queryText?: string, limit = 10): Promise<SearchResult[]> {
     if (!this.table) {
       // Return empty array if table doesn't exist
       console.error('VectorStore: Returning empty results as table does not exist')
@@ -282,23 +315,57 @@ export class VectorStore {
     }
 
     try {
-      // Build vector search query
-      let query = this.table.vectorSearch(queryVector).limit(limit)
+      let rawResults: Record<string, unknown>[]
 
-      // Apply distance threshold if configured
-      if (this.config.maxDistance !== undefined) {
-        query = query.distanceRange(undefined, this.config.maxDistance)
+      // Use hybrid search if FTS is enabled and query text is provided
+      if (this.ftsEnabled && queryText && queryText.trim().length > 0) {
+        try {
+          // Hybrid search: combine FTS (BM25) and vector search
+          rawResults = await this.table
+            .search(queryText, 'fts', 'text')
+            .select(['filePath', 'chunkIndex', 'text', 'metadata'])
+            .limit(limit * 2) // Get more candidates for reranking
+            .toArray()
+
+          // Also perform vector search
+          const vectorResults = await this.table
+            .vectorSearch(queryVector)
+            .distanceType('dot')
+            .limit(limit * 2)
+            .toArray()
+
+          // Combine and rerank using linear combination (70% vector, 30% FTS)
+          rawResults = this.hybridRerank(rawResults, vectorResults, limit)
+        } catch (ftsError) {
+          // FTS search failed, fall back to vector-only search
+          console.error('VectorStore: FTS search failed, falling back to vector-only:', ftsError)
+          this.ftsEnabled = false
+
+          let query = this.table.vectorSearch(queryVector).distanceType('dot').limit(limit)
+          if (this.config.maxDistance !== undefined) {
+            query = query.distanceRange(undefined, this.config.maxDistance)
+          }
+          rawResults = await query.toArray()
+        }
+      } else {
+        // Vector-only search
+        let query = this.table.vectorSearch(queryVector).distanceType('dot').limit(limit)
+
+        // Apply distance threshold if configured
+        if (this.config.maxDistance !== undefined) {
+          query = query.distanceRange(undefined, this.config.maxDistance)
+        }
+
+        rawResults = await query.toArray()
       }
-
-      const rawResults = await query.toArray()
 
       // Convert to SearchResult format
       let results: SearchResult[] = rawResults.map((result) => ({
-        filePath: result.filePath as string,
-        chunkIndex: result.chunkIndex as number,
-        text: result.text as string,
-        score: result._distance as number, // LanceDB returns distance score (closer to 0 means more similar)
-        metadata: result.metadata as DocumentMetadata,
+        filePath: result['filePath'] as string,
+        chunkIndex: result['chunkIndex'] as number,
+        text: result['text'] as string,
+        score: (result['_distance'] as number) ?? (result['_score'] as number) ?? 0,
+        metadata: result['metadata'] as DocumentMetadata,
       }))
 
       // Apply grouping filter if configured
@@ -310,6 +377,63 @@ export class VectorStore {
     } catch (error) {
       throw new DatabaseError('Failed to search vectors', error as Error)
     }
+  }
+
+  /**
+   * Rerank results from hybrid search using linear combination
+   * Weight is configurable via hybridWeight (default 0.6 = 60% BM25, 40% vector)
+   */
+  private hybridRerank(
+    ftsResults: Record<string, unknown>[],
+    vectorResults: Record<string, unknown>[],
+    limit: number
+  ): Record<string, unknown>[] {
+    const scoreMap = new Map<string, { result: Record<string, unknown>; score: number }>()
+
+    // Get weight from config (default 0.6 = BM25 60%, vector 40%)
+    const bm25Weight = this.config.hybridWeight ?? 0.6
+    const vectorWeight = 1 - bm25Weight
+
+    // Process vector results (lower distance = better, convert to 0-1 score)
+    for (let i = 0; i < vectorResults.length; i++) {
+      const result = vectorResults[i]
+      if (!result) continue
+      const key = `${result['filePath']}:${result['chunkIndex']}`
+      const distance = (result['_distance'] as number) ?? 1
+      // Convert distance to similarity score (0-1 range, higher is better)
+      const vectorScore = Math.max(0, 1 - distance / 2)
+      scoreMap.set(key, { result, score: vectorScore * vectorWeight })
+    }
+
+    // Process FTS results (rank-based scoring)
+    for (let i = 0; i < ftsResults.length; i++) {
+      const result = ftsResults[i]
+      if (!result) continue
+      const key = `${result['filePath']}:${result['chunkIndex']}`
+      // FTS score based on rank position (higher rank = higher score)
+      const ftsScore = 1 - i / ftsResults.length
+
+      if (scoreMap.has(key)) {
+        // Combine scores
+        const existing = scoreMap.get(key)
+        if (existing) {
+          existing.score += ftsScore * bm25Weight
+        }
+      } else {
+        scoreMap.set(key, { result, score: ftsScore * bm25Weight })
+      }
+    }
+
+    // Sort by combined score and return top results
+    const sortedResults = Array.from(scoreMap.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((item) => ({
+        ...item.result,
+        _distance: 1 - item.score, // Convert back to distance for consistency
+      }))
+
+    return sortedResults
   }
 
   /**
@@ -368,6 +492,8 @@ export class VectorStore {
     chunkCount: number
     memoryUsage: number
     uptime: number
+    ftsIndexEnabled: boolean
+    searchMode: 'hybrid' | 'vector-only'
   }> {
     if (!this.table) {
       return {
@@ -375,6 +501,8 @@ export class VectorStore {
         chunkCount: 0,
         memoryUsage: 0,
         uptime: process.uptime(),
+        ftsIndexEnabled: false,
+        searchMode: 'vector-only',
       }
     }
 
@@ -398,6 +526,8 @@ export class VectorStore {
         chunkCount,
         memoryUsage,
         uptime,
+        ftsIndexEnabled: this.ftsEnabled,
+        searchMode: this.ftsEnabled ? 'hybrid' : 'vector-only',
       }
     } catch (error) {
       throw new DatabaseError('Failed to get status', error as Error)

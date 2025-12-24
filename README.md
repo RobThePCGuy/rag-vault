@@ -179,10 +179,13 @@ claude mcp add local-rag --scope user \
 | `BASE_DIR` | Current directory | Document root directory. Server only accesses files within this path (prevents accidental system file access). | Any valid path |
 | `DB_PATH` | `./lancedb/` | Vector database storage location. Can grow large with many documents. | Any valid path |
 | `CACHE_DIR` | `./models/` | Model cache directory. After first download, model stays here for offline use. | Any valid path |
-| `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace model identifier. Must be Transformers.js compatible. See [available models](https://huggingface.co/models?library=transformers.js&pipeline_tag=feature-extraction&sort=trending). **Note:** Changing models requires re-ingesting all documents as embeddings from different models are incompatible. | HF model ID |
+| `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace model identifier. Must be Transformers.js compatible. See [available models](https://huggingface.co/models?library=transformers.js&pipeline_tag=feature-extraction&sort=trending). **Note:** Changing models requires deleting your database (`rm -rf ./lancedb/`) and re-ingesting all documents. See FAQ for details. | HF model ID |
 | `MAX_FILE_SIZE` | `104857600` (100MB) | Maximum file size in bytes. Larger files rejected to prevent memory issues. | 1MB - 500MB |
 | `CHUNK_SIZE` | `512` | Characters per chunk. Larger = more context but slower processing. | 128 - 2048 |
 | `CHUNK_OVERLAP` | `100` | Overlap between chunks. Preserves context across boundaries. | 0 - (CHUNK_SIZE/2) |
+| `RAG_MAX_DISTANCE` | (not set) | Maximum distance threshold for search results. Results with distance greater than this value are excluded. Lower values mean stricter filtering (e.g., `0.5` for high relevance only). | Positive number |
+| `RAG_GROUPING` | (not set) | Grouping mode for quality filtering. `similar` returns only the most similar group (stops at first distance jump). `related` includes related groups (stops at second distance jump). | `similar` or `related` |
+| `RAG_HYBRID_WEIGHT` | `0.6` | Balance between keyword (BM25) and semantic search. `0.0` = pure semantic, `1.0` = pure keyword. Default `0.6` prioritizes keyword matches—ideal for code/technical terms. Use `0.3-0.4` for natural language queries. | `0.0` - `1.0` |
 
 ## Usage
 
@@ -234,20 +237,22 @@ Ask questions in natural language:
 "Search for error handling best practices"
 ```
 
-The server:
-1. Converts your query to an embedding vector
-2. Searches the vector database for similar chunks
-3. Returns the top 5 matches with similarity scores
+The server uses **hybrid search** combining:
+1. **Keyword matching (BM25)**: Finds exact term matches—crucial for code terms like `ProjectLifetimeScope` or error codes
+2. **Semantic search**: Understands meaning, so "authentication" finds "login flow" content
+
+This hybrid approach means searching for `useEffect` finds documents containing that exact term, not just semantically similar React concepts.
 
 Results include the text content, which file it came from, and a relevance score. Your AI assistant then uses these results to answer your question.
 
-You can request more results:
+You can adjust the number of results:
 
 ```
-"Search for database optimization tips, return 10 results"
+"Search for database optimization tips, return 5 results"   # Fewer, more precise
+"Search for database optimization tips, return 20 results"  # Broader exploration
 ```
 
-The limit parameter accepts 1-20 results.
+The limit parameter accepts 1-20 results. Recommended: 5 for precision, 10 for balance, 20 for broad exploration.
 
 ### Managing Files
 
@@ -460,9 +465,13 @@ Each chunk goes through the Transformers.js embedding model, which converts text
 
 Vectors are stored in LanceDB, a columnar vector database that works with local files. No server process, no complex setup. It's just a directory with data files.
 
-When you search, your query becomes a vector using the same model. LanceDB finds the chunks with vectors most similar to your query vector (using cosine similarity). The top matches return to your MCP client with their original text and metadata.
+When you search, the server performs **hybrid search**:
+1. Your query becomes a vector using the same embedding model
+2. LanceDB performs both keyword search (BM25) and vector similarity search
+3. Results are combined using a weighted linear combination (default: 60% keyword, 40% semantic)
+4. The top matches return to your MCP client with their original text and metadata
 
-The beauty of this approach: semantically similar text has similar vectors, even if the words are different. "authentication process" and "how users log in" will match each other, unlike keyword search.
+This hybrid approach gets the best of both worlds: exact keyword matches (essential for code terms, error codes, function names) and semantic understanding (so "authentication" finds "login flow" content). The default weight prioritizes keyword matches, which works well for developer documentation where exact terms matter.
 
 ## FAQ
 
@@ -497,7 +506,18 @@ Want support for another format? [Open an issue](https://github.com/shinpr/mcp-l
 
 **Can I customize the embedding model?**
 
-Yes, set MODEL_NAME to any Transformers.js-compatible model from HuggingFace. Keep in mind that different models have different vector dimensions, so you'll need to rebuild your database if you switch.
+Yes, set MODEL_NAME to any Transformers.js-compatible model from HuggingFace.
+
+However, switching models isn't as simple as changing a config value. Each model produces vectors of a specific dimension—`all-MiniLM-L6-v2` outputs 384 dimensions, while `multilingual-e5-small` outputs 384 and `embeddinggemma-300m` outputs 768. These vectors are fundamentally incompatible with each other.
+
+When you change models, you must:
+
+1. **Delete your existing database**: `rm -rf ./lancedb/` (or your custom DB_PATH)
+2. **Re-ingest all your documents** with the new model
+
+Simply re-ingesting without deleting won't work. LanceDB locks the vector dimension when you first insert data, and that schema persists even if you delete all documents. If you try to insert 768-dimensional vectors into a database that was created with 384-dimensional vectors, you'll get a dimension mismatch error.
+
+The good news: if you do forget to delete the database, LanceDB will give you a clear error message like "Query vector size 768 does not match index column size 384"—so you'll know exactly what went wrong.
 
 **How much does accuracy depend on the model?**
 

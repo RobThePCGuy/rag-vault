@@ -1,10 +1,34 @@
 // VectorStore implementation with LanceDB integration
 
-import { type Connection, type Table, connect } from '@lancedb/lancedb'
+import { type Connection, Index, type Table, connect } from '@lancedb/lancedb'
+
+// ============================================
+// Constants
+// ============================================
+
+/**
+ * Standard deviation multiplier for detecting group boundaries.
+ * A gap is considered a "boundary" if it exceeds mean + k*std.
+ * Value of 1.5 means gaps > 1.5 standard deviations above mean are boundaries.
+ */
+const GROUPING_BOUNDARY_STD_MULTIPLIER = 1.5
+
+/** Multiplier for candidate count in hybrid search (to allow reranking) */
+const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = 2
+
+/** Maximum distance for dot product similarity (0 = identical, 2 = opposite) */
+const DOT_PRODUCT_MAX_DISTANCE = 2
 
 // ============================================
 // Type Definitions
 // ============================================
+
+/**
+ * Grouping mode for quality filtering
+ * - 'similar': Only return the most similar group (stops at first distance jump)
+ * - 'related': Include related groups (stops at second distance jump)
+ */
+export type GroupingMode = 'similar' | 'related'
 
 /**
  * VectorStore configuration
@@ -14,6 +38,12 @@ export interface VectorStoreConfig {
   dbPath: string
   /** Table name */
   tableName: string
+  /** Maximum distance threshold for filtering results (optional) */
+  maxDistance?: number
+  /** Grouping mode for quality filtering (optional) */
+  grouping?: GroupingMode
+  /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only, default 0.6) */
+  hybridWeight?: number
 }
 
 /**
@@ -40,7 +70,7 @@ export interface VectorChunk {
   chunkIndex: number
   /** Chunk text */
   text: string
-  /** Embedding vector (384 dimensions) */
+  /** Embedding vector (dimension depends on model) */
   vector: number[]
   /** Metadata */
   metadata: DocumentMetadata
@@ -58,10 +88,70 @@ export interface SearchResult {
   chunkIndex: number
   /** Chunk text */
   text: string
-  /** Similarity score (0-1, higher means more similar) */
+  /** Distance score using dot product (0 = identical, 1 = orthogonal, 2 = opposite) */
   score: number
   /** Metadata */
   metadata: DocumentMetadata
+}
+
+/**
+ * Raw result from LanceDB query (internal type)
+ */
+interface LanceDBRawResult {
+  filePath: string
+  chunkIndex: number
+  text: string
+  metadata: DocumentMetadata
+  _distance?: number
+  _score?: number
+}
+
+// ============================================
+// Type Guards
+// ============================================
+
+/**
+ * Type guard for DocumentMetadata
+ */
+function isDocumentMetadata(value: unknown): value is DocumentMetadata {
+  if (typeof value !== 'object' || value === null) return false
+  const obj = value as Record<string, unknown>
+  return (
+    typeof obj['fileName'] === 'string' &&
+    typeof obj['fileSize'] === 'number' &&
+    typeof obj['fileType'] === 'string'
+  )
+}
+
+/**
+ * Type guard for LanceDB raw search result
+ */
+function isLanceDBRawResult(value: unknown): value is LanceDBRawResult {
+  if (typeof value !== 'object' || value === null) return false
+  const obj = value as Record<string, unknown>
+  return (
+    typeof obj['filePath'] === 'string' &&
+    typeof obj['chunkIndex'] === 'number' &&
+    typeof obj['text'] === 'string' &&
+    isDocumentMetadata(obj['metadata'])
+  )
+}
+
+/**
+ * Convert LanceDB raw result to SearchResult with type validation
+ * @throws DatabaseError if the result is invalid
+ */
+function toSearchResult(raw: unknown): SearchResult {
+  if (!isLanceDBRawResult(raw)) {
+    throw new DatabaseError('Invalid search result format from LanceDB')
+  }
+  return {
+    filePath: raw.filePath,
+    chunkIndex: raw.chunkIndex,
+    text: raw.text,
+    score: raw._distance ?? raw._score ?? 0,
+    metadata: raw.metadata,
+  }
 }
 
 // ============================================
@@ -97,6 +187,7 @@ export class VectorStore {
   private db: Connection | null = null
   private table: Table | null = null
   private readonly config: VectorStoreConfig
+  private ftsEnabled = false
 
   constructor(config: VectorStoreConfig) {
     this.config = config
@@ -116,6 +207,9 @@ export class VectorStore {
         // Open existing table
         this.table = await this.db.openTable(this.config.tableName)
         console.error(`VectorStore: Opened existing table "${this.config.tableName}"`)
+
+        // Ensure FTS index exists (migration for existing databases)
+        await this.ensureFtsIndex()
       } else {
         // Create new table (schema auto-defined on first data insertion)
         console.error(
@@ -151,6 +245,9 @@ export class VectorStore {
       // Note: Field names are case-sensitive, use backticks for camelCase fields
       await this.table.delete(`\`filePath\` = '${escapedFilePath}'`)
       console.error(`VectorStore: Deleted chunks for file "${filePath}"`)
+
+      // Rebuild FTS index after deleting data
+      await this.rebuildFtsIndex()
     } catch (error) {
       // If error occurs, output warning log
       console.warn(`VectorStore: Error occurred while deleting file "${filePath}":`, error)
@@ -187,10 +284,16 @@ export class VectorStore {
         const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
         this.table = await this.db.createTable(this.config.tableName, records)
         console.error(`VectorStore: Created table "${this.config.tableName}"`)
+
+        // Create FTS index for hybrid search
+        await this.ensureFtsIndex()
       } else {
         // Add data to existing table
         const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
         await this.table.add(records)
+
+        // Rebuild FTS index after adding new data
+        await this.rebuildFtsIndex()
       }
 
       console.error(`VectorStore: Inserted ${chunks.length} chunks`)
@@ -200,23 +303,115 @@ export class VectorStore {
   }
 
   /**
-   * Execute vector search
-   *
-   * @param queryVector - Query vector (384 dimensions)
-   * @param limit - Number of results to retrieve (default 5)
-   * @returns Array of search results (sorted by score descending)
+   * Ensure FTS index exists for hybrid search
+   * Creates the index if it doesn't exist, falls back gracefully on error
    */
-  async search(queryVector: number[], limit = 5): Promise<SearchResult[]> {
+  private async ensureFtsIndex(): Promise<void> {
+    if (!this.table || this.ftsEnabled) {
+      return
+    }
+
+    try {
+      // Create FTS index on the 'text' column
+      await this.table.createIndex('text', {
+        config: Index.fts(),
+      })
+      this.ftsEnabled = true
+      console.error('VectorStore: FTS index created successfully')
+    } catch (error) {
+      // FTS index creation failed, continue with vector-only search
+      console.error('VectorStore: FTS index creation failed, using vector-only search:', error)
+      this.ftsEnabled = false
+    }
+  }
+
+  /**
+   * Rebuild FTS index after data changes (insert/delete)
+   * LanceDB OSS requires explicit optimize() call to update FTS index
+   */
+  private async rebuildFtsIndex(): Promise<void> {
+    if (!this.table || !this.ftsEnabled) {
+      return
+    }
+
+    try {
+      // Optimize table to rebuild indexes including FTS
+      await this.table.optimize()
+      console.error('VectorStore: FTS index rebuilt successfully')
+    } catch (error) {
+      // Log warning but don't fail the operation
+      console.warn('VectorStore: FTS index rebuild failed:', error)
+    }
+  }
+
+  /**
+   * Apply grouping algorithm to filter results by detecting group boundaries.
+   *
+   * Uses statistical threshold (mean + k*std) to identify significant gaps (group boundaries).
+   * - 'similar': Returns only the first group (cuts at first boundary)
+   * - 'related': Returns up to 2 groups (cuts at second boundary)
+   *
+   * @param results - Search results sorted by distance (ascending)
+   * @param mode - Grouping mode ('similar' = 1 group, 'related' = 2 groups)
+   * @returns Filtered results
+   */
+  private applyGrouping(results: SearchResult[], mode: GroupingMode): SearchResult[] {
+    if (results.length <= 1) return results
+
+    // Calculate gaps between consecutive results with their indices
+    const gaps: { index: number; gap: number }[] = []
+    for (let i = 0; i < results.length - 1; i++) {
+      const current = results[i]
+      const next = results[i + 1]
+      if (current !== undefined && next !== undefined) {
+        gaps.push({ index: i + 1, gap: next.score - current.score })
+      }
+    }
+
+    if (gaps.length === 0) return results
+
+    // Calculate statistical threshold to identify significant gaps (group boundaries)
+    const gapValues = gaps.map((g) => g.gap)
+    const mean = gapValues.reduce((a, b) => a + b, 0) / gapValues.length
+    const variance = gapValues.reduce((a, b) => a + (b - mean) ** 2, 0) / gapValues.length
+    const std = Math.sqrt(variance)
+    const threshold = mean + GROUPING_BOUNDARY_STD_MULTIPLIER * std
+
+    // Find all significant gaps (group boundaries)
+    const boundaries = gaps.filter((g) => g.gap > threshold).map((g) => g.index)
+
+    // If no boundaries found, return all results
+    if (boundaries.length === 0) return results
+
+    // Determine how many groups to include based on mode
+    // 'similar': 1 group (cut at first boundary)
+    // 'related': 2 groups (cut at second boundary, or return all if only 1 boundary)
+    const groupsToInclude = mode === 'similar' ? 1 : 2
+    const boundaryIndex = groupsToInclude - 1
+
+    // If we don't have enough boundaries, return all results for 'related' mode
+    if (boundaryIndex >= boundaries.length) {
+      return mode === 'related' ? results : results.slice(0, boundaries[0])
+    }
+
+    // Cut at the appropriate boundary
+    return results.slice(0, boundaries[boundaryIndex])
+  }
+
+  /**
+   * Execute vector search with quality filtering
+   * Supports hybrid search (BM25 + vector) when FTS index is enabled
+   *
+   * @param queryVector - Query vector (dimension depends on model)
+   * @param queryText - Optional query text for hybrid search (BM25)
+   * @param limit - Number of results to retrieve (default 10)
+   * @returns Array of search results (sorted by distance ascending, filtered by quality settings)
+   */
+  async search(queryVector: number[], queryText?: string, limit = 10): Promise<SearchResult[]> {
     if (!this.table) {
       // Return empty array if table doesn't exist
       console.error('VectorStore: Returning empty results as table does not exist')
       return []
-    }
-
-    if (queryVector.length !== 384) {
-      throw new DatabaseError(
-        `Invalid query vector dimension: expected 384, got ${queryVector.length}`
-      )
     }
 
     if (limit < 1 || limit > 20) {
@@ -224,20 +419,127 @@ export class VectorStore {
     }
 
     try {
-      // Use LanceDB's vector search API
-      const results = await this.table.vectorSearch(queryVector).limit(limit).toArray()
+      let rawResults: Record<string, unknown>[]
 
-      // Convert to SearchResult format
-      return results.map((result) => ({
-        filePath: result.filePath as string,
-        chunkIndex: result.chunkIndex as number,
-        text: result.text as string,
-        score: result._distance as number, // LanceDB returns distance score (closer to 0 means more similar)
-        metadata: result.metadata as DocumentMetadata,
-      }))
+      // Use hybrid search if FTS is enabled, query text is provided, and hybridWeight > 0
+      const hybridWeight = this.config.hybridWeight ?? 0.6
+      if (this.ftsEnabled && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
+        try {
+          const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER
+
+          // Hybrid search: combine FTS (BM25) and vector search
+          rawResults = await this.table
+            .search(queryText, 'fts', 'text')
+            .select(['filePath', 'chunkIndex', 'text', 'metadata'])
+            .limit(candidateLimit) // Get more candidates for reranking
+            .toArray()
+
+          // Also perform vector search
+          const vectorResults = await this.table
+            .vectorSearch(queryVector)
+            .distanceType('dot')
+            .limit(candidateLimit)
+            .toArray()
+
+          // Combine and rerank using linear combination (70% vector, 30% FTS)
+          rawResults = this.hybridRerank(rawResults, vectorResults, limit)
+        } catch (ftsError) {
+          // FTS search failed, fall back to vector-only search
+          console.error('VectorStore: FTS search failed, falling back to vector-only:', ftsError)
+          this.ftsEnabled = false
+
+          let query = this.table.vectorSearch(queryVector).distanceType('dot').limit(limit)
+          if (this.config.maxDistance !== undefined) {
+            query = query.distanceRange(undefined, this.config.maxDistance)
+          }
+          rawResults = await query.toArray()
+        }
+      } else {
+        // Vector-only search
+        let query = this.table.vectorSearch(queryVector).distanceType('dot').limit(limit)
+
+        // Apply distance threshold if configured
+        if (this.config.maxDistance !== undefined) {
+          query = query.distanceRange(undefined, this.config.maxDistance)
+        }
+
+        rawResults = await query.toArray()
+      }
+
+      // Convert to SearchResult format with type validation
+      let results: SearchResult[] = rawResults.map((result) => toSearchResult(result))
+
+      // Apply maxDistance filter (for hybrid search results that weren't filtered at query level)
+      if (this.config.maxDistance !== undefined) {
+        results = results.filter((result) => result.score <= this.config.maxDistance!)
+      }
+
+      // Apply grouping filter if configured
+      if (this.config.grouping && results.length > 1) {
+        results = this.applyGrouping(results, this.config.grouping)
+      }
+
+      return results
     } catch (error) {
       throw new DatabaseError('Failed to search vectors', error as Error)
     }
+  }
+
+  /**
+   * Rerank results from hybrid search using linear combination
+   * Weight is configurable via hybridWeight (default 0.6 = 60% BM25, 40% vector)
+   */
+  private hybridRerank(
+    ftsResults: Record<string, unknown>[],
+    vectorResults: Record<string, unknown>[],
+    limit: number
+  ): Record<string, unknown>[] {
+    const scoreMap = new Map<string, { result: Record<string, unknown>; score: number }>()
+
+    // Get weight from config (default 0.6 = BM25 60%, vector 40%)
+    const bm25Weight = this.config.hybridWeight ?? 0.6
+    const vectorWeight = 1 - bm25Weight
+
+    // Process vector results (lower distance = better, convert to 0-1 score)
+    for (let i = 0; i < vectorResults.length; i++) {
+      const result = vectorResults[i]
+      if (!result) continue
+      const key = `${result['filePath']}:${result['chunkIndex']}`
+      const distance = (result['_distance'] as number) ?? 1
+      // Convert distance to similarity score (0-1 range, higher is better)
+      const vectorScore = Math.max(0, 1 - distance / DOT_PRODUCT_MAX_DISTANCE)
+      scoreMap.set(key, { result, score: vectorScore * vectorWeight })
+    }
+
+    // Process FTS results (rank-based scoring)
+    for (let i = 0; i < ftsResults.length; i++) {
+      const result = ftsResults[i]
+      if (!result) continue
+      const key = `${result['filePath']}:${result['chunkIndex']}`
+      // FTS score based on rank position (higher rank = higher score)
+      const ftsScore = 1 - i / ftsResults.length
+
+      if (scoreMap.has(key)) {
+        // Combine scores
+        const existing = scoreMap.get(key)
+        if (existing) {
+          existing.score += ftsScore * bm25Weight
+        }
+      } else {
+        scoreMap.set(key, { result, score: ftsScore * bm25Weight })
+      }
+    }
+
+    // Sort by combined score and return top results
+    const sortedResults = Array.from(scoreMap.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((item) => ({
+        ...item.result,
+        _distance: 1 - item.score, // Convert back to distance for consistency
+      }))
+
+    return sortedResults
   }
 
   /**
@@ -296,6 +598,8 @@ export class VectorStore {
     chunkCount: number
     memoryUsage: number
     uptime: number
+    ftsIndexEnabled: boolean
+    searchMode: 'hybrid' | 'vector-only'
   }> {
     if (!this.table) {
       return {
@@ -303,6 +607,8 @@ export class VectorStore {
         chunkCount: 0,
         memoryUsage: 0,
         uptime: process.uptime(),
+        ftsIndexEnabled: false,
+        searchMode: 'vector-only',
       }
     }
 
@@ -326,6 +632,9 @@ export class VectorStore {
         chunkCount,
         memoryUsage,
         uptime,
+        ftsIndexEnabled: this.ftsEnabled,
+        searchMode:
+          this.ftsEnabled && (this.config.hybridWeight ?? 0.6) > 0 ? 'hybrid' : 'vector-only',
       }
     } catch (error) {
       throw new DatabaseError('Failed to get status', error as Error)

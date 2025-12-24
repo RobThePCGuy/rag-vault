@@ -241,9 +241,9 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
     })
 
     // Edge Case: Empty string
-    // Validation: Empty string embedding generation completes without error
-    it('Empty string embedding generation completes without error (384-dimensional zero vector)', async () => {
-      const { Embedder } = await import('../../embedder/index')
+    // Validation: Empty string embedding generation fails fast with error
+    it('Empty string embedding generation throws EmbeddingError (fail-fast)', async () => {
+      const { Embedder, EmbeddingError } = await import('../../embedder/index')
       const embedder = new Embedder({
         modelPath: 'Xenova/all-MiniLM-L6-v2',
         batchSize: 8,
@@ -252,14 +252,9 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
 
       await embedder.initialize()
 
-      // Generate embedding for empty string
-      const embedding = await embedder.embed('')
-
-      // Validation: Completes without error and returns 384-dimensional vector
-      expect(embedding).toBeDefined()
-      expect(Array.isArray(embedding)).toBe(true)
-      expect(embedding.length).toBe(384)
-      expect(embedding.every((value) => typeof value === 'number')).toBe(true)
+      // Attempt to generate embedding for empty string
+      await expect(embedder.embed('')).rejects.toThrow(EmbeddingError)
+      await expect(embedder.embed('')).rejects.toThrow('Cannot generate embedding for empty text')
     })
 
     // Edge Case: Very long text

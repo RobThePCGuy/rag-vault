@@ -7,7 +7,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { DocumentChunker } from '../chunker/index.js'
 import { Embedder } from '../embedder/index.js'
 import { DocumentParser } from '../parser/index.js'
-import { type VectorChunk, VectorStore } from '../vectordb/index.js'
+import { type GroupingMode, type VectorChunk, VectorStore } from '../vectordb/index.js'
 
 // ============================================
 // Type Definitions
@@ -31,6 +31,12 @@ export interface RAGServerConfig {
   chunkSize: number
   /** Chunk overlap */
   chunkOverlap: number
+  /** Maximum distance threshold for quality filtering (optional) */
+  maxDistance?: number
+  /** Grouping mode for quality filtering (optional) */
+  grouping?: GroupingMode
+  /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only, default 0.6) */
+  hybridWeight?: number
 }
 
 /**
@@ -39,7 +45,7 @@ export interface RAGServerConfig {
 export interface QueryDocumentsInput {
   /** Natural language query */
   query: string
-  /** Number of results to retrieve (default 5) */
+  /** Number of results to retrieve (default 10) */
   limit?: number
 }
 
@@ -112,7 +118,21 @@ export class RAGServer {
     )
 
     // Component initialization
-    this.vectorStore = new VectorStore({ dbPath: config.dbPath, tableName: 'chunks' })
+    // Only pass quality filter settings if they are defined
+    const vectorStoreConfig: ConstructorParameters<typeof VectorStore>[0] = {
+      dbPath: config.dbPath,
+      tableName: 'chunks',
+    }
+    if (config.maxDistance !== undefined) {
+      vectorStoreConfig.maxDistance = config.maxDistance
+    }
+    if (config.grouping !== undefined) {
+      vectorStoreConfig.grouping = config.grouping
+    }
+    if (config.hybridWeight !== undefined) {
+      vectorStoreConfig.hybridWeight = config.hybridWeight
+    }
+    this.vectorStore = new VectorStore(vectorStoreConfig)
     this.embedder = new Embedder({
       modelPath: config.modelName,
       batchSize: 8,
@@ -152,7 +172,7 @@ export class RAGServer {
               limit: {
                 type: 'number',
                 description:
-                  'Maximum number of results to return (default: 5, max recommended: 20)',
+                  'Maximum number of results to return (default: 10). Recommended: 5 for precision, 10 for balance, 20 for broad exploration.',
               },
             },
             required: ['query'],
@@ -252,8 +272,8 @@ export class RAGServer {
       // Generate query embedding
       const queryVector = await this.embedder.embed(args.query)
 
-      // Vector search
-      const searchResults = await this.vectorStore.search(queryVector, args.limit || 5)
+      // Hybrid search (vector + BM25 keyword matching)
+      const searchResults = await this.vectorStore.search(queryVector, args.query, args.limit || 10)
 
       // Format results
       const results: QueryResult[] = searchResults.map((result) => ({
@@ -302,8 +322,8 @@ export class RAGServer {
         if (existingFile && existingFile.chunkCount > 0) {
           // Backup existing data (retrieve via search)
           const queryVector = embeddings[0] || []
-          if (queryVector.length === 384) {
-            const allChunks = await this.vectorStore.search(queryVector, 20) // Retrieve max 20 items
+          if (queryVector.length > 0) {
+            const allChunks = await this.vectorStore.search(queryVector, undefined, 20) // Retrieve max 20 items
             backup = allChunks
               .filter((chunk) => chunk.filePath === args.filePath)
               .map((chunk) => ({

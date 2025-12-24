@@ -3,6 +3,16 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters'
 
 // ============================================
+// Constants
+// ============================================
+
+/**
+ * Minimum chunk length (characters)
+ * Chunks shorter than this are filtered out to remove noise (e.g., page markers)
+ */
+const MIN_CHUNK_LENGTH = 50
+
+// ============================================
 // Type Definitions
 // ============================================
 
@@ -81,11 +91,13 @@ export class DocumentChunker {
       // Split text
       const chunks = await this.splitter.splitText(text)
 
-      // Assign chunk indices
-      const result: TextChunk[] = chunks.map((chunk, index) => ({
-        text: chunk,
-        index,
-      }))
+      // Filter out short chunks and assign indices
+      const result: TextChunk[] = chunks
+        .filter((chunk) => chunk.length >= MIN_CHUNK_LENGTH)
+        .map((chunk, index) => ({
+          text: chunk,
+          index,
+        }))
 
       const duration = Date.now() - startTime
       console.error(`Chunked text into ${result.length} chunks in ${duration}ms`)

@@ -129,13 +129,21 @@ Adjust these for your use case:
 | `RAG_GROUPING` | (not set) | `similar` for top group only, `related` for top 2 groups. |
 | `RAG_MAX_DISTANCE` | (not set) | Filter out low-relevance results (e.g., `0.5`). |
 
-Example (stricter, code-focused):
+### Code-focused tuning
+
+For codebases and API specs, increase keyword boost so exact identifiers (`useEffect`, `ERR_*`, class names) dominate ranking:
+
 ```json
 "env": {
   "RAG_HYBRID_WEIGHT": "0.7",
   "RAG_GROUPING": "similar"
 }
 ```
+
+- `0.7` — balanced semantic + keyword
+- `1.0` — aggressive; exact matches strongly rerank results
+
+Keyword boost is applied *after* semantic filtering, so it improves precision without surfacing unrelated matches.
 
 ## How It Works
 
@@ -149,9 +157,9 @@ Example (stricter, code-focused):
 
 When you ingest a document, the parser extracts text based on file type (PDF via `unpdf`, DOCX via `mammoth`, text files directly).
 
-The semantic chunker splits text into sentences, then groups them using embedding similarity. It finds natural topic boundaries where the meaning shifts—keeping related content together instead of cutting at arbitrary character limits. This produces chunks that are coherent units of meaning, typically 500-1000 characters.
+The semantic chunker splits text into sentences, then groups them using embedding similarity. It finds natural topic boundaries where the meaning shifts—keeping related content together instead of cutting at arbitrary character limits. This produces chunks that are coherent units of meaning, typically 500-1000 characters. Markdown code blocks are kept intact—never split mid-block—preserving copy-pastable code in search results.
 
-Each chunk goes through the Transformers.js embedding model (`all-MiniLM-L6-v2`), converting text into 384-dimensional vectors. Vectors are stored in LanceDB, a file-based vector database requiring no server process.
+Each chunk goes through a Transformers.js embedding model (default: `all-MiniLM-L6-v2`, configurable via `MODEL_NAME`), converting text into vectors. Vectors are stored in LanceDB, a file-based vector database requiring no server process.
 
 When you search:
 1. Your query becomes a vector using the same model
@@ -173,6 +181,13 @@ The keyword boost ensures exact terms like `useEffect` or error codes rank highe
 | `CACHE_DIR` | `./models/` | Model cache directory |
 | `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace model ID ([available models](https://huggingface.co/models?library=transformers.js&pipeline_tag=feature-extraction)) |
 | `MAX_FILE_SIZE` | `104857600` (100MB) | Maximum file size in bytes |
+
+**Model choice tips:**
+- Multilingual docs → e.g., `onnx-community/embeddinggemma-300m-ONNX` (100+ languages)
+- Scientific papers → e.g., `sentence-transformers/allenai-specter` (citation-aware)
+- Code repositories → default often suffices; keyword boost matters more (or `jinaai/jina-embeddings-v2-base-code`)
+
+⚠️ Changing `MODEL_NAME` changes embedding dimensions. Delete `DB_PATH` and re-ingest after switching models.
 
 ### Client-Specific Setup
 

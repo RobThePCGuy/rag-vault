@@ -19,6 +19,12 @@ const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = 2
 /** Maximum distance for dot product similarity (0 = identical, 2 = opposite) */
 const DOT_PRODUCT_MAX_DISTANCE = 2
 
+/** FTS index name (bump version when changing tokenizer settings) */
+const FTS_INDEX_NAME = 'fts_v1'
+
+/** Threshold for cleaning up old index versions (1 minute) */
+const FTS_CLEANUP_THRESHOLD_MS = 60 * 1000
+
 // ============================================
 // Type Definitions
 // ============================================
@@ -304,44 +310,59 @@ export class VectorStore {
 
   /**
    * Ensure FTS index exists for hybrid search
-   * Creates the index if it doesn't exist, falls back gracefully on error
+   * Creates ngram-based index if it doesn't exist, drops old versions
+   * @throws DatabaseError if index creation fails (Fail-Fast principle)
    */
   private async ensureFtsIndex(): Promise<void> {
-    if (!this.table || this.ftsEnabled) {
+    if (!this.table) {
       return
     }
 
-    try {
-      // Create FTS index on the 'text' column
-      await this.table.createIndex('text', {
-        config: Index.fts(),
-      })
+    // Check existing indices
+    const indices = await this.table.listIndices()
+    const existingFtsIndices = indices.filter((idx) => idx.indexType === 'FTS')
+    const hasExpectedIndex = existingFtsIndices.some((idx) => idx.name === FTS_INDEX_NAME)
+
+    if (hasExpectedIndex) {
       this.ftsEnabled = true
-      console.error('VectorStore: FTS index created successfully')
-    } catch (error) {
-      // FTS index creation failed, continue with vector-only search
-      console.error('VectorStore: FTS index creation failed, using vector-only search:', error)
-      this.ftsEnabled = false
+      return
+    }
+
+    // Create new FTS index with ngram tokenizer for Japanese support
+    await this.table.createIndex('text', {
+      config: Index.fts({
+        baseTokenizer: 'ngram',
+        ngramMinLength: 2,
+        ngramMaxLength: 4,
+        stem: false,
+      }),
+      name: FTS_INDEX_NAME,
+    })
+    this.ftsEnabled = true
+    console.error(`VectorStore: FTS index "${FTS_INDEX_NAME}" created successfully`)
+
+    // Drop old FTS indices
+    for (const idx of existingFtsIndices) {
+      if (idx.name !== FTS_INDEX_NAME) {
+        await this.table.dropIndex(idx.name)
+        console.error(`VectorStore: Dropped old FTS index "${idx.name}"`)
+      }
     }
   }
 
   /**
    * Rebuild FTS index after data changes (insert/delete)
    * LanceDB OSS requires explicit optimize() call to update FTS index
+   * Also cleans up old index versions to prevent storage bloat
    */
   private async rebuildFtsIndex(): Promise<void> {
     if (!this.table || !this.ftsEnabled) {
       return
     }
 
-    try {
-      // Optimize table to rebuild indexes including FTS
-      await this.table.optimize()
-      console.error('VectorStore: FTS index rebuilt successfully')
-    } catch (error) {
-      // Log warning but don't fail the operation
-      console.warn('VectorStore: FTS index rebuild failed:', error)
-    }
+    // Optimize table and clean up old versions
+    const cleanupThreshold = new Date(Date.now() - FTS_CLEANUP_THRESHOLD_MS)
+    await this.table.optimize({ cleanupOlderThan: cleanupThreshold })
   }
 
   /**

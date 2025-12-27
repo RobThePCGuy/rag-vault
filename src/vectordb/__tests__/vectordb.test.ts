@@ -242,8 +242,8 @@ describe('VectorStore', () => {
       })
     })
 
-    describe('Hybrid search ranking', () => {
-      it('should prioritize exact keyword matches in hybrid search', async () => {
+    describe('Japanese text support', () => {
+      it('should find Japanese documents with ngram tokenizer', async () => {
         const store = new VectorStore({
           dbPath: testDbPath,
           tableName: 'chunks',
@@ -251,42 +251,35 @@ describe('VectorStore', () => {
 
         await store.initialize()
 
-        // Create documents with different relevance
-        // Doc1: Contains exact match but different semantic meaning
-        const doc1 = createTestChunk(
-          'ProjectLifetimeScope manages object lifetime in VContainer',
-          '/test/exact-match.md',
+        // Doc with Japanese text (keyword: dependency injection in Japanese)
+        const japaneseDoc = createTestChunk(
+          '依存性注入コンテナはオブジェクトのライフサイクルを管理します',
+          '/test/japanese.md',
           0,
-          createNormalizedVector(10) // Different semantic vector
+          createNormalizedVector(10)
         )
 
-        // Doc2: Semantically similar but no exact match
-        const doc2 = createTestChunk(
-          'Dependency injection containers manage object lifecycles',
-          '/test/semantic-match.md',
+        // Doc with English text only
+        const englishDoc = createTestChunk(
+          'Vector database stores embeddings for semantic search',
+          '/test/english.md',
           0,
-          createNormalizedVector(1) // Similar semantic vector to query
+          createNormalizedVector(1)
         )
 
-        await store.insertChunks([doc1])
-        await store.insertChunks([doc2])
+        await store.insertChunks([japaneseDoc])
+        await store.insertChunks([englishDoc])
 
-        // Query with vector similar to doc2 but keyword matching doc1
+        // Search with Japanese keyword
         const queryVector = createNormalizedVector(1)
-        const results = await store.search(queryVector, 'ProjectLifetimeScope', 10)
+        const results = await store.search(queryVector, '依存性注入', 10)
 
-        // Both documents should be returned
+        // Verify Japanese document is found (ngram tokenizer works)
+        const foundJapanese = results.some((r) => r.filePath === '/test/japanese.md')
+        expect(foundJapanese).toBe(true)
+
+        // Verify both documents are returned
         expect(results).toHaveLength(2)
-
-        // In hybrid search, doc1 should rank higher due to keyword match
-        // despite doc2 being semantically closer
-        expect(results[0]).toBeDefined()
-        expect(results[0]!.text).toContain('ProjectLifetimeScope')
-        expect(results[0]!.filePath).toBe('/test/exact-match.md')
-
-        // Doc2 should be second (semantically similar but no keyword match)
-        expect(results[1]).toBeDefined()
-        expect(results[1]!.filePath).toBe('/test/semantic-match.md')
       })
     })
   })

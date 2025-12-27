@@ -20,8 +20,6 @@ const testConfig = {
   cacheDir: './tmp/models',
   baseDir: resolve('./'), // Project root (accessible to both tests/fixtures and tmp)
   maxFileSize: 100 * 1024 * 1024, // 100MB
-  chunkSize: 512,
-  chunkOverlap: 100,
 }
 
 // ============================================

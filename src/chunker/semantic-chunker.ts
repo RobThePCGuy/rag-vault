@@ -32,6 +32,24 @@ export interface EmbedderInterface {
 }
 
 // ============================================
+// Performance Optimization Constants
+// ============================================
+
+/**
+ * Number of recent sentences to compare in getMinSimilarity.
+ * Based on Max-Min paper's experimental conditions (median 5 sentences per chunk).
+ * Reduces complexity from O(k²) to O(WINDOW_SIZE²) = O(25) = O(1).
+ */
+const WINDOW_SIZE = 5
+
+/**
+ * Maximum number of sentences per chunk before forced split.
+ * Safety limit to prevent computational explosion on homogeneous documents.
+ * Set to 3x the paper's median chunk size for reasonable margin.
+ */
+const MAX_SENTENCES = 15
+
+// ============================================
 // Default Configuration
 // ============================================
 
@@ -149,6 +167,14 @@ export class SemanticChunker {
           currentGroupEmbeddings = [embedding]
         }
       } else {
+        // Force split if chunk reaches MAX_SENTENCES (safety limit for performance)
+        if (currentGroup.length >= MAX_SENTENCES) {
+          groups.push([...currentGroup])
+          currentGroup = [sentence]
+          currentGroupEmbeddings = [embedding]
+          continue
+        }
+
         // Normal case: check if sentence should join current group
         const shouldAdd = this.shouldAddToChunk(embedding, currentGroupEmbeddings)
 
@@ -190,16 +216,23 @@ export class SemanticChunker {
   }
 
   /**
-   * Get minimum pairwise similarity within a chunk
+   * Get minimum pairwise similarity within a chunk.
+   * Only compares the last WINDOW_SIZE sentences for O(1) complexity.
+   * This approximation is valid because recent sentences are most relevant
+   * for determining chunk coherence (per Max-Min paper's experimental setup).
    */
   private getMinSimilarity(embeddings: number[][]): number {
     if (embeddings.length < 2) return 1.0
 
+    // Only compare the last WINDOW_SIZE embeddings to reduce O(k²) to O(1)
+    const startIdx = Math.max(0, embeddings.length - WINDOW_SIZE)
+    const windowEmbeddings = embeddings.slice(startIdx)
+
     let minSim = 1.0
-    for (let i = 0; i < embeddings.length; i++) {
-      for (let j = i + 1; j < embeddings.length; j++) {
-        const embI = embeddings[i]
-        const embJ = embeddings[j]
+    for (let i = 0; i < windowEmbeddings.length; i++) {
+      for (let j = i + 1; j < windowEmbeddings.length; j++) {
+        const embI = windowEmbeddings[i]
+        const embJ = windowEmbeddings[j]
         if (!embI || !embJ) continue
 
         const sim = this.cosineSimilarity(embI, embJ)

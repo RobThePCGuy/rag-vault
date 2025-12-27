@@ -67,10 +67,11 @@ describe('splitIntoSentences', () => {
   })
 
   // --------------------------------------------
-  // Multilingual support
+  // Non-ASCII and multilingual support
   // --------------------------------------------
-  describe('Multilingual support', () => {
-    it('should handle Japanese text', () => {
+  describe('Non-ASCII and multilingual support', () => {
+    it('should handle non-ASCII text with different punctuation', () => {
+      // Tests CJK full-width punctuation (。？) vs ASCII (. ?)
       const text = 'こんにちは。元気ですか？'
       const sentences = splitIntoSentences(text)
 
@@ -79,7 +80,8 @@ describe('splitIntoSentences', () => {
       expect(sentences[1]).toBe('元気ですか？')
     })
 
-    it('should handle mixed language text', () => {
+    it('should handle mixed-script text with language transitions', () => {
+      // Tests that Intl.Segmenter handles script changes correctly
       const text = 'This is English. これは日本語です。And back!'
       const sentences = splitIntoSentences(text)
 

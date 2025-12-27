@@ -26,7 +26,7 @@ export interface ParserConfig {
 export class ValidationError extends Error {
   constructor(
     message: string,
-    public readonly cause?: Error
+    public override readonly cause?: Error
   ) {
     super(message)
     this.name = 'ValidationError'
@@ -39,7 +39,7 @@ export class ValidationError extends Error {
 export class FileOperationError extends Error {
   constructor(
     message: string,
-    public readonly cause?: Error
+    public override readonly cause?: Error
   ) {
     super(message)
     this.name = 'FileOperationError'

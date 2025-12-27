@@ -1,5 +1,5 @@
 // Sentence Splitter Unit Test
-// Created: 2024-12-27
+// Created: 2025-12-27
 // Purpose: Verify sentence boundary detection for Max-Min Semantic Chunking
 
 import { describe, expect, it } from 'vitest'
@@ -53,53 +53,6 @@ describe('splitIntoSentences', () => {
       expect(sentences).toHaveLength(2)
       expect(sentences[0]).toBe('The value is 3.14 approximately.')
       expect(sentences[1]).toBe('This is important.')
-    })
-  })
-
-  // --------------------------------------------
-  // Japanese sentence splitting
-  // --------------------------------------------
-  describe('Japanese text', () => {
-    it('should split on Japanese period', () => {
-      const text = 'これは最初の文です。これは二番目の文です。'
-      const sentences = splitIntoSentences(text)
-
-      expect(sentences).toHaveLength(2)
-      expect(sentences[0]).toBe('これは最初の文です。')
-      expect(sentences[1]).toBe('これは二番目の文です。')
-    })
-
-    it('should handle Japanese question marks', () => {
-      const text = 'これは何ですか？テストです。'
-      const sentences = splitIntoSentences(text)
-
-      expect(sentences).toHaveLength(2)
-      expect(sentences[0]).toBe('これは何ですか？')
-      expect(sentences[1]).toBe('テストです。')
-    })
-
-    it('should handle Japanese exclamation marks', () => {
-      const text = 'すごい！これは素晴らしい。'
-      const sentences = splitIntoSentences(text)
-
-      expect(sentences).toHaveLength(2)
-      expect(sentences[0]).toBe('すごい！')
-      expect(sentences[1]).toBe('これは素晴らしい。')
-    })
-  })
-
-  // --------------------------------------------
-  // Mixed language text
-  // --------------------------------------------
-  describe('Mixed language text', () => {
-    it('should handle mixed English and Japanese', () => {
-      const text = 'This is English. これは日本語です。Back to English.'
-      const sentences = splitIntoSentences(text)
-
-      expect(sentences).toHaveLength(3)
-      expect(sentences[0]).toBe('This is English.')
-      expect(sentences[1]).toBe('これは日本語です。')
-      expect(sentences[2]).toBe('Back to English.')
     })
   })
 

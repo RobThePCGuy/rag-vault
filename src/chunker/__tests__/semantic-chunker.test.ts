@@ -1,5 +1,5 @@
 // Semantic Chunker Unit Test
-// Created: 2024-12-27
+// Created: 2025-12-27
 // Purpose: Verify Max-Min semantic chunking algorithm
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -240,26 +240,6 @@ Second topic is different. Second topic continues.`
 
       // Code block (31 chars) is below minChunkLength (50), so should be filtered out
       expect(result).toHaveLength(0)
-    })
-
-    it('should handle Japanese text', async () => {
-      // Create longer Japanese text to pass minChunkLength filter
-      const text =
-        'これは日本語の文章です。この文章は技術的なドキュメントについて説明しています。次の文章も日本語で書かれています。詳細な技術仕様について記載されています。'
-
-      // All sentences have high similarity → should be grouped into single chunk
-      vi.mocked(mockEmbedder.embedBatch).mockResolvedValue([
-        createMockEmbedding([1, 0, 0]),
-        createMockEmbedding([0.95, 0.1, 0]),
-        createMockEmbedding([0.9, 0.15, 0]),
-        createMockEmbedding([0.85, 0.2, 0]),
-      ])
-
-      const result = await chunker.chunkText(text, mockEmbedder)
-
-      // High similarity between all sentences → single chunk
-      expect(result).toHaveLength(1)
-      expect(result[0]?.text).toContain('日本語')
     })
 
     it('should handle embedder errors gracefully', async () => {

@@ -1,5 +1,5 @@
 // Sentence Splitter for Semantic Chunking
-// Created: 2024-12-27
+// Created: 2025-12-27
 // Purpose: Split text into sentences while preserving code blocks and handling multiple languages
 
 // ============================================
@@ -133,8 +133,7 @@ function isNumberDecimal(text: string, periodIndex: number): boolean {
  * Split text into sentences
  *
  * Handles:
- * - English sentence boundaries (. ! ?)
- * - Japanese sentence boundaries (。 ！ ？)
+ * - Sentence boundaries (. ! ?)
  * - Paragraph boundaries (\n\n)
  * - Markdown headings
  * - Code blocks (preserved as single units)
@@ -195,14 +194,12 @@ function findNextNonSpace(text: string, startIndex: number): number {
 
 /**
  * Check if a character indicates a new sentence start
- * Accepts: uppercase letters, non-ASCII characters (Japanese, etc.), placeholders, or end of string
+ * Accepts: uppercase letters, placeholders, or end of string
  */
 function isNewSentenceStart(char: string | undefined): boolean {
   if (char === undefined) return true
-  // Uppercase English letter
+  // Uppercase letter
   if (/[A-Z]/.test(char)) return true
-  // Non-ASCII character (Japanese, Chinese, etc.)
-  if (char.charCodeAt(0) > 127) return true
   // Code block placeholder
   if (char === '\u0000') return true
   return false
@@ -221,10 +218,9 @@ function splitParagraphIntoSentences(paragraph: string): string[] {
     currentSentence += char
 
     // Check for sentence-ending punctuation
-    const isEnglishEnd = char === '.' || char === '!' || char === '?'
-    const isJapaneseEnd = char === '。' || char === '！' || char === '？'
+    const isSentenceEnd = char === '.' || char === '!' || char === '?'
 
-    if (isEnglishEnd) {
+    if (isSentenceEnd) {
       // Check if it's NOT an abbreviation or decimal
       if (!isAbbreviation(paragraph, i) && !isNumberDecimal(paragraph, i)) {
         const nextChar = paragraph[i + 1]
@@ -248,10 +244,6 @@ function splitParagraphIntoSentences(paragraph: string): string[] {
           }
         }
       }
-    } else if (isJapaneseEnd) {
-      // Japanese punctuation always ends a sentence
-      sentences.push(currentSentence.trim())
-      currentSentence = ''
     }
 
     i++

@@ -153,7 +153,7 @@ export class RAGServer {
         {
           name: 'query_documents',
           description:
-            'Search ingested documents. Your query words are matched exactly (keyword search). Your query meaning is matched semantically (vector search). Preserve specific terms from the user. Add context if the query is ambiguous.',
+            'Search ingested documents. Your query words are matched exactly (keyword search). Your query meaning is matched semantically (vector search). Preserve specific terms from the user. Add context if the query is ambiguous. Results include score (0 = most relevant, higher = less relevant).',
           inputSchema: {
             type: 'object',
             properties: {

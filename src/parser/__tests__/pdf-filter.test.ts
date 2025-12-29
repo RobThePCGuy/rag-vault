@@ -225,6 +225,193 @@ describe('pdf-filter', () => {
       })
       expect(resultCustom.removeFirstSentence).toBe(true)
     })
+
+    // ============================================
+    // Median Pairwise Similarity Tests
+    // ============================================
+
+    it('should use median similarity (odd number of pairs)', async () => {
+      // 3 pages = 3 pairwise comparisons (odd)
+      // Pairs: (0,1), (0,2), (1,2)
+      const pages = createPagesWithSentences([
+        ['Header A.', 'Content A.'],
+        ['Header B.', 'Content B.'],
+        ['Header C.', 'Content C.'],
+      ])
+
+      // Embeddings designed to produce specific similarities:
+      // (0,1): [1,0,0]·[0,1,0] = 0 (low outlier)
+      // (0,2): [1,0,0]·[0.95,0.31,0] ≈ 0.95 (high)
+      // (1,2): [0,1,0]·[0.95,0.31,0] ≈ 0.31 (median)
+      // Sorted: [0, 0.31, 0.95] → median = 0.31 (below threshold)
+      const embedder = createMockEmbedder([
+        [1, 0, 0],
+        [0, 1, 0],
+        [0.95, 0.31, 0],
+      ])
+
+      const result = await detectSentencePatterns(pages, embedder, { minPages: 3 })
+
+      // Median 0.31 < 0.85, so no header detected
+      expect(result.removeFirstSentence).toBe(false)
+      expect(result.headerSimilarity).toBeLessThan(0.85)
+    })
+
+    it('should use median similarity (even number of pairs)', async () => {
+      // 4 pages = 6 pairwise comparisons (even)
+      // Pairs: (0,1), (0,2), (0,3), (1,2), (1,3), (2,3)
+      const pages = createPagesWithSentences([
+        ['Header A.', 'Content A.'],
+        ['Header B.', 'Content B.'],
+        ['Header C.', 'Content C.'],
+        ['Header D.', 'Content D.'],
+      ])
+
+      // All similar embeddings → high median
+      const embedder = createMockEmbedder([
+        [1, 0, 0],
+        [0.99, 0.1, 0],
+        [0.98, 0.15, 0],
+        [0.97, 0.2, 0],
+      ])
+
+      const result = await detectSentencePatterns(pages, embedder, { minPages: 3 })
+
+      // All pairs have high similarity, median should be high
+      expect(result.removeFirstSentence).toBe(true)
+      expect(result.headerSimilarity).toBeGreaterThan(0.85)
+    })
+
+    it('should be robust to outliers using median', async () => {
+      // 5 pages = 10 pairwise comparisons
+      // With one outlier page, mean would be dragged down
+      // But median should remain high
+      const pages = createPagesWithSentences([
+        ['Chapter 1.', 'Content A.'],
+        ['Chapter 2.', 'Content B.'],
+        ['Different Title.', 'Content C.'], // Outlier
+        ['Chapter 4.', 'Content D.'],
+        ['Chapter 5.', 'Content E.'],
+      ])
+
+      // 4 similar embeddings + 1 outlier
+      // Most pairs (6 out of 10) will have high similarity
+      // Outlier pairs (4 out of 10) will have low similarity
+      // Median should still be high enough to detect pattern
+      const embedder = createMockEmbedder([
+        [1, 0, 0],
+        [0.99, 0.1, 0],
+        [0, 0, 1], // Outlier - orthogonal to others
+        [0.98, 0.15, 0],
+        [0.97, 0.2, 0],
+      ])
+
+      const result = await detectSentencePatterns(pages, embedder, { minPages: 3 })
+
+      // Despite outlier, median of majority similar pairs should be high
+      expect(result.removeFirstSentence).toBe(true)
+    })
+
+    // ============================================
+    // Y Coordinate Merge Tests
+    // ============================================
+
+    it('should merge sentences with same Y coordinate', async () => {
+      // Create page with multiple items on same Y (same line)
+      const pages: PageData[] = [
+        {
+          pageNum: 1,
+          items: [
+            { text: 'Part A.', x: 0, y: 800, fontSize: 12, hasEOL: false },
+            { text: 'Part B.', x: 100, y: 800, fontSize: 12, hasEOL: true }, // Same Y
+            { text: 'Content line.', x: 0, y: 750, fontSize: 12, hasEOL: true },
+          ],
+        },
+        {
+          pageNum: 2,
+          items: [
+            { text: 'Part A.', x: 0, y: 800, fontSize: 12, hasEOL: false },
+            { text: 'Part B.', x: 100, y: 800, fontSize: 12, hasEOL: true }, // Same Y
+            { text: 'Content line 2.', x: 0, y: 750, fontSize: 12, hasEOL: true },
+          ],
+        },
+        {
+          pageNum: 3,
+          items: [
+            { text: 'Part A.', x: 0, y: 800, fontSize: 12, hasEOL: false },
+            { text: 'Part B.', x: 100, y: 800, fontSize: 12, hasEOL: true }, // Same Y
+            { text: 'Content line 3.', x: 0, y: 750, fontSize: 12, hasEOL: true },
+          ],
+        },
+      ]
+
+      // First sentences (merged: "Part A. Part B.") should be similar
+      const embedder: EmbedderInterface = {
+        embedBatch: vi
+          .fn()
+          .mockResolvedValueOnce([
+            // First sentences - similar (merged header)
+            [1, 0, 0],
+            [0.99, 0.05, 0],
+            [0.98, 0.1, 0],
+          ])
+          .mockResolvedValueOnce([
+            // Last sentences - dissimilar
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+          ]),
+      }
+
+      const result = await detectSentencePatterns(pages, embedder, { minPages: 3 })
+
+      // Merged first line should be detected as header
+      expect(result.removeFirstSentence).toBe(true)
+    })
+
+    it('should treat different Y coordinates as separate sentences', async () => {
+      // Create page with items on different Y (different lines)
+      const pages: PageData[] = [
+        {
+          pageNum: 1,
+          items: [
+            { text: 'Line 1.', x: 0, y: 800, fontSize: 12, hasEOL: true },
+            { text: 'Line 2.', x: 0, y: 750, fontSize: 12, hasEOL: true }, // Different Y
+            { text: 'Line 3.', x: 0, y: 700, fontSize: 12, hasEOL: true },
+          ],
+        },
+        {
+          pageNum: 2,
+          items: [
+            { text: 'Different 1.', x: 0, y: 800, fontSize: 12, hasEOL: true },
+            { text: 'Different 2.', x: 0, y: 750, fontSize: 12, hasEOL: true },
+            { text: 'Different 3.', x: 0, y: 700, fontSize: 12, hasEOL: true },
+          ],
+        },
+        {
+          pageNum: 3,
+          items: [
+            { text: 'Another 1.', x: 0, y: 800, fontSize: 12, hasEOL: true },
+            { text: 'Another 2.', x: 0, y: 750, fontSize: 12, hasEOL: true },
+            { text: 'Another 3.', x: 0, y: 700, fontSize: 12, hasEOL: true },
+          ],
+        },
+      ]
+
+      // First sentences are different → no header detected
+      const embedder: EmbedderInterface = {
+        embedBatch: vi.fn().mockResolvedValue([
+          [1, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1],
+        ]),
+      }
+
+      const result = await detectSentencePatterns(pages, embedder, { minPages: 3 })
+
+      // Different first lines should not be detected as header
+      expect(result.removeFirstSentence).toBe(false)
+    })
   })
 
   describe('filterPageBoundarySentences', () => {

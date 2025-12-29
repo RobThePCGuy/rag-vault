@@ -79,6 +79,118 @@ export function joinFilteredPages(pages: PageData[]): string {
 }
 
 // ============================================
+// Sentence with Y Coordinate
+// ============================================
+
+/**
+ * Sentence with Y coordinate from first PDF item
+ */
+interface SentenceWithY {
+  text: string
+  y: number
+}
+
+/**
+ * Split page items into sentences with Y coordinate
+ *
+ * 1. Join items into text (preserving item boundaries)
+ * 2. Split into sentences using splitIntoSentences
+ * 3. Map each sentence to the Y coordinate of its first item
+ * 4. Merge sentences with same Y coordinate
+ *
+ * @param items - Text items with position
+ * @returns Sentences with Y coordinate (merged by Y)
+ */
+function splitItemsIntoSentencesWithY(items: TextItemWithPosition[]): SentenceWithY[] {
+  if (items.length === 0) return []
+
+  // Sort items by Y descending, then X ascending (reading order)
+  const sortedItems = [...items].sort((a, b) => {
+    const yDiff = b.y - a.y
+    if (Math.abs(yDiff) > 1) return yDiff
+    return a.x - b.x
+  })
+
+  // Build text and track character positions to item mapping
+  const charToItem: Array<{ start: number; item: TextItemWithPosition }> = []
+  let fullText = ''
+  let prevY: number | null = null
+
+  for (const item of sortedItems) {
+    // Insert newline when Y coordinate changes (different line)
+    // This matches joinPageItems behavior: same Y = space, different Y = newline
+    if (prevY !== null && Math.abs(prevY - item.y) > 1) {
+      fullText = `${fullText.trimEnd()}\n`
+    }
+
+    charToItem.push({ start: fullText.length, item })
+    fullText += `${item.text} `
+    prevY = item.y
+  }
+
+  // Split into sentences
+  const sentences = splitIntoSentences(fullText)
+
+  // Map each sentence to Y coordinate of its first character's item
+  const sentencesWithY: SentenceWithY[] = []
+  let searchStart = 0
+
+  for (const sentence of sentences) {
+    // Find where this sentence starts in fullText
+    const sentenceStart = fullText.indexOf(sentence.trim(), searchStart)
+    if (sentenceStart === -1) continue
+
+    // Find the item that contains this position
+    let firstItemY = sortedItems[0]?.y ?? 0
+    for (let i = charToItem.length - 1; i >= 0; i--) {
+      const entry = charToItem[i]
+      if (entry && entry.start <= sentenceStart) {
+        firstItemY = Math.round(entry.item.y)
+        break
+      }
+    }
+
+    sentencesWithY.push({ text: sentence, y: firstItemY })
+    searchStart = sentenceStart + sentence.length
+  }
+
+  // Merge sentences with same Y coordinate
+  return mergeSentencesByY(sentencesWithY)
+}
+
+/**
+ * Merge sentences with same Y coordinate
+ *
+ * @param sentences - Sentences with Y coordinate
+ * @returns Merged sentences (same Y = one sentence)
+ */
+function mergeSentencesByY(sentences: SentenceWithY[]): SentenceWithY[] {
+  if (sentences.length === 0) return []
+
+  const merged: SentenceWithY[] = []
+  let current: SentenceWithY | null = null
+
+  for (const sentence of sentences) {
+    if (current === null) {
+      current = { ...sentence }
+    } else if (current.y === sentence.y) {
+      // Same Y: merge text
+      current.text += ` ${sentence.text}`
+    } else {
+      // Different Y: push current and start new
+      merged.push(current)
+      current = { ...sentence }
+    }
+  }
+
+  if (current !== null) {
+    merged.push(current)
+  }
+
+  return merged
+}
+
+// ============================================
 // Sentence-Level Header/Footer Detection
 // ============================================
 
@@ -109,26 +221,39 @@ function cosineSimilarity(vec1: number[], vec2: number[]): number {
 }
 
 /**
- * Calculate average pairwise similarity for a list of embeddings
+ * Calculate median pairwise similarity for a list of embeddings
+ *
+ * Uses median instead of mean for robustness against outliers.
+ * This handles cases where some pages have different header content
+ * (e.g., chapter title changes) that would otherwise drag down the average.
  */
-function avgPairwiseSimilarity(embeddings: number[][]): number {
+function medianPairwiseSimilarity(embeddings: number[][]): number {
   if (embeddings.length < 2) return 1.0
 
-  let totalSim = 0
-  let count = 0
+  const similarities: number[] = []
 
   for (let i = 0; i < embeddings.length; i++) {
     for (let j = i + 1; j < embeddings.length; j++) {
       const embI = embeddings[i]
       const embJ = embeddings[j]
       if (embI && embJ) {
-        totalSim += cosineSimilarity(embI, embJ)
-        count++
+        similarities.push(cosineSimilarity(embI, embJ))
       }
     }
   }
 
-  return count > 0 ? totalSim / count : 0
+  if (similarities.length === 0) return 0
+
+  // Sort and find median
+  similarities.sort((a, b) => a - b)
+  const mid = Math.floor(similarities.length / 2)
+
+  if (similarities.length % 2 === 0) {
+    // Even: average of two middle values
+    return ((similarities[mid - 1] ?? 0) + (similarities[mid] ?? 0)) / 2
+  }
+  // Odd: middle value
+  return similarities[mid] ?? 0
 }
 
 /**
@@ -158,9 +283,9 @@ export interface SentencePatternResult {
   removeFirstSentence: boolean
   /** Whether last sentences should be removed (detected as footer) */
   removeLastSentence: boolean
-  /** Average similarity of first sentences */
+  /** Median similarity of first sentences */
   headerSimilarity: number
-  /** Average similarity of last sentences */
+  /** Median similarity of last sentences */
   footerSimilarity: number
 }
 
@@ -169,14 +294,13 @@ export interface SentencePatternResult {
  *
  * Algorithm:
  * 1. Sample pages from the CENTER of the document (guaranteed to be content pages)
- * 2. Join each sampled page's items into text
- * 3. Split each page text into sentences
- * 4. Collect first/last sentences from sampled pages
- * 5. Embed and calculate average pairwise similarity
- * 6. If similarity > threshold, mark as header/footer
+ * 2. Split each page into sentences with Y coordinate
+ * 3. Collect first/last sentences from sampled pages
+ * 4. Embed and calculate median pairwise similarity
+ * 5. If similarity > threshold, mark as header/footer
  *
- * Key insight: Middle pages are always content pages (cover, TOC, index are at edges)
- * This avoids outliers that would drag down the average similarity.
+ * Key insight: Middle pages are always content pages (cover, TOC, index are at edges).
+ * Using median instead of mean provides robustness against outliers.
  *
  * This approach handles variable content like page numbers ("7 of 75")
  * by using semantic similarity instead of exact text matching.
@@ -213,21 +337,20 @@ export async function detectSentencePatterns(
   const endIndex = Math.min(pages.length, startIndex + cfg.samplePages)
   const samplePages = pages.slice(startIndex, endIndex)
 
-  // 2. Join each sampled page into text (sorted by Y coordinate)
-  const pageTexts = samplePages.map((page) => joinPageItems(page.items))
+  // 2. Split each page into sentences with Y coordinate (merged by Y)
+  const pageSentences: SentenceWithY[][] = samplePages.map((page) =>
+    splitItemsIntoSentencesWithY(page.items)
+  )
 
-  // 3. Split each page into sentences
-  const pageSentences: string[][] = pageTexts.map((text) => splitIntoSentences(text))
-
-  // 4. Collect first and last sentences from sampled pages
+  // 3. Collect first and last sentences from sampled pages
   const firstSentences: string[] = []
   const lastSentences: string[] = []
 
   for (const sentences of pageSentences) {
     if (sentences.length > 0) {
-      firstSentences.push(sentences[0]!)
+      firstSentences.push(sentences[0]!.text)
       if (sentences.length > 1) {
-        lastSentences.push(sentences[sentences.length - 1]!)
+        lastSentences.push(sentences[sentences.length - 1]!.text)
       }
     }
   }
@@ -235,13 +358,13 @@ export async function detectSentencePatterns(
   // 5. Detect header pattern (sampled first sentences are semantically similar)
   if (firstSentences.length >= cfg.minPages) {
     const embeddings = await embedder.embedBatch(firstSentences)
-    const avgSim = avgPairwiseSimilarity(embeddings)
-    result.headerSimilarity = avgSim
+    const medianSim = medianPairwiseSimilarity(embeddings)
+    result.headerSimilarity = medianSim
 
-    if (avgSim >= cfg.similarityThreshold) {
+    if (medianSim >= cfg.similarityThreshold) {
       result.removeFirstSentence = true
       console.error(
-        `Sentence header detected: sampled ${firstSentences.length} center pages (${startIndex + 1}-${endIndex}), avg similarity: ${avgSim.toFixed(3)}`
+        `Sentence header detected: sampled ${firstSentences.length} center pages (${startIndex + 1}-${endIndex}), median similarity: ${medianSim.toFixed(3)}`
       )
     }
   }
@@ -249,13 +372,13 @@ export async function detectSentencePatterns(
   // 6. Detect footer pattern (sampled last sentences are semantically similar)
   if (lastSentences.length >= cfg.minPages) {
     const embeddings = await embedder.embedBatch(lastSentences)
-    const avgSim = avgPairwiseSimilarity(embeddings)
-    result.footerSimilarity = avgSim
+    const medianSim = medianPairwiseSimilarity(embeddings)
+    result.footerSimilarity = medianSim
 
-    if (avgSim >= cfg.similarityThreshold) {
+    if (medianSim >= cfg.similarityThreshold) {
       result.removeLastSentence = true
       console.error(
-        `Sentence footer detected: sampled ${lastSentences.length} center pages (${startIndex + 1}-${endIndex}), avg similarity: ${avgSim.toFixed(3)}`
+        `Sentence footer detected: sampled ${lastSentences.length} center pages (${startIndex + 1}-${endIndex}), median similarity: ${medianSim.toFixed(3)}`
       )
     }
   }
@@ -296,11 +419,10 @@ export async function filterPageBoundarySentences(
     return joinFilteredPages(pages)
   }
 
-  // Join each page into text (sorted by Y coordinate)
-  const pageTexts = pages.map((page) => joinPageItems(page.items))
-
-  // Split each page into sentences
-  const pageSentences: string[][] = pageTexts.map((text) => splitIntoSentences(text))
+  // Split each page into sentences with Y coordinate (merged by Y)
+  const pageSentences: SentenceWithY[][] = pages.map((page) =>
+    splitItemsIntoSentencesWithY(page.items)
+  )
 
   // Remove detected patterns from page sentences
   const cleanedPageSentences = pageSentences.map((sentences) => {
@@ -319,7 +441,7 @@ export async function filterPageBoundarySentences(
 
   // Join back into final text
   return cleanedPageSentences
-    .map((sentences) => sentences.join(' '))
+    .map((sentences) => sentences.map((s) => s.text).join(' '))
     .filter((text) => text.length > 0)
     .join('\n\n')
 }

@@ -1,5 +1,4 @@
 // Semantic Chunker implementation using Max-Min algorithm
-// Created: 2025-12-27
 // Based on: "Max–Min semantic chunking of documents for RAG application" (Springer, 2025)
 
 import type { TextChunk } from './index.js'

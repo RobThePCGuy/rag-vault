@@ -29,12 +29,16 @@ import { dirname, join, resolve } from 'node:path'
 // So from dist/bin, go up twice: ../.. then skills/mcp-local-rag
 const SKILLS_SOURCE = resolve(__dirname, '..', '..', 'skills', 'mcp-local-rag')
 
+// Codex home directory (supports CODEX_HOME environment variable)
+// https://developers.openai.com/codex/local-config/
+const CODEX_HOME = process.env['CODEX_HOME'] || join(homedir(), '.codex')
+
 // Installation targets
 const TARGETS = {
   'claude-code-project': './.claude/skills/mcp-local-rag',
   'claude-code-global': join(homedir(), '.claude', 'skills', 'mcp-local-rag'),
   'codex-project': './.codex/skills/mcp-local-rag',
-  'codex-global': join(homedir(), '.codex', 'skills', 'mcp-local-rag'),
+  'codex-global': join(CODEX_HOME, 'skills', 'mcp-local-rag'),
 } as const
 
 // ============================================
@@ -128,13 +132,13 @@ Options:
                          (~/.claude/skills/)
 
   --codex                Install to user-level Codex skills (default)
-                         (~/.codex/skills/)
+                         ($CODEX_HOME/skills/ or ~/.codex/skills/)
 
   --codex --project      Install to project-level Codex skills
                          (./.codex/skills/)
 
   --codex --global       Install to user-level Codex skills
-                         (~/.codex/skills/)
+                         ($CODEX_HOME/skills/ or ~/.codex/skills/)
 
   --path <path>          Install to custom path
 

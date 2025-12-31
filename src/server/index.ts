@@ -553,8 +553,19 @@ export class RAGServer {
 
       console.error(`Saved raw data: ${args.metadata.source} -> ${rawDataPath}`)
 
-      // Call existing ingest_file internally
-      return await this.handleIngestFile({ filePath: rawDataPath })
+      // Call existing ingest_file internally with rollback on failure
+      try {
+        return await this.handleIngestFile({ filePath: rawDataPath })
+      } catch (ingestError) {
+        // Rollback: delete the raw-data file if ingest fails
+        try {
+          await unlink(rawDataPath)
+          console.error(`Rolled back raw-data file: ${rawDataPath}`)
+        } catch {
+          console.warn(`Failed to rollback raw-data file: ${rawDataPath}`)
+        }
+        throw ingestError
+      }
     } catch (error) {
       // Error handling: suppress stack trace in production
       const errorMessage =

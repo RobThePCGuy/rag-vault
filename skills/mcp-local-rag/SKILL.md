@@ -1,9 +1,6 @@
 ---
 name: mcp-local-rag
-description: >
-  Optimizes RAG search and ingestion (query_documents, ingest_file, ingest_data).
-  Activate when: (1) search score > 0.5, (2) query is vague or too specific,
-  (3) ingesting HTML/web content.
+description: Optimizes RAG search and ingestion. Activate when using query_documents, ingest_file, ingest_data tools, or when search results have score > 0.5.
 ---
 
 # MCP Local RAG Skills

@@ -1,6 +1,7 @@
 // RAGServer implementation with MCP tools
 
 import { randomUUID } from 'node:crypto'
+import { unlink } from 'node:fs/promises'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
@@ -12,6 +13,7 @@ import { type GroupingMode, type VectorChunk, VectorStore } from '../vectordb/in
 import {
   type ContentFormat,
   extractSourceFromPath,
+  generateRawDataPath,
   isRawDataPath,
   saveRawData,
 } from './raw-data-utils.js'
@@ -82,10 +84,13 @@ export interface IngestDataInput {
 
 /**
  * delete_file tool input
+ * Either filePath or source must be provided
  */
 export interface DeleteFileInput {
-  /** File path */
-  filePath: string
+  /** File path (for files ingested via ingest_file) */
+  filePath?: string
+  /** Source identifier (for data ingested via ingest_data) */
+  source?: string
 }
 
 /**
@@ -234,7 +239,7 @@ export class RAGServer {
                   source: {
                     type: 'string',
                     description:
-                      'Source identifier. URL (e.g., "https://example.com/page") or custom ID (e.g., "clipboard://2024-12-30")',
+                      'Source identifier. For web pages, use the URL (e.g., "https://example.com/page"). For other content, use URL-scheme format: "{type}://{date}" or "{type}://{date}/{detail}". Examples: "clipboard://2024-12-30", "chat://2024-12-30/project-discussion", "note://2024-12-30/meeting".',
                   },
                   format: {
                     type: 'string',
@@ -251,17 +256,21 @@ export class RAGServer {
         {
           name: 'delete_file',
           description:
-            'Delete a previously ingested file from the vector database. Removes all chunks and embeddings associated with the specified file. File path must be an absolute path. This operation is idempotent - deleting a non-existent file completes without error.',
+            'Delete a previously ingested file or data from the vector database. Use filePath for files ingested via ingest_file, or source for data ingested via ingest_data. Either filePath or source must be provided.',
           inputSchema: {
             type: 'object',
             properties: {
               filePath: {
                 type: 'string',
                 description:
-                  'Absolute path to the file to delete from the database. Example: "/Users/user/documents/manual.pdf"',
+                  'Absolute path to the file (for ingest_file). Example: "/Users/user/documents/manual.pdf"',
+              },
+              source: {
+                type: 'string',
+                description:
+                  'Source identifier used in ingest_data. Examples: "https://example.com/page", "clipboard://2024-12-30"',
               },
             },
-            required: ['filePath'],
           },
         },
         {
@@ -551,16 +560,29 @@ export class RAGServer {
   }
 
   /**
-   * list_files tool handler (Phase 1: basic implementation)
+   * list_files tool handler
+   * Enriches raw-data files with original source information
    */
   async handleListFiles(): Promise<{ content: [{ type: 'text'; text: string }] }> {
     try {
       const files = await this.vectorStore.listFiles()
+
+      // Enrich raw-data files with source information
+      const enrichedFiles = files.map((file) => {
+        if (isRawDataPath(file.filePath)) {
+          const source = extractSourceFromPath(file.filePath)
+          if (source) {
+            return { ...file, source }
+          }
+        }
+        return file
+      })
+
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(files, null, 2),
+            text: JSON.stringify(enrichedFiles, null, 2),
           },
         ],
       }
@@ -592,20 +614,49 @@ export class RAGServer {
 
   /**
    * delete_file tool handler
+   * Deletes chunks from VectorDB and physical raw-data files
+   * Supports both filePath (for ingest_file) and source (for ingest_data)
    */
   async handleDeleteFile(
     args: DeleteFileInput
   ): Promise<{ content: [{ type: 'text'; text: string }] }> {
     try {
-      // Validate and normalize file path (S-002 security requirement)
-      this.parser.validateFilePath(args.filePath)
+      let targetPath: string
+      let skipValidation = false
+
+      if (args.source) {
+        // Generate raw-data path from source (extension is always .md)
+        // Internal path generation is secure, skip baseDir validation
+        targetPath = generateRawDataPath(this.dbPath, args.source, 'markdown')
+        skipValidation = true
+      } else if (args.filePath) {
+        targetPath = args.filePath
+      } else {
+        throw new Error('Either filePath or source must be provided')
+      }
+
+      // Only validate user-provided filePath (not internally generated paths)
+      if (!skipValidation) {
+        this.parser.validateFilePath(targetPath)
+      }
 
       // Delete chunks from vector database
-      await this.vectorStore.deleteChunks(args.filePath)
+      await this.vectorStore.deleteChunks(targetPath)
+
+      // Also delete physical raw-data file if applicable
+      if (isRawDataPath(targetPath)) {
+        try {
+          await unlink(targetPath)
+          console.error(`Deleted raw-data file: ${targetPath}`)
+        } catch {
+          // File may already be deleted, log warning only
+          console.warn(`Could not delete raw-data file (may not exist): ${targetPath}`)
+        }
+      }
 
       // Return success message
       const result = {
-        filePath: args.filePath,
+        filePath: targetPath,
         deleted: true,
         timestamp: new Date().toISOString(),
       }

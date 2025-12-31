@@ -81,18 +81,15 @@ export type ContentFormat = 'text' | 'html' | 'markdown'
 /**
  * Get file extension from content format
  *
- * @param format - Content format
- * @returns File extension (without dot)
+ * All formats return .md for consistency.
+ * This allows generating unique path from source without knowing original format,
+ * which is essential for delete_file with source parameter.
+ *
+ * @param _format - Content format (ignored, always returns 'md')
+ * @returns File extension (without dot) - always 'md'
  */
-export function formatToExtension(format: ContentFormat): string {
-  switch (format) {
-    case 'html':
-      return 'html'
-    case 'markdown':
-      return 'md'
-    default:
-      return 'txt'
-  }
+export function formatToExtension(_format: ContentFormat): string {
+  return 'md'
 }
 
 // ============================================

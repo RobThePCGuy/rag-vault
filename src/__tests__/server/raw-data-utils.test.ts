@@ -120,10 +120,12 @@ describe('Raw Data Utilities', () => {
   // Format to Extension
   // --------------------------------------------
   describe('Format to Extension', () => {
-    it('returns correct extension for each format', () => {
-      expect(formatToExtension('html')).toBe('html')
+    it('returns .md for all formats (unified extension)', () => {
+      // All formats now return .md for consistency
+      // This allows generating unique path from source without knowing original format
+      expect(formatToExtension('html')).toBe('md')
       expect(formatToExtension('markdown')).toBe('md')
-      expect(formatToExtension('text')).toBe('txt')
+      expect(formatToExtension('text')).toBe('md')
     })
   })
 
@@ -151,7 +153,7 @@ describe('Raw Data Utilities', () => {
       const path = generateRawDataPath(dbPath, source, format)
 
       expect(path).toContain('/path/to/lancedb/raw-data/')
-      expect(path).toMatch(/\.html$/)
+      expect(path).toMatch(/\.md$/) // All formats use .md extension
       // Should not contain original URL characters
       expect(path).not.toContain('https:')
       expect(path).not.toContain('example.com')
@@ -190,7 +192,7 @@ describe('Raw Data Utilities', () => {
 
       // Verify path structure
       expect(savedPath).toContain('raw-data')
-      expect(savedPath).toMatch(/\.html$/)
+      expect(savedPath).toMatch(/\.md$/) // All formats use .md extension
     })
 
     it('creates raw-data directory if not exists', async () => {

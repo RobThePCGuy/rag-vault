@@ -59,7 +59,7 @@ describe('ingest_data Tool', () => {
       const parsed = JSON.parse(result.content[0].text)
       expect(parsed.chunkCount).toBeGreaterThan(0)
       expect(parsed.filePath).toContain('raw-data')
-      expect(parsed.filePath).toMatch(/\.txt$/)
+      expect(parsed.filePath).toMatch(/\.md$/) // All formats use .md extension
     })
 
     it('saves raw text to raw-data directory', async () => {
@@ -240,6 +240,137 @@ This is markdown content with **bold** and _italic_ text.
 
       expect(savedContent).toBe('Updated content after re-ingestion')
       expect(savedContent).not.toContain('Original')
+    })
+  })
+
+  // --------------------------------------------
+  // List Files with Source Info
+  // --------------------------------------------
+  describe('List Files with Source Info', () => {
+    it('list_files includes source for raw-data files', async () => {
+      const source = 'https://example.com/list-files-test'
+      // Content needs to be long enough to generate at least one chunk
+      const content =
+        'This is a longer content for testing the list files functionality. ' +
+        'It needs to be substantial enough to create at least one chunk. ' +
+        'The semantic chunker requires sufficient content to process properly.'
+
+      await server.handleIngestData({
+        content,
+        metadata: { source, format: 'text' },
+      })
+
+      const listResult = await server.handleListFiles()
+      const files = JSON.parse(listResult.content[0].text)
+
+      // Find the specific file we just ingested by source
+      const targetFile = files.find(
+        (f: { filePath: string; source?: string }) => f.source === source
+      )
+      expect(targetFile).toBeDefined()
+      expect(targetFile.filePath).toContain('raw-data')
+    })
+
+    it('list_files does not include source for regular files', async () => {
+      // Regular files (not raw-data) should not have source field
+      // This is tested implicitly - if filePath doesn't contain 'raw-data',
+      // the source field should be undefined
+      const listResult = await server.handleListFiles()
+      const files = JSON.parse(listResult.content[0].text)
+
+      for (const file of files) {
+        if (!file.filePath.includes('raw-data')) {
+          expect(file.source).toBeUndefined()
+        }
+      }
+    })
+  })
+
+  // --------------------------------------------
+  // Delete File with Physical File Removal
+  // --------------------------------------------
+  describe('Delete File with Physical File Removal', () => {
+    it('delete_file removes physical raw-data file', async () => {
+      const source = 'https://example.com/delete-physical-test'
+      const content =
+        'Content for testing physical file deletion. ' +
+        'This needs to be long enough to create chunks for the test to work properly.'
+
+      // Ingest the data
+      const ingestResult = await server.handleIngestData({
+        content,
+        metadata: { source, format: 'text' },
+      })
+      const parsed = JSON.parse(ingestResult.content[0].text)
+      const filePath = parsed.filePath
+
+      // Verify file exists
+      const { stat } = await import('node:fs/promises')
+      await expect(stat(filePath)).resolves.toBeDefined()
+
+      // Delete via handleDeleteFile
+      await server.handleDeleteFile({ filePath })
+
+      // Verify physical file is deleted
+      await expect(stat(filePath)).rejects.toThrow('ENOENT')
+    })
+
+    it('delete_file handles missing raw-data file gracefully', async () => {
+      const source = 'https://example.com/delete-missing-test'
+      const content =
+        'Content for testing missing file handling. ' +
+        'This needs to be long enough to create chunks for the test to work properly.'
+
+      // Ingest the data
+      const ingestResult = await server.handleIngestData({
+        content,
+        metadata: { source, format: 'text' },
+      })
+      const parsed = JSON.parse(ingestResult.content[0].text)
+      const filePath = parsed.filePath
+
+      // Manually delete the file first
+      const { unlink } = await import('node:fs/promises')
+      await unlink(filePath)
+
+      // Delete via handleDeleteFile should not throw
+      await expect(server.handleDeleteFile({ filePath })).resolves.toBeDefined()
+    })
+
+    it('delete_file accepts source parameter to delete raw-data', async () => {
+      const source = 'https://example.com/delete-by-source-test'
+      const content =
+        'Content for testing deletion by source parameter. ' +
+        'This needs to be long enough to create chunks for the test to work properly.'
+
+      // Ingest the data
+      await server.handleIngestData({
+        content,
+        metadata: { source, format: 'text' },
+      })
+
+      // Verify it's in list_files
+      const listBefore = await server.handleListFiles()
+      const filesBefore = JSON.parse(listBefore.content[0].text)
+      const targetBefore = filesBefore.find((f: { source?: string }) => f.source === source)
+      expect(targetBefore).toBeDefined()
+
+      // Delete by source
+      const deleteResult = await server.handleDeleteFile({ source })
+      const deleteData = JSON.parse(deleteResult.content[0].text)
+      expect(deleteData.deleted).toBe(true)
+
+      // Verify it's removed from list_files
+      const listAfter = await server.handleListFiles()
+      const filesAfter = JSON.parse(listAfter.content[0].text)
+      const targetAfter = filesAfter.find((f: { source?: string }) => f.source === source)
+      expect(targetAfter).toBeUndefined()
+    })
+
+    it('delete_file throws error when neither filePath nor source provided', async () => {
+      await expect(server.handleDeleteFile({})).rejects.toThrow(
+        'Either filePath or source must be provided'
+      )
     })
   })
 

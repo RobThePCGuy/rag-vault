@@ -88,12 +88,17 @@ ingest_data({
 })
 ```
 
+**Source format:**
+- Web page → Use URL: `https://example.com/page`
+- Other content → Use scheme: `{type}://{date}` or `{type}://{date}/{detail}`
+  - Examples: `clipboard://2024-12-30`, `chat://2024-12-30/project-discussion`
+
 **HTML source options:**
 - Static page → LLM fetch
 - SPA/JS-rendered → Browser MCP
 - Auth required → Manual paste
 
-Re-ingest same source to update.
+Re-ingest same source to update. Use same source in `delete_file` to remove.
 
 ## References
 

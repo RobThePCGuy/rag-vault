@@ -3,11 +3,8 @@
 // Tests handleIngestData functionality including HTML parsing and raw-data storage
 
 import { mkdir, readFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { Embedder } from '../../embedder/index.js'
 import { RAGServer } from '../../server/index.js'
-import { extractSourceFromPath, getRawDataDir } from '../../server/raw-data-utils.js'
 
 // ============================================
 // Test Configuration

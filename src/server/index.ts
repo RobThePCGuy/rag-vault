@@ -1,7 +1,7 @@
 // RAGServer implementation with MCP tools
 
 import { randomUUID } from 'node:crypto'
-import { unlink } from 'node:fs/promises'
+import { readFile, unlink } from 'node:fs/promises'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
@@ -385,10 +385,19 @@ export class RAGServer {
 
     try {
       // Parse file (with header/footer filtering for PDFs)
+      // For raw-data files (from ingest_data), read directly without validation
+      // since the path is internally generated and content is already processed
       const isPdf = args.filePath.toLowerCase().endsWith('.pdf')
-      const text = isPdf
-        ? await this.parser.parsePdf(args.filePath, this.embedder)
-        : await this.parser.parseFile(args.filePath)
+      let text: string
+      if (isRawDataPath(args.filePath)) {
+        // Raw-data files: skip validation, read directly
+        text = await readFile(args.filePath, 'utf-8')
+        console.error(`Read raw-data file: ${args.filePath} (${text.length} characters)`)
+      } else if (isPdf) {
+        text = await this.parser.parsePdf(args.filePath, this.embedder)
+      } else {
+        text = await this.parser.parseFile(args.filePath)
+      }
 
       // Split text into semantic chunks
       const chunks = await this.chunker.chunkText(text, this.embedder)

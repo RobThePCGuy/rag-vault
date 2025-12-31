@@ -101,7 +101,7 @@ Re-ingesting the same file replaces the old version automatically.
 
 ### Ingesting HTML Content
 
-Use `ingest_data` to ingest HTML content retrieved by the LLM (via web fetch, curl, browser tools, etc.):
+Use `ingest_data` to ingest HTML content retrieved by your AI assistant (via web fetch, curl, browser tools, etc.):
 
 ```
 "Fetch https://example.com/docs and ingest the HTML"
@@ -109,10 +109,12 @@ Use `ingest_data` to ingest HTML content retrieved by the LLM (via web fetch, cu
 
 The server extracts main content using Readability (removes navigation, ads, etc.), converts to Markdown, and indexes it. Perfect for:
 - Web documentation
-- HTML retrieved by the LLM
+- HTML retrieved by the AI assistant
 - Clipboard content
 
 HTML is automatically cleaned—you get the article content, not the boilerplate.
+
+> **Note:** The RAG server itself doesn't fetch web content—your AI assistant retrieves it and passes the HTML to `ingest_data`. This keeps the server fully local while letting you index any content your assistant can access. Please respect website terms of service and copyright when ingesting external content.
 
 ### Searching Documents
 
@@ -206,16 +208,18 @@ Skills include:
 
 ### Ensuring Skill Activation
 
-Skills are loaded automatically in most cases, but for consistent behavior:
+Skills are loaded automatically in most cases—AI assistants scan skill metadata and load relevant instructions when needed. For consistent behavior:
 
-**Option 1: Explicit invocation**
-Before RAG operations, explicitly request: `/mcp-local-rag`
+**Option 1: Explicit request (natural language)**
+Before RAG operations, request in natural language:
+- "Use the mcp-local-rag skill for this search"
+- "Apply RAG best practices from skills"
 
 **Option 2: Add to agent instruction file**
 Add to your `AGENTS.md`, `CLAUDE.md`, or other agent instruction file:
 ```
 When using query_documents, ingest_file, or ingest_data tools,
-first invoke the mcp-local-rag skill.
+apply the mcp-local-rag skill for optimal query formulation and result interpretation.
 ```
 
 <details>

@@ -93,12 +93,16 @@
   "tags": [
     "rag",
     "vector-search",
-    "lancedb",
-    "transformers",
+    "semantic-search",
+    "embeddings",
     "local-ai",
+    "offline",
     "privacy",
     "document-search",
-    "semantic-search"
+    "pdf",
+    "cursor",
+    "claude-code",
+    "skills"
   ],
   "homepage": "https://github.com/shinpr/mcp-local-rag",
   "documentation": "https://github.com/shinpr/mcp-local-rag#readme"

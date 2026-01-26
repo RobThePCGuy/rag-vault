@@ -9,9 +9,7 @@ export function StatusPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">System Status</h1>
-          <p className="text-gray-600">
-            Monitor your RAG system metrics and configuration.
-          </p>
+          <p className="text-gray-600">Monitor your RAG system metrics and configuration.</p>
         </div>
         <button
           type="button"
@@ -43,14 +41,7 @@ export function StatusPage() {
 function Spinner() {
   return (
     <svg className="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
         className="opacity-75"
         fill="currentColor"

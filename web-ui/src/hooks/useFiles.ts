@@ -4,7 +4,11 @@ import { listFiles, deleteFile } from '../api/client'
 export function useFiles() {
   const queryClient = useQueryClient()
 
-  const { data: files = [], isLoading, error } = useQuery({
+  const {
+    data: files = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['files'],
     queryFn: listFiles,
   })

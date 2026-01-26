@@ -52,10 +52,7 @@ export interface ApiError {
 /**
  * Generic fetch wrapper with error handling
  */
-async function fetchApi<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> {
+async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
@@ -76,10 +73,7 @@ async function fetchApi<T>(
 /**
  * Search documents
  */
-export async function searchDocuments(
-  query: string,
-  limit?: number
-): Promise<SearchResult[]> {
+export async function searchDocuments(query: string, limit?: number): Promise<SearchResult[]> {
   const data = await fetchApi<{ results: SearchResult[] }>('/search', {
     method: 'POST',
     body: JSON.stringify({ query, limit }),
@@ -133,10 +127,7 @@ export async function listFiles(): Promise<FileInfo[]> {
 /**
  * Delete a file or source
  */
-export async function deleteFile(options: {
-  filePath?: string
-  source?: string
-}): Promise<void> {
+export async function deleteFile(options: { filePath?: string; source?: string }): Promise<void> {
   await fetchApi('/files', {
     method: 'DELETE',
     body: JSON.stringify(options),

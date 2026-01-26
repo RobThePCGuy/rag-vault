@@ -45,6 +45,7 @@ export function UploadPage() {
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-6">
           <button
+            type="button"
             onClick={() => setActiveTab('file')}
             className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'file'
@@ -55,6 +56,7 @@ export function UploadPage() {
             Upload File
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('content')}
             className={`py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
               activeTab === 'content'

@@ -27,7 +27,7 @@
     "noImplicitThis": true,                  // Prohibit implicit this
     "alwaysStrict": true,                    // Always enable strict mode
     
-    // Additional safety checks (currently disabled in this PR)
+    // Additional safety checks
     "noUncheckedIndexedAccess": true,       // Safety checks for index access
     "exactOptionalPropertyTypes": true,      // Strict type checking for optional properties
     "noPropertyAccessFromIndexSignature": true, // Prohibit property access from index signature
@@ -43,7 +43,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,                    // Skip type checking of declaration files (build optimization)
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+
+    // Modern module options
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/__tests__/**", "src/__tests__/**"]

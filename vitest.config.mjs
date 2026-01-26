@@ -19,6 +19,25 @@ export default defineConfig({
         singleFork: true,      // Single process execution to avoid onnxruntime-node threading issues
       }
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/**',
+        'dist/**',
+        'web-ui/**',
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        '**/test/**',
+        'scripts/**',
+      ],
+      thresholds: {
+        statements: 70,
+        branches: 70,
+        functions: 70,
+        lines: 70,
+      },
+    },
   },
   resolve: {
     alias: {

@@ -3,7 +3,6 @@
 // Purpose: Verify Max-Min semantic chunking algorithm
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { TextChunk } from '../index.js'
 import { SemanticChunker, type SemanticChunkerConfig, isGarbageChunk } from '../semantic-chunker.js'
 
 // Mock embedder interface

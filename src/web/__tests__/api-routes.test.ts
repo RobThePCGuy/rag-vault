@@ -1,5 +1,6 @@
-import type { Request, Response } from 'express'
+import type { NextFunction, Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ValidationError } from '../../errors/index.js'
 import type { RAGServer } from '../../server/index.js'
 import { createApiRouter } from '../api-routes.js'
 
@@ -87,14 +88,16 @@ describe('API Routes', () => {
       if (searchLayer?.route?.stack?.[0]?.handle) {
         const handler = searchLayer.route.stack[0].handle
         const req = createMockReq({ query: '' })
-        const { res, json, status } = createMockRes()
+        const { res } = createMockRes()
+        const next = vi.fn()
 
-        await handler(req as Request, res as Response)
+        await handler(req as Request, res as Response, next as NextFunction)
 
-        expect(status).toHaveBeenCalledWith(400)
-        expect(json).toHaveBeenCalledWith({
-          error: 'Query is required and must be a string',
-        })
+        // Error should be passed to next
+        expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
+        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+          'Query is required and must be a string'
+        )
       }
     })
   })
@@ -113,14 +116,16 @@ describe('API Routes', () => {
       if (dataLayer?.route?.stack?.[0]?.handle) {
         const handler = dataLayer.route.stack[0].handle
         const req = createMockReq({ content: '', metadata: { source: 'test', format: 'text' } })
-        const { res, json, status } = createMockRes()
+        const { res } = createMockRes()
+        const next = vi.fn()
 
-        await handler(req as Request, res as Response)
+        await handler(req as Request, res as Response, next as NextFunction)
 
-        expect(status).toHaveBeenCalledWith(400)
-        expect(json).toHaveBeenCalledWith({
-          error: 'Content is required and must be a string',
-        })
+        // Error should be passed to next
+        expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
+        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+          'Content is required and must be a string'
+        )
       }
     })
 
@@ -135,14 +140,16 @@ describe('API Routes', () => {
       if (dataLayer?.route?.stack?.[0]?.handle) {
         const handler = dataLayer.route.stack[0].handle
         const req = createMockReq({ content: 'test content' })
-        const { res, json, status } = createMockRes()
+        const { res } = createMockRes()
+        const next = vi.fn()
 
-        await handler(req as Request, res as Response)
+        await handler(req as Request, res as Response, next as NextFunction)
 
-        expect(status).toHaveBeenCalledWith(400)
-        expect(json).toHaveBeenCalledWith({
-          error: 'Metadata with source and format is required',
-        })
+        // Error should be passed to next
+        expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
+        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+          'Metadata with source and format is required'
+        )
       }
     })
   })
@@ -185,14 +192,16 @@ describe('API Routes', () => {
       if (deleteLayer?.route?.stack?.[0]?.handle) {
         const handler = deleteLayer.route.stack[0].handle
         const req = createMockReq({})
-        const { res, json, status } = createMockRes()
+        const { res } = createMockRes()
+        const next = vi.fn()
 
-        await handler(req as Request, res as Response)
+        await handler(req as Request, res as Response, next as NextFunction)
 
-        expect(status).toHaveBeenCalledWith(400)
-        expect(json).toHaveBeenCalledWith({
-          error: 'Either filePath or source is required',
-        })
+        // Error should be passed to next
+        expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
+        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+          'Either filePath or source is required'
+        )
       }
     })
   })

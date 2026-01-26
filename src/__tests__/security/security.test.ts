@@ -179,7 +179,7 @@ describe('RAG MCP Server Security Test', () => {
       const linkPath = resolve(fixturesDir, 'link_to_etc_passwd')
       try {
         await symlink('/etc/passwd', linkPath)
-      } catch (error) {
+      } catch (_error) {
         // Ignore symlink creation failure (if already exists)
       }
 

@@ -14,6 +14,7 @@ export function StatusPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => refetch()}
           disabled={isLoading}
           className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"

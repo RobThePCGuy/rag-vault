@@ -1,51 +1,13 @@
 #!/usr/bin/env node
 // Entry point for RAG Web Server
 
+import { existsSync } from 'node:fs'
 import path from 'node:path'
-import type { GroupingMode } from '../vectordb/index.js'
+import { buildRAGConfig } from '../utils/config.js'
+import { setupProcessHandlers } from '../utils/process-handlers.js'
 
-/**
- * Parse grouping mode from environment variable
- */
-function parseGroupingMode(value: string | undefined): GroupingMode | undefined {
-  if (!value) return undefined
-  const normalized = value.toLowerCase().trim()
-  if (normalized === 'similar' || normalized === 'related') {
-    return normalized
-  }
-  console.error(
-    `Invalid RAG_GROUPING value: "${value}". Expected "similar" or "related". Ignoring.`
-  )
-  return undefined
-}
-
-/**
- * Parse max distance from environment variable
- */
-function parseMaxDistance(value: string | undefined): number | undefined {
-  if (!value) return undefined
-  const parsed = Number.parseFloat(value)
-  if (Number.isNaN(parsed) || parsed <= 0) {
-    console.error(`Invalid RAG_MAX_DISTANCE value: "${value}". Expected positive number. Ignoring.`)
-    return undefined
-  }
-  return parsed
-}
-
-/**
- * Parse hybrid weight from environment variable
- */
-function parseHybridWeight(value: string | undefined): number | undefined {
-  if (!value) return undefined
-  const parsed = Number.parseFloat(value)
-  if (Number.isNaN(parsed) || parsed < 0 || parsed > 1) {
-    console.error(
-      `Invalid RAG_HYBRID_WEIGHT value: "${value}". Expected 0.0-1.0. Using default (0.6).`
-    )
-    return undefined
-  }
-  return parsed
-}
+// Setup global error handlers
+setupProcessHandlers()
 
 /**
  * Entry point - Start RAG Web Server
@@ -58,7 +20,6 @@ async function main(): Promise<void> {
 
     // Configuration from environment
     const port = Number.parseInt(process.env['WEB_PORT'] || '3000', 10)
-    const dbPath = process.env['DB_PATH'] || './lancedb/'
     const uploadDir = process.env['UPLOAD_DIR'] || './uploads/'
 
     // Determine static files directory
@@ -69,35 +30,14 @@ async function main(): Promise<void> {
     const prodStaticPath = path.resolve(cwd, 'dist/web-ui')
 
     // Check which exists
-    const { existsSync } = await import('node:fs')
     if (existsSync(devStaticPath)) {
       staticDir = devStaticPath
     } else if (existsSync(prodStaticPath)) {
       staticDir = prodStaticPath
     }
 
-    // RAGServer configuration
-    const config: ConstructorParameters<typeof RAGServer>[0] = {
-      dbPath,
-      modelName: process.env['MODEL_NAME'] || 'Xenova/all-MiniLM-L6-v2',
-      cacheDir: process.env['CACHE_DIR'] || './models/',
-      baseDir: process.env['BASE_DIR'] || process.cwd(),
-      maxFileSize: Number.parseInt(process.env['MAX_FILE_SIZE'] || '104857600', 10),
-    }
-
-    // Add quality filter settings only if defined
-    const maxDistance = parseMaxDistance(process.env['RAG_MAX_DISTANCE'])
-    const grouping = parseGroupingMode(process.env['RAG_GROUPING'])
-    const hybridWeight = parseHybridWeight(process.env['RAG_HYBRID_WEIGHT'])
-    if (maxDistance !== undefined) {
-      config.maxDistance = maxDistance
-    }
-    if (grouping !== undefined) {
-      config.grouping = grouping
-    }
-    if (hybridWeight !== undefined) {
-      config.hybridWeight = hybridWeight
-    }
+    // Build RAG config from environment
+    const config = buildRAGConfig()
 
     console.log('Starting RAG Web Server...')
     console.log('Configuration:', { ...config, port, uploadDir, staticDir })
@@ -130,17 +70,6 @@ async function main(): Promise<void> {
     process.exit(1)
   }
 }
-
-// Global error handling
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason)
-  process.exit(1)
-})
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error)
-  process.exit(1)
-})
 
 // Execute main
 main()

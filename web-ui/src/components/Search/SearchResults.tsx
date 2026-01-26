@@ -76,7 +76,7 @@ function formatSource(source: string): string {
       const url = new URL(source)
       return url.hostname + url.pathname.slice(0, 30) + (url.pathname.length > 30 ? '...' : '')
     } catch {
-      return source.slice(0, 40) + '...'
+      return `${source.slice(0, 40)}...`
     }
   }
   return source

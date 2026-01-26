@@ -121,7 +121,7 @@ export class RAGServer {
    */
   private setupHandlers(): void {
     // Use type assertion to work around Zod version incompatibility
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: Required for Zod version compatibility between project and SDK
     type ToolSchema = any
 
     // query_documents tool

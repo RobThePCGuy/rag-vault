@@ -20,12 +20,7 @@ export function FileList({ files, onDelete, isDeleting }: FileListProps) {
   return (
     <div className="space-y-2">
       {files.map((file) => (
-        <FileItem
-          key={file.filePath}
-          file={file}
-          onDelete={onDelete}
-          isDeleting={isDeleting}
-        />
+        <FileItem key={file.filePath} file={file} onDelete={onDelete} isDeleting={isDeleting} />
       ))}
     </div>
   )

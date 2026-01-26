@@ -36,9 +36,7 @@ export function UploadPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Upload Content</h1>
-        <p className="text-gray-600">
-          Add documents to your knowledge base for semantic search.
-        </p>
+        <p className="text-gray-600">Add documents to your knowledge base for semantic search.</p>
       </div>
 
       {/* Tabs */}
@@ -111,14 +109,7 @@ export function UploadPage() {
 function Spinner() {
   return (
     <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path
         className="opacity-75"
         fill="currentColor"

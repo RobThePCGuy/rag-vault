@@ -12,9 +12,7 @@ export function Layout({ children }: LayoutProps) {
       <Header />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-6 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
   )

@@ -11,12 +11,14 @@ export function SearchResults({ results }: SearchResultsProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-gray-900">
-        Results ({results.length})
-      </h2>
+      <h2 className="text-lg font-medium text-gray-900">Results ({results.length})</h2>
       <div className="space-y-3">
         {results.map((result, index) => (
-          <ResultCard key={`${result.filePath}-${result.chunkIndex}`} result={result} rank={index + 1} />
+          <ResultCard
+            key={`${result.filePath}-${result.chunkIndex}`}
+            result={result}
+            rank={index + 1}
+          />
         ))}
       </div>
     </div>
@@ -49,9 +51,7 @@ function ResultCard({ result, rank }: ResultCardProps) {
         </span>
       </div>
 
-      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">
-        {result.text}
-      </p>
+      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{result.text}</p>
 
       <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
         <span>Chunk #{result.chunkIndex}</span>

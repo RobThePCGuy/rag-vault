@@ -8,6 +8,7 @@ import express, { type Express } from 'express'
 import multer from 'multer'
 import type { RAGServer } from '../server/index.js'
 import { createApiRouter } from './api-routes.js'
+import { errorHandler, notFoundHandler } from './middleware/index.js'
 
 /**
  * HTTP server configuration
@@ -101,13 +102,11 @@ export async function createHttpServer(
     })
   }
 
+  // 404 handler for API routes
+  app.use('/api/*', notFoundHandler)
+
   // Error handling middleware
-  app.use(
-    (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      console.error('Server error:', err)
-      res.status(500).json({ error: err.message })
-    }
-  )
+  app.use(errorHandler)
 
   return app
 }

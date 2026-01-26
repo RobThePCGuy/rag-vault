@@ -43,6 +43,7 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
         {showConfirm ? (
           <>
             <button
+              type="button"
               onClick={handleDelete}
               disabled={isDeleting}
               className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
@@ -50,6 +51,7 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
               Confirm
             </button>
             <button
+              type="button"
               onClick={() => setShowConfirm(false)}
               disabled={isDeleting}
               className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -59,6 +61,7 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
           </>
         ) : (
           <button
+            type="button"
             onClick={() => setShowConfirm(true)}
             className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >

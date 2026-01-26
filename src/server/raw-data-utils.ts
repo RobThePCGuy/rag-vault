@@ -2,7 +2,7 @@
 // Handles: base64url encoding, source normalization, file saving, source extraction
 
 import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 
 // ============================================
 // Base64URL Encoding/Decoding
@@ -158,6 +158,10 @@ export async function saveRawData(
 // Path Detection and Source Extraction
 // ============================================
 
+// Path patterns for raw-data directory detection (cross-platform)
+const RAW_DATA_POSIX = '/raw-data/'
+const RAW_DATA_NATIVE = `${sep}raw-data${sep}`
+
 /**
  * Check if file path is in raw-data directory
  *
@@ -165,7 +169,7 @@ export async function saveRawData(
  * @returns True if path is in raw-data directory
  */
 export function isRawDataPath(filePath: string): boolean {
-  return filePath.includes('/raw-data/')
+  return filePath.includes(RAW_DATA_NATIVE) || filePath.includes(RAW_DATA_POSIX)
 }
 
 /**
@@ -176,14 +180,20 @@ export function isRawDataPath(filePath: string): boolean {
  * @returns Original source or null
  */
 export function extractSourceFromPath(filePath: string): string | null {
-  const rawDataMarker = '/raw-data/'
-  const rawDataIndex = filePath.indexOf(rawDataMarker)
+  // Try native path separator first, then POSIX
+  let rawDataIndex = filePath.indexOf(RAW_DATA_NATIVE)
+  let markerLength = RAW_DATA_NATIVE.length
+
+  if (rawDataIndex === -1) {
+    rawDataIndex = filePath.indexOf(RAW_DATA_POSIX)
+    markerLength = RAW_DATA_POSIX.length
+  }
 
   if (rawDataIndex === -1) {
     return null
   }
 
-  const fileName = filePath.slice(rawDataIndex + rawDataMarker.length)
+  const fileName = filePath.slice(rawDataIndex + markerLength)
   const dotIndex = fileName.lastIndexOf('.')
 
   if (dotIndex === -1) {

@@ -1,4 +1,4 @@
-// DocumentParser implementation with PDF/DOCX/TXT/MD/JSON support
+// DocumentParser implementation with PDF/DOCX/TXT/MD/JSON/JSONL support
 
 import { statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'

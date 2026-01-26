@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["../biome.json"],
+  "files": {
+    "includes": ["src/**", "!dist/**"]
+  },
+  "css": {
+    "parser": {
+      "cssModules": true
+    },
+    "linter": {
+      "enabled": false
+    }
+  },
+  "javascript": {
+    "jsxRuntime": "transparent"
+  },
+  "linter": {
+    "rules": {
+      "correctness": {
+        "useExhaustiveDependencies": "warn",
+        "useHookAtTopLevel": "error"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn"
+      },
+      "a11y": {
+        "noSvgWithoutTitle": "off",
+        "useButtonType": "warn"
+      },
+      "style": {
+        "useImportType": "warn",
+        "useTemplate": "warn",
+        "useExponentiationOperator": "warn"
+      }
+    }
+  }
+}

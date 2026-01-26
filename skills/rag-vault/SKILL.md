@@ -1,9 +1,9 @@
 ---
-name: mcp-local-rag
+name: rag-vault
 description: Provides score interpretation (< 0.3 good, > 0.5 skip), query optimization, and source naming for query_documents, ingest_file, ingest_data tools. Use this skill when working with RAG, searching documents, ingesting files, saving web content, or handling PDF, HTML, DOCX, TXT, Markdown, JSON.
 ---
 
-# MCP Local RAG Skills
+# RAG Vault Skills
 
 ## Tools
 

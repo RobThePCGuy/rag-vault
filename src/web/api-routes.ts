@@ -2,7 +2,9 @@
 
 import type { Request, Response, Router } from 'express'
 import { Router as createRouter } from 'express'
+import { ValidationError } from '../errors/index.js'
 import type { RAGServer } from '../server/index.js'
+import { asyncHandler } from './middleware/index.js'
 
 /**
  * Search request body
@@ -38,13 +40,13 @@ export function createApiRouter(server: RAGServer): Router {
   const router = createRouter()
 
   // POST /api/v1/search - Search documents
-  router.post('/search', async (req: Request, res: Response) => {
-    try {
+  router.post(
+    '/search',
+    asyncHandler(async (req: Request, res: Response) => {
       const { query, limit } = req.body as SearchRequest
 
       if (!query || typeof query !== 'string') {
-        res.status(400).json({ error: 'Query is required and must be a string' })
-        return
+        throw new ValidationError('Query is required and must be a string')
       }
 
       const queryInput: { query: string; limit?: number } = { query }
@@ -54,76 +56,64 @@ export function createApiRouter(server: RAGServer): Router {
       const result = await server.handleQueryDocuments(queryInput)
       const data = JSON.parse(result.content[0].text)
       res.json({ results: data })
-    } catch (error) {
-      console.error('Search error:', error)
-      res.status(500).json({ error: (error as Error).message })
-    }
-  })
+    })
+  )
 
   // POST /api/v1/files/upload - Upload files (multipart)
-  router.post('/files/upload', async (req: Request, res: Response) => {
-    try {
+  router.post(
+    '/files/upload',
+    asyncHandler(async (req: Request, res: Response) => {
       // File is attached by multer middleware
       const file = req.file
       if (!file) {
-        res.status(400).json({ error: 'No file uploaded' })
-        return
+        throw new ValidationError('No file uploaded')
       }
 
       // Use the uploaded file path
       const result = await server.handleIngestFile({ filePath: file.path })
       const data = JSON.parse(result.content[0].text)
       res.json(data)
-    } catch (error) {
-      console.error('Upload error:', error)
-      res.status(500).json({ error: (error as Error).message })
-    }
-  })
+    })
+  )
 
   // POST /api/v1/data - Ingest content strings
-  router.post('/data', async (req: Request, res: Response) => {
-    try {
+  router.post(
+    '/data',
+    asyncHandler(async (req: Request, res: Response) => {
       const { content, metadata } = req.body as IngestDataRequest
 
       if (!content || typeof content !== 'string') {
-        res.status(400).json({ error: 'Content is required and must be a string' })
-        return
+        throw new ValidationError('Content is required and must be a string')
       }
 
       if (!metadata || !metadata.source || !metadata.format) {
-        res.status(400).json({ error: 'Metadata with source and format is required' })
-        return
+        throw new ValidationError('Metadata with source and format is required')
       }
 
       const result = await server.handleIngestData({ content, metadata })
       const data = JSON.parse(result.content[0].text)
       res.json(data)
-    } catch (error) {
-      console.error('Ingest data error:', error)
-      res.status(500).json({ error: (error as Error).message })
-    }
-  })
+    })
+  )
 
   // GET /api/v1/files - List ingested files
-  router.get('/files', async (_req: Request, res: Response) => {
-    try {
+  router.get(
+    '/files',
+    asyncHandler(async (_req: Request, res: Response) => {
       const result = await server.handleListFiles()
       const data = JSON.parse(result.content[0].text)
       res.json({ files: data })
-    } catch (error) {
-      console.error('List files error:', error)
-      res.status(500).json({ error: (error as Error).message })
-    }
-  })
+    })
+  )
 
   // DELETE /api/v1/files - Delete file/source
-  router.delete('/files', async (req: Request, res: Response) => {
-    try {
+  router.delete(
+    '/files',
+    asyncHandler(async (req: Request, res: Response) => {
       const { filePath, source } = req.body as DeleteFileRequest
 
       if (!filePath && !source) {
-        res.status(400).json({ error: 'Either filePath or source is required' })
-        return
+        throw new ValidationError('Either filePath or source is required')
       }
 
       const deleteInput: { filePath?: string; source?: string } = {}
@@ -136,23 +126,18 @@ export function createApiRouter(server: RAGServer): Router {
       const result = await server.handleDeleteFile(deleteInput)
       const data = JSON.parse(result.content[0].text)
       res.json(data)
-    } catch (error) {
-      console.error('Delete file error:', error)
-      res.status(500).json({ error: (error as Error).message })
-    }
-  })
+    })
+  )
 
   // GET /api/v1/status - System status
-  router.get('/status', async (_req: Request, res: Response) => {
-    try {
+  router.get(
+    '/status',
+    asyncHandler(async (_req: Request, res: Response) => {
       const result = await server.handleStatus()
       const data = JSON.parse(result.content[0].text)
       res.json(data)
-    } catch (error) {
-      console.error('Status error:', error)
-      res.status(500).json({ error: (error as Error).message })
-    }
-  })
+    })
+  )
 
   return router
 }

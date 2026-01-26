@@ -7,10 +7,10 @@
  * - Custom path
  *
  * Usage:
- *   npx mcp-local-rag skills install --claude-code          # Project-level
- *   npx mcp-local-rag skills install --claude-code --global # User-level
- *   npx mcp-local-rag skills install --codex                # Codex
- *   npx mcp-local-rag skills install --path /custom/path    # Custom
+ *   npx rag-vault skills install --claude-code          # Project-level
+ *   npx rag-vault skills install --claude-code --global # User-level
+ *   npx rag-vault skills install --codex                # Codex
+ *   npx rag-vault skills install --path /custom/path    # Custom
  */
 
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
@@ -22,10 +22,10 @@ import { dirname, join, resolve } from 'node:path'
 // ============================================
 
 // Skills source directory (relative to dist/bin when compiled)
-// dist/bin/install-skills.js -> dist/skills/mcp-local-rag
-// But skills are actually in package root: skills/mcp-local-rag
-// So from dist/bin, go up twice: ../.. then skills/mcp-local-rag
-const SKILLS_SOURCE = resolve(__dirname, '..', '..', 'skills', 'mcp-local-rag')
+// dist/bin/install-skills.js -> dist/skills/rag-vault
+// But skills are actually in package root: skills/rag-vault
+// So from dist/bin, go up twice: ../.. then skills/rag-vault
+const SKILLS_SOURCE = resolve(__dirname, '..', '..', 'skills', 'rag-vault')
 
 // Codex home directory (supports CODEX_HOME environment variable)
 // https://developers.openai.com/codex/local-config/
@@ -33,10 +33,10 @@ const CODEX_HOME = process.env['CODEX_HOME'] || join(homedir(), '.codex')
 
 // Installation targets
 const TARGETS = {
-  'claude-code-project': './.claude/skills/mcp-local-rag',
-  'claude-code-global': join(homedir(), '.claude', 'skills', 'mcp-local-rag'),
-  'codex-project': './.codex/skills/mcp-local-rag',
-  'codex-global': join(CODEX_HOME, 'skills', 'mcp-local-rag'),
+  'claude-code-project': './.claude/skills/rag-vault',
+  'claude-code-global': join(homedir(), '.claude', 'skills', 'rag-vault'),
+  'codex-project': './.codex/skills/rag-vault',
+  'codex-global': join(CODEX_HOME, 'skills', 'rag-vault'),
 } as const
 
 // ============================================
@@ -120,7 +120,7 @@ function printHelp(): void {
 MCP Local RAG Skills Installer
 
 Usage:
-  npx mcp-local-rag skills install [options]
+  npx rag-vault skills install [options]
 
 Options:
   --claude-code          Install to project-level Claude Code skills
@@ -143,11 +143,11 @@ Options:
   --help, -h             Show this help message
 
 Examples:
-  npx mcp-local-rag skills install --claude-code
-  npx mcp-local-rag skills install --claude-code --global
-  npx mcp-local-rag skills install --codex
-  npx mcp-local-rag skills install --codex --project
-  npx mcp-local-rag skills install --path ./my-skills/
+  npx rag-vault skills install --claude-code
+  npx rag-vault skills install --claude-code --global
+  npx rag-vault skills install --codex
+  npx rag-vault skills install --codex --project
+  npx rag-vault skills install --path ./my-skills/
 `)
 }
 
@@ -161,7 +161,7 @@ function getTargetPath(options: Options): string {
       console.error('Error: Custom path not specified')
       process.exit(1)
     }
-    return resolve(options.customPath, 'mcp-local-rag')
+    return resolve(options.customPath, 'rag-vault')
   }
 
   return TARGETS[options.target]
@@ -221,7 +221,7 @@ export function run(args: string[]): void {
   console.log('Installation complete!')
   console.log()
   console.log('The following skills are now available:')
-  console.log('  - mcp-local-rag (SKILL.md)')
+  console.log('  - rag-vault (SKILL.md)')
   console.log('  - references/html-ingestion.md')
   console.log('  - references/query-optimization.md')
   console.log('  - references/result-refinement.md')

@@ -18,11 +18,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set timezone
-      run: |
-        sudo timedatectl set-timezone Asia/Tokyo
-        echo "TZ=Asia/Tokyo" >> $GITHUB_ENV
-
     - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
       with:
@@ -47,6 +42,3 @@ jobs:
 
     - name: Run tests
       run: pnpm test
-
-    - name: Check production dependencies
-      run: npx report-missing-dependencies

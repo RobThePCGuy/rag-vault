@@ -3,7 +3,7 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { DocumentParser, FileOperationError } from '../index'
+import { DocumentParser, ParserFileOperationError } from '../index'
 
 describe('JSON Parser', () => {
   let parser: DocumentParser
@@ -23,16 +23,19 @@ describe('JSON Parser', () => {
   })
 
   describe('parseFile with .json extension', () => {
-    it('should parse simple flat JSON', async () => {
+    it('should parse simple flat JSON with RAG filtering', async () => {
       const filePath = join(testDir, 'simple.json')
+      // 'name' is an allowlisted key, so short values are kept
+      // numbers and booleans are filtered out (metadata noise)
       const content = { name: 'John', age: 30, active: true }
       await writeFile(filePath, JSON.stringify(content), 'utf-8')
 
       const result = await parser.parseFile(filePath)
 
       expect(result).toContain('name: John')
-      expect(result).toContain('age: 30')
-      expect(result).toContain('active: true')
+      // Numbers and booleans are filtered out
+      expect(result).not.toContain('age')
+      expect(result).not.toContain('active')
     })
 
     it('should parse nested objects with dot notation', async () => {
@@ -42,7 +45,6 @@ describe('JSON Parser', () => {
           name: 'Alice',
           address: {
             city: 'Seattle',
-            zip: '98101',
           },
         },
       }
@@ -50,25 +52,9 @@ describe('JSON Parser', () => {
 
       const result = await parser.parseFile(filePath)
 
+      // 'name' is allowlisted, 'city' is prose-like
       expect(result).toContain('user.name: Alice')
       expect(result).toContain('user.address.city: Seattle')
-      expect(result).toContain('user.address.zip: 98101')
-    })
-
-    it('should parse arrays of primitives as comma-separated values', async () => {
-      const filePath = join(testDir, 'array-primitives.json')
-      const content = {
-        name: 'John',
-        traits: ['brave', 'kind', 'loyal'],
-        scores: [95, 87, 92],
-      }
-      await writeFile(filePath, JSON.stringify(content), 'utf-8')
-
-      const result = await parser.parseFile(filePath)
-
-      expect(result).toContain('name: John')
-      expect(result).toContain('traits: brave, kind, loyal')
-      expect(result).toContain('scores: 95, 87, 92')
     })
 
     it('should parse arrays of objects with indices', async () => {
@@ -89,10 +75,10 @@ describe('JSON Parser', () => {
       expect(result).toContain('characters[1].role: antagonist')
     })
 
-    it('should handle null values', async () => {
+    it('should filter out null values', async () => {
       const filePath = join(testDir, 'null-values.json')
       const content = {
-        name: 'Test',
+        title: 'Test Title Here And More',
         value: null,
         nested: { inner: null },
       }
@@ -100,23 +86,25 @@ describe('JSON Parser', () => {
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('name: Test')
-      expect(result).toContain('value: null')
-      expect(result).toContain('nested.inner: null')
+      expect(result).toContain('title: Test Title Here And More')
+      // Null values are filtered out
+      expect(result).not.toContain('value')
+      expect(result).not.toContain('inner')
     })
 
-    it('should handle empty arrays', async () => {
+    it('should filter out empty arrays', async () => {
       const filePath = join(testDir, 'empty-array.json')
       const content = {
-        name: 'Test',
+        title: 'Test Title Here And More',
         items: [],
       }
       await writeFile(filePath, JSON.stringify(content), 'utf-8')
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('name: Test')
-      expect(result).toContain('items: []')
+      expect(result).toContain('title: Test Title Here And More')
+      // Empty arrays are filtered out
+      expect(result).not.toContain('items')
     })
 
     it('should handle empty objects', async () => {
@@ -129,20 +117,18 @@ describe('JSON Parser', () => {
       expect(result).toBe('')
     })
 
-    it('should handle special characters in values', async () => {
+    it('should handle special characters in long values', async () => {
       const filePath = join(testDir, 'special-chars.json')
       const content = {
-        description: 'Line 1\nLine 2',
-        quote: 'He said "Hello"',
-        path: '/usr/local/bin',
+        description: 'Line 1\nLine 2 with more text here',
+        quote: 'He said "Hello my friend how are you"',
       }
       await writeFile(filePath, JSON.stringify(content), 'utf-8')
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('description: Line 1\nLine 2')
-      expect(result).toContain('quote: He said "Hello"')
-      expect(result).toContain('path: /usr/local/bin')
+      expect(result).toContain('description: Line 1\nLine 2 with more text here')
+      expect(result).toContain('quote: He said "Hello my friend how are you"')
     })
 
     it('should handle deeply nested structures', async () => {
@@ -152,7 +138,7 @@ describe('JSON Parser', () => {
           level2: {
             level3: {
               level4: {
-                value: 'deep',
+                description: 'A deeply nested description value',
               },
             },
           },
@@ -162,21 +148,23 @@ describe('JSON Parser', () => {
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('level1.level2.level3.level4.value: deep')
+      expect(result).toContain(
+        'level1.level2.level3.level4.description: A deeply nested description value'
+      )
     })
 
-    it('should handle mixed content (objects and arrays)', async () => {
+    it('should handle mixed content (objects and arrays) with filtering', async () => {
       const filePath = join(testDir, 'mixed.json')
       const content = {
-        title: 'Book',
+        title: 'Book Title Goes Here',
         chapters: [
           {
-            number: 1,
-            scenes: ['opening', 'conflict'],
+            name: 'Chapter One',
+            scenes: ['opening scene description', 'conflict scene description'],
           },
           {
-            number: 2,
-            scenes: ['resolution'],
+            name: 'Chapter Two',
+            scenes: ['resolution scene description'],
           },
         ],
       }
@@ -184,16 +172,19 @@ describe('JSON Parser', () => {
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('title: Book')
-      expect(result).toContain('chapters[0].number: 1')
-      expect(result).toContain('chapters[0].scenes: opening, conflict')
-      expect(result).toContain('chapters[1].number: 2')
-      expect(result).toContain('chapters[1].scenes: resolution')
+      expect(result).toContain('title: Book Title Goes Here')
+      expect(result).toContain('chapters[0].name: Chapter One')
+      expect(result).toContain(
+        'chapters[0].scenes: opening scene description, conflict scene description'
+      )
+      expect(result).toContain('chapters[1].name: Chapter Two')
+      expect(result).toContain('chapters[1].scenes: resolution scene description')
     })
 
-    it('should handle boolean values', async () => {
+    it('should filter out boolean values (metadata noise)', async () => {
       const filePath = join(testDir, 'booleans.json')
       const content = {
+        title: 'A meaningful title here',
         active: true,
         deleted: false,
       }
@@ -201,13 +192,15 @@ describe('JSON Parser', () => {
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('active: true')
-      expect(result).toContain('deleted: false')
+      expect(result).toContain('title: A meaningful title here')
+      expect(result).not.toContain('active')
+      expect(result).not.toContain('deleted')
     })
 
-    it('should handle numeric values including zero', async () => {
+    it('should filter out numeric values (metadata noise)', async () => {
       const filePath = join(testDir, 'numbers.json')
       const content = {
+        title: 'A meaningful title here',
         count: 0,
         price: 19.99,
         negative: -5,
@@ -216,80 +209,218 @@ describe('JSON Parser', () => {
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('count: 0')
-      expect(result).toContain('price: 19.99')
-      expect(result).toContain('negative: -5')
+      expect(result).toContain('title: A meaningful title here')
+      expect(result).not.toContain('count')
+      expect(result).not.toContain('price')
+      expect(result).not.toContain('negative')
     })
   })
 
-  describe('error handling', () => {
-    it('should throw FileOperationError for invalid JSON syntax', async () => {
-      const filePath = join(testDir, 'invalid.json')
-      await writeFile(filePath, '{ invalid json }', 'utf-8')
-
-      await expect(parser.parseFile(filePath)).rejects.toThrow(
-        expect.objectContaining({
-          name: 'FileOperationError',
-          message: expect.stringMatching(/invalid syntax/),
-        })
-      )
-    })
-
-    it('should throw FileOperationError for non-existent JSON file', async () => {
-      const filePath = join(testDir, 'nonexistent.json')
-
-      await expect(parser.parseFile(filePath)).rejects.toThrow(FileOperationError)
-    })
-
-    it('should handle JSON with only a primitive value at root', async () => {
-      const filePath = join(testDir, 'primitive-root.json')
-      await writeFile(filePath, '"just a string"', 'utf-8')
-
-      const result = await parser.parseFile(filePath)
-
-      expect(result).toBe('just a string')
-    })
-
-    it('should handle JSON array at root level', async () => {
-      const filePath = join(testDir, 'array-root.json')
-      await writeFile(filePath, '[1, 2, 3]', 'utf-8')
-
-      const result = await parser.parseFile(filePath)
-
-      expect(result).toBe('1, 2, 3')
-    })
-
-    it('should handle JSON array of objects at root level', async () => {
-      const filePath = join(testDir, 'array-objects-root.json')
-      const content = [
-        { id: 1, name: 'First' },
-        { id: 2, name: 'Second' },
-      ]
-      await writeFile(filePath, JSON.stringify(content), 'utf-8')
-
-      const result = await parser.parseFile(filePath)
-
-      expect(result).toContain('[0].id: 1')
-      expect(result).toContain('[0].name: First')
-      expect(result).toContain('[1].id: 2')
-      expect(result).toContain('[1].name: Second')
-    })
-  })
-
-  describe('large JSON handling', () => {
-    it('should handle JSON with many keys', async () => {
-      const filePath = join(testDir, 'many-keys.json')
-      const content: Record<string, number> = {}
-      for (let i = 0; i < 100; i++) {
-        content[`key${i}`] = i
+  describe('RAG content filtering', () => {
+    it('should keep strings >= 20 characters regardless of key', async () => {
+      const filePath = join(testDir, 'long-strings.json')
+      const content = {
+        arbitrary_key: 'This is a long string with more than twenty characters',
+        id: 'Short but kept for its length if over twenty chars',
       }
       await writeFile(filePath, JSON.stringify(content), 'utf-8')
 
       const result = await parser.parseFile(filePath)
 
-      expect(result).toContain('key0: 0')
-      expect(result).toContain('key50: 50')
-      expect(result).toContain('key99: 99')
+      expect(result).toContain(
+        'arbitrary_key: This is a long string with more than twenty characters'
+      )
+      expect(result).toContain('id: Short but kept for its length if over twenty chars')
+    })
+
+    it('should keep short prose-like strings with allowlisted keys', async () => {
+      const filePath = join(testDir, 'allowlisted-keys.json')
+      const content = {
+        title: 'The Beginning',
+        name: 'Alice',
+        speaker: 'Bob',
+        heading: 'Chapter One',
+        caption: 'A photo',
+        scene: 'Opening',
+        chapter: 'One',
+        dialogue: 'Hello',
+        description: 'Dark',
+        content: 'Text',
+        body: 'Main',
+        message: 'Hi',
+        note: 'Note',
+        comment: 'Yes',
+        label: 'Tag',
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      // All allowlisted keys with prose-like values should be kept
+      expect(result).toContain('title: The Beginning')
+      expect(result).toContain('name: Alice')
+      expect(result).toContain('speaker: Bob')
+      expect(result).toContain('heading: Chapter One')
+    })
+
+    it('should filter out code-like strings even with allowlisted keys', async () => {
+      const filePath = join(testDir, 'code-in-allowlist.json')
+      const content = {
+        name: 'usr_12345',
+        title: '550e8400-e29b-41d4-a716-446655440000',
+        label: 'ABC_123',
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      // Code-like values should be filtered even with allowlisted keys
+      expect(result).not.toContain('usr_12345')
+      expect(result).not.toContain('550e8400')
+      expect(result).not.toContain('ABC_123')
+    })
+
+    it('should filter out GUID strings', async () => {
+      const filePath = join(testDir, 'guids.json')
+      const content = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        uuid: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        reference: 'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE',
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      expect(result).toBe('')
+    })
+
+    it('should filter out ID-like strings with underscore patterns', async () => {
+      const filePath = join(testDir, 'ids.json')
+      const content = {
+        user_id: 'USR_001',
+        order: '123_order',
+        status: 'ACTIVE_V2',
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      expect(result).toBe('')
+    })
+
+    it('should filter out hex-like strings', async () => {
+      const filePath = join(testDir, 'hex.json')
+      const content = {
+        hash: 'a1b2c3d4e5f6',
+        token: 'abc123def456',
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      expect(result).toBe('')
+    })
+
+    it('should keep prose-like short strings without allowlisted keys', async () => {
+      const filePath = join(testDir, 'prose-no-allowlist.json')
+      const content = {
+        author: 'Alice',
+        setting: 'London',
+        mood: 'Dark',
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      // Prose-like strings should be kept
+      expect(result).toContain('author: Alice')
+      expect(result).toContain('setting: London')
+      expect(result).toContain('mood: Dark')
+    })
+
+    it('should filter arrays of primitives by same rules', async () => {
+      const filePath = join(testDir, 'arrays-filtering.json')
+      const content = {
+        names: ['Alice', 'Bob', 'Charlie'],
+        ids: ['usr_001', 'usr_002'],
+        numbers: [1, 2, 3],
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      // Prose-like array values kept
+      expect(result).toContain('names: Alice, Bob, Charlie')
+      // Code-like array values and numbers filtered
+      expect(result).not.toContain('ids')
+      expect(result).not.toContain('numbers')
+    })
+  })
+
+  describe('error handling', () => {
+    it('should fallback to JSONL parsing on JSON syntax error', async () => {
+      const filePath = join(testDir, 'jsonl-in-json.json')
+      // JSONL content in a .json file
+      const content = `{"title": "First Entry Title Here"}
+{"title": "Second Entry Title Here"}`
+      await writeFile(filePath, content, 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      expect(result).toContain('[0].title: First Entry Title Here')
+      expect(result).toContain('[1].title: Second Entry Title Here')
+    })
+
+    it('should throw FileOperationError for completely invalid content', async () => {
+      const filePath = join(testDir, 'invalid.json')
+      await writeFile(filePath, 'not json at all { broken', 'utf-8')
+
+      // With JSONL fallback, this should return empty (no valid lines)
+      const result = await parser.parseFile(filePath)
+      expect(result).toBe('')
+    })
+
+    it('should throw FileOperationError for non-existent JSON file', async () => {
+      const filePath = join(testDir, 'nonexistent.json')
+
+      await expect(parser.parseFile(filePath)).rejects.toThrow(ParserFileOperationError)
+    })
+
+    it('should handle JSON with only a primitive string at root', async () => {
+      const filePath = join(testDir, 'primitive-root.json')
+      await writeFile(filePath, '"This is a long string at root level"', 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      expect(result).toBe('This is a long string at root level')
+    })
+
+    it('should handle JSON array of objects at root level', async () => {
+      const filePath = join(testDir, 'array-objects-root.json')
+      const content = [{ name: 'First Character Name' }, { name: 'Second Character Name' }]
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      expect(result).toContain('[0].name: First Character Name')
+      expect(result).toContain('[1].name: Second Character Name')
+    })
+  })
+
+  describe('large JSON handling', () => {
+    it('should handle JSON with many string keys', async () => {
+      const filePath = join(testDir, 'many-keys.json')
+      const content: Record<string, string> = {}
+      for (let i = 0; i < 100; i++) {
+        content[`description${i}`] = `This is description number ${i} with enough text`
+      }
+      await writeFile(filePath, JSON.stringify(content), 'utf-8')
+
+      const result = await parser.parseFile(filePath)
+
+      expect(result).toContain('description0: This is description number 0 with enough text')
+      expect(result).toContain('description50: This is description number 50 with enough text')
+      expect(result).toContain('description99: This is description number 99 with enough text')
     })
 
     it('should handle JSON with long string values', async () => {

@@ -1,6 +1,6 @@
 {
   "name": "rag-vault",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Local RAG MCP Server - Easy-to-setup document search with minimal configuration",
   "main": "dist/index.js",
   "bin": {
@@ -59,12 +59,12 @@
     "test:safe": "pnpm test && pnpm cleanup:processes",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit",
-    "ui:build": "cd web-ui && pnpm build",
+    "setup": "pnpm install && pnpm web:build && pnpm install --prefix web-ui && pnpm ui:build && pnpm web:dev",
+    "ui:build": "pnpm build --prefix web-ui",
     "ui:dev": "cd web-ui && pnpm dev",
-    "watch": "tsx watch src/index.ts",
     "web": "tsx src/web/index.ts",
-    "web:build": "pnpm build && cd web-ui && pnpm build",
-    "web:dev": "tsx watch src/web/index.ts",
+    "web:build": "pnpm build",
+    "web:dev": "concurrently -n api,ui -c blue,magenta \"tsx watch src/web/index.ts\" \"pnpm --prefix web-ui dev\"",
     "web:start": "node dist/web/index.js"
   },
   "dependencies": {
@@ -90,6 +90,7 @@
     "@types/node": "^20.0.0",
     "@types/turndown": "5.0.6",
     "@vitest/coverage-v8": "^4.0.18",
+    "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "knip": "^5.61.0",
     "lint-staged": "^16.2.7",
@@ -114,6 +115,13 @@
       "tar": ">=7.5.4",
       "hono": ">=4.11.4",
       "diff": ">=4.0.4"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "onnxruntime-node",
+      "protobufjs",
+      "rag-vault",
+      "sharp"
+    ]
   }
 }

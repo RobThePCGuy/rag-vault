@@ -3,6 +3,77 @@
 import { statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { extname, isAbsolute, resolve } from 'node:path'
+
+// ============================================
+// RAG Content Filtering Constants
+// ============================================
+
+/**
+ * Minimum character threshold for string inclusion
+ * Strings >= 20 chars are always included
+ */
+const MIN_STRING_LENGTH = 20
+
+/**
+ * Key allowlist for prose-related fields (case-insensitive partial match)
+ * These keys likely contain meaningful text even if short
+ */
+const PROSE_KEYS = [
+  'title',
+  'name',
+  'heading',
+  'caption',
+  'summary',
+  'scene',
+  'chapter',
+  'section',
+  'speaker',
+  'dialogue',
+  'line',
+  'text',
+  'description',
+  'content',
+  'body',
+  'message',
+  'note',
+  'comment',
+  'label',
+]
+
+/**
+ * Check if string looks like code/ID (should be filtered)
+ * Examples: "abc123-def456", "USR_001", "a1b2c3d4e5f6", GUIDs
+ */
+function looksLikeCode(str: string): boolean {
+  // GUID pattern: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)) {
+    return true
+  }
+  // Mostly digits, underscores, or hex characters (>50% non-letter)
+  const nonLetterRatio = (str.match(/[^a-zA-Z\s]/g) || []).length / str.length
+  if (nonLetterRatio > 0.5) {
+    return true
+  }
+  // Contains underscore - typical of IDs (e.g., USR_001, ACTIVE_V2, user_id)
+  if (str.includes('_')) {
+    return true
+  }
+  // Ends with digit suffix typical of IDs (e.g., V2, rev3)
+  if (/[A-Z]\d+$/.test(str) || /^\d+[A-Z]/.test(str)) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Check if string looks like prose (should be kept)
+ * Examples: "Alice", "The Beginning", "Chapter One"
+ */
+function looksLikeProse(str: string): boolean {
+  // Mostly letters and spaces with optional punctuation
+  const proseRatio = (str.match(/[a-zA-Z\s]/g) || []).length / str.length
+  return proseRatio >= 0.7
+}
 import mammoth from 'mammoth'
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
@@ -23,28 +94,30 @@ export interface ParserConfig {
 }
 
 /**
- * Validation error (equivalent to 400)
+ * Parser validation error (equivalent to 400)
+ * Named to avoid collision with centralized ValidationError in src/errors/index.ts
  */
-export class ValidationError extends Error {
+export class ParserValidationError extends Error {
   constructor(
     message: string,
     public override readonly cause?: Error
   ) {
     super(message)
-    this.name = 'ValidationError'
+    this.name = 'ParserValidationError'
   }
 }
 
 /**
- * File operation error (equivalent to 500)
+ * Parser file operation error (equivalent to 500)
+ * Named to avoid collision with centralized FileOperationError in src/errors/index.ts
  */
-export class FileOperationError extends Error {
+export class ParserFileOperationError extends Error {
   constructor(
     message: string,
     public override readonly cause?: Error
   ) {
     super(message)
-    this.name = 'FileOperationError'
+    this.name = 'ParserFileOperationError'
   }
 }
 
@@ -71,12 +144,12 @@ export class DocumentParser {
    * File path validation (Absolute path requirement + Path traversal prevention)
    *
    * @param filePath - File path to validate (must be absolute)
-   * @throws ValidationError - When path is not absolute or outside BASE_DIR
+   * @throws ParserValidationError - When path is not absolute or outside BASE_DIR
    */
   validateFilePath(filePath: string): void {
     // Check if path is absolute
     if (!isAbsolute(filePath)) {
-      throw new ValidationError(
+      throw new ParserValidationError(
         `File path must be absolute path (received: ${filePath}). Please provide an absolute path within BASE_DIR.`
       )
     }
@@ -86,7 +159,7 @@ export class DocumentParser {
     const normalizedPath = resolve(filePath)
 
     if (!normalizedPath.startsWith(baseDir)) {
-      throw new ValidationError(
+      throw new ParserValidationError(
         `File path must be within BASE_DIR (${baseDir}). Received path outside BASE_DIR: ${filePath}`
       )
     }
@@ -96,22 +169,22 @@ export class DocumentParser {
    * File size validation (100MB limit)
    *
    * @param filePath - File path to validate
-   * @throws ValidationError - When file size exceeds limit
-   * @throws FileOperationError - When file read fails
+   * @throws ParserValidationError - When file size exceeds limit
+   * @throws ParserFileOperationError - When file read fails
    */
   validateFileSize(filePath: string): void {
     try {
       const stats = statSync(filePath)
       if (stats.size > this.config.maxFileSize) {
-        throw new ValidationError(
+        throw new ParserValidationError(
           `File size exceeds limit: ${stats.size} > ${this.config.maxFileSize}`
         )
       }
     } catch (error) {
-      if (error instanceof ValidationError) {
+      if (error instanceof ParserValidationError) {
         throw error
       }
-      throw new FileOperationError(`Failed to check file size: ${filePath}`, error as Error)
+      throw new ParserFileOperationError(`Failed to check file size: ${filePath}`, error as Error)
     }
   }
 
@@ -120,8 +193,8 @@ export class DocumentParser {
    *
    * @param filePath - File path to parse
    * @returns Parsed text
-   * @throws ValidationError - Path traversal, size exceeded, unsupported format
-   * @throws FileOperationError - File read failed, parse failed
+   * @throws ParserValidationError - Path traversal, size exceeded, unsupported format
+   * @throws ParserFileOperationError - File read failed, parse failed
    */
   async parseFile(filePath: string): Promise<string> {
     // Validation
@@ -139,8 +212,11 @@ export class DocumentParser {
         return await this.parseMd(filePath)
       case '.json':
         return await this.parseJson(filePath)
+      case '.jsonl':
+      case '.ndjson':
+        return await this.parseJsonl(filePath)
       default:
-        throw new ValidationError(`Unsupported file format: ${ext}`)
+        throw new ParserValidationError(`Unsupported file format: ${ext}`)
     }
   }
 
@@ -155,7 +231,7 @@ export class DocumentParser {
    * @param filePath - PDF file path
    * @param embedder - Embedder for semantic header/footer detection
    * @returns Parsed text with header/footer removed
-   * @throws FileOperationError - File read failed, parse failed
+   * @throws ParserFileOperationError - File read failed, parse failed
    */
   async parsePdf(filePath: string, embedder: EmbedderInterface): Promise<string> {
     // Validation
@@ -197,7 +273,7 @@ export class DocumentParser {
 
       return text
     } catch (error) {
-      throw new FileOperationError(`Failed to parse PDF: ${filePath}`, error as Error)
+      throw new ParserFileOperationError(`Failed to parse PDF: ${filePath}`, error as Error)
     }
   }
 
@@ -206,7 +282,7 @@ export class DocumentParser {
    *
    * @param filePath - DOCX file path
    * @returns Parsed text
-   * @throws FileOperationError - File read failed, parse failed
+   * @throws ParserFileOperationError - File read failed, parse failed
    */
   private async parseDocx(filePath: string): Promise<string> {
     try {
@@ -214,7 +290,7 @@ export class DocumentParser {
       console.error(`Parsed DOCX: ${filePath} (${result.value.length} characters)`)
       return result.value
     } catch (error) {
-      throw new FileOperationError(`Failed to parse DOCX: ${filePath}`, error as Error)
+      throw new ParserFileOperationError(`Failed to parse DOCX: ${filePath}`, error as Error)
     }
   }
 
@@ -223,7 +299,7 @@ export class DocumentParser {
    *
    * @param filePath - TXT file path
    * @returns Parsed text
-   * @throws FileOperationError - File read failed
+   * @throws ParserFileOperationError - File read failed
    */
   private async parseTxt(filePath: string): Promise<string> {
     try {
@@ -231,7 +307,7 @@ export class DocumentParser {
       console.error(`Parsed TXT: ${filePath} (${text.length} characters)`)
       return text
     } catch (error) {
-      throw new FileOperationError(`Failed to parse TXT: ${filePath}`, error as Error)
+      throw new ParserFileOperationError(`Failed to parse TXT: ${filePath}`, error as Error)
     }
   }
 
@@ -240,7 +316,7 @@ export class DocumentParser {
    *
    * @param filePath - MD file path
    * @returns Parsed text
-   * @throws FileOperationError - File read failed
+   * @throws ParserFileOperationError - File read failed
    */
   private async parseMd(filePath: string): Promise<string> {
     try {
@@ -248,7 +324,7 @@ export class DocumentParser {
       console.error(`Parsed MD: ${filePath} (${text.length} characters)`)
       return text
     } catch (error) {
-      throw new FileOperationError(`Failed to parse MD: ${filePath}`, error as Error)
+      throw new ParserFileOperationError(`Failed to parse MD: ${filePath}`, error as Error)
     }
   }
 
@@ -259,42 +335,125 @@ export class DocumentParser {
    * - Preserves field names for keyword matching
    * - Flattens nested structures with dot notation
    * - Handles arrays by joining values
+   * - Falls back to JSONL parsing if JSON syntax fails
    *
    * @param filePath - JSON file path
    * @returns Parsed text in "key: value" format
-   * @throws FileOperationError - File read failed or invalid JSON
+   * @throws ParserFileOperationError - File read failed or invalid JSON/JSONL
    */
   private async parseJson(filePath: string): Promise<string> {
     try {
       const content = await readFile(filePath, 'utf-8')
-      const data = JSON.parse(content)
-      const text = this.jsonToText(data)
-      console.error(`Parsed JSON: ${filePath} (${text.length} characters)`)
-      return text
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new FileOperationError(`Failed to parse JSON (invalid syntax): ${filePath}`, error)
+      try {
+        const data = JSON.parse(content)
+        const text = this.jsonToText(data)
+        console.error(`Parsed JSON: ${filePath} (${text.length} characters)`)
+        return text
+      } catch (e) {
+        if (e instanceof SyntaxError) {
+          // Fallback: try parsing as JSONL
+          console.error(`JSON parse failed, attempting JSONL fallback: ${filePath}`)
+          return this.parseJsonlContent(content, filePath)
+        }
+        throw e
       }
-      throw new FileOperationError(`Failed to parse JSON: ${filePath}`, error as Error)
+    } catch (error) {
+      if (error instanceof ParserFileOperationError) throw error
+      throw new ParserFileOperationError(`Failed to parse JSON: ${filePath}`, error as Error)
     }
   }
 
   /**
-   * Convert JSON value to searchable text format
+   * JSONL parsing - parses line-delimited JSON files
+   *
+   * @param filePath - JSONL file path
+   * @returns Parsed text from all valid JSON objects
+   * @throws ParserFileOperationError - File read failed
+   */
+  private async parseJsonl(filePath: string): Promise<string> {
+    try {
+      const content = await readFile(filePath, 'utf-8')
+      return this.parseJsonlContent(content, filePath)
+    } catch (error) {
+      if (error instanceof ParserFileOperationError) throw error
+      throw new ParserFileOperationError(`Failed to parse JSONL: ${filePath}`, error as Error)
+    }
+  }
+
+  /**
+   * Parse JSONL content (shared logic for parseJsonl and JSON fallback)
+   *
+   * @param content - Raw file content
+   * @param filePath - File path (for logging)
+   * @returns Parsed text from all valid JSON objects
+   */
+  private parseJsonlContent(content: string, filePath: string): string {
+    const lines = content.split('\n').filter((line) => line.trim())
+    const results: string[] = []
+
+    for (const [i, line] of lines.entries()) {
+      try {
+        const data = JSON.parse(line)
+        const text = this.jsonToText(data, `[${i}]`)
+        if (text.length > 0) results.push(text)
+      } catch {
+        // Skip malformed lines, continue processing
+        console.error(`JSONL line ${i + 1} skipped (invalid JSON)`)
+      }
+    }
+
+    console.error(`Parsed JSONL: ${filePath} (${results.length} objects)`)
+    return results.join('\n')
+  }
+
+  /**
+   * Determine if a string value should be included based on RAG filtering rules
+   *
+   * Rules:
+   * 1. Exclude code-like strings (GUIDs, hex, underscore patterns) regardless of length
+   * 2. Keep strings >= 20 chars if they pass code check
+   * 3. Keep short strings with allowlisted keys if prose-like
+   * 4. Keep other short strings only if prose-like
+   *
+   * @param value - String value to check
+   * @param key - Field key name
+   * @returns true if the string should be included
+   */
+  private shouldIncludeString(value: string, key: string): boolean {
+    // Always exclude code-like strings, regardless of length
+    if (looksLikeCode(value)) return false
+
+    // Include strings >= 20 chars (already passed code check)
+    if (value.length >= MIN_STRING_LENGTH) return true
+
+    // Check key allowlist (case-insensitive partial match)
+    const keyLower = key.toLowerCase()
+    if (PROSE_KEYS.some((pk) => keyLower.includes(pk))) {
+      return true // Keep if allowlisted key (already passed code check)
+    }
+
+    // For other keys, only keep if it looks like prose
+    return looksLikeProse(value)
+  }
+
+  /**
+   * Convert JSON value to searchable text format with RAG-appropriate filtering
+   *
+   * Filtering rules:
+   * - Numbers and booleans are excluded (metadata noise)
+   * - Null/undefined values are excluded
+   * - Empty arrays/objects are excluded
+   * - Strings are filtered by shouldIncludeString rules
    *
    * @param value - JSON value (object, array, or primitive)
    * @param prefix - Key prefix for nested objects (dot notation)
    * @returns Text representation
    */
   private jsonToText(value: unknown, prefix = ''): string {
-    if (value === null || value === undefined) {
-      return prefix ? `${prefix}: null` : ''
-    }
+    if (value === null || value === undefined) return ''
 
     if (Array.isArray(value)) {
-      if (value.length === 0) {
-        return prefix ? `${prefix}: []` : ''
-      }
+      if (value.length === 0) return ''
       // Check if array contains objects
       if (typeof value[0] === 'object' && value[0] !== null) {
         // Array of objects: process each with index
@@ -305,9 +464,13 @@ export class DocumentParser {
           .filter((text) => text.length > 0)
           .join('\n')
       }
-      // Array of primitives: join values
-      const joined = value.map((v) => String(v)).join(', ')
-      return prefix ? `${prefix}: ${joined}` : joined
+      // Array of primitives: filter by same rules
+      const key = prefix.split('.').pop() || ''
+      const validStrings = value
+        .filter((v) => typeof v === 'string' && this.shouldIncludeString(v, key))
+        .map((v) => String(v))
+      if (validStrings.length === 0) return ''
+      return prefix ? `${prefix}: ${validStrings.join(', ')}` : validStrings.join(', ')
     }
 
     if (typeof value === 'object') {
@@ -322,8 +485,15 @@ export class DocumentParser {
       return lines.join('\n')
     }
 
-    // Primitive value
-    const strValue = String(value)
-    return prefix ? `${prefix}: ${strValue}` : strValue
+    // String filtering with smart rules
+    if (typeof value === 'string') {
+      const key = prefix.split('.').pop() || ''
+      if (this.shouldIncludeString(value, key)) {
+        return prefix ? `${prefix}: ${value}` : value
+      }
+    }
+
+    // Skip numbers and booleans (metadata noise)
+    return ''
   }
 }

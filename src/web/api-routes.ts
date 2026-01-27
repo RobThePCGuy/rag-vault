@@ -1,10 +1,12 @@
 // REST API routes for web frontend
 
+import path from 'node:path'
 import type { Request, Response, Router } from 'express'
 import { Router as createRouter } from 'express'
 import { ValidationError } from '../errors/index.js'
 import type { RAGServer } from '../server/index.js'
 import { asyncHandler } from './middleware/index.js'
+import type { ServerAccessor } from './types.js'
 
 /**
  * Search request body
@@ -35,9 +37,18 @@ interface DeleteFileRequest {
 
 /**
  * Create API router with all endpoints
+ * @param serverOrAccessor - RAGServer instance or accessor function
  */
-export function createApiRouter(server: RAGServer): Router {
+export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): Router {
   const router = createRouter()
+
+  // Helper to get server (supports both direct instance and accessor function)
+  const getServer = (): RAGServer => {
+    if (typeof serverOrAccessor === 'function') {
+      return serverOrAccessor()
+    }
+    return serverOrAccessor
+  }
 
   // POST /api/v1/search - Search documents
   router.post(
@@ -53,6 +64,7 @@ export function createApiRouter(server: RAGServer): Router {
       if (limit !== undefined) {
         queryInput.limit = limit
       }
+      const server = getServer()
       const result = await server.handleQueryDocuments(queryInput)
       const data = JSON.parse(result.content[0].text)
       res.json({ results: data })
@@ -69,8 +81,10 @@ export function createApiRouter(server: RAGServer): Router {
         throw new ValidationError('No file uploaded')
       }
 
-      // Use the uploaded file path
-      const result = await server.handleIngestFile({ filePath: file.path })
+      // Use the uploaded file path (convert to absolute)
+      const server = getServer()
+      const absolutePath = path.resolve(file.path)
+      const result = await server.handleIngestFile({ filePath: absolutePath })
       const data = JSON.parse(result.content[0].text)
       res.json(data)
     })
@@ -90,6 +104,7 @@ export function createApiRouter(server: RAGServer): Router {
         throw new ValidationError('Metadata with source and format is required')
       }
 
+      const server = getServer()
       const result = await server.handleIngestData({ content, metadata })
       const data = JSON.parse(result.content[0].text)
       res.json(data)
@@ -100,6 +115,7 @@ export function createApiRouter(server: RAGServer): Router {
   router.get(
     '/files',
     asyncHandler(async (_req: Request, res: Response) => {
+      const server = getServer()
       const result = await server.handleListFiles()
       const data = JSON.parse(result.content[0].text)
       res.json({ files: data })
@@ -123,6 +139,7 @@ export function createApiRouter(server: RAGServer): Router {
       if (source !== undefined) {
         deleteInput.source = source
       }
+      const server = getServer()
       const result = await server.handleDeleteFile(deleteInput)
       const data = JSON.parse(result.content[0].text)
       res.json(data)
@@ -133,6 +150,7 @@ export function createApiRouter(server: RAGServer): Router {
   router.get(
     '/status',
     asyncHandler(async (_req: Request, res: Response) => {
+      const server = getServer()
       const result = await server.handleStatus()
       const data = JSON.parse(result.content[0].text)
       res.json(data)

@@ -16,7 +16,8 @@ async function main(): Promise<void> {
   try {
     // Dynamic imports to avoid loading heavy modules at CLI parse time
     const { RAGServer } = await import('../server/index.js')
-    const { createHttpServer, startServer } = await import('./http-server.js')
+    const { createHttpServerWithManager, startServer } = await import('./http-server.js')
+    const { DatabaseManager } = await import('./database-manager.js')
 
     // Configuration from environment
     const port = Number.parseInt(process.env['WEB_PORT'] || '3000', 10)
@@ -42,12 +43,15 @@ async function main(): Promise<void> {
     console.log('Starting RAG Web Server...')
     console.log('Configuration:', { ...config, port, uploadDir, staticDir })
 
-    // Initialize RAGServer
-    const ragServer = new RAGServer(config)
-    await ragServer.initialize()
+    // Create DatabaseManager with server factory
+    const { dbPath, ...baseConfig } = config
+    const dbManager = new DatabaseManager((cfg) => new RAGServer(cfg), baseConfig)
 
-    // Create and start HTTP server
-    const httpConfig: Parameters<typeof createHttpServer>[1] = {
+    // Initialize with the configured database
+    await dbManager.initialize(dbPath)
+
+    // Create and start HTTP server with DatabaseManager
+    const httpConfig: Parameters<typeof createHttpServerWithManager>[1] = {
       port,
       uploadDir,
     }
@@ -55,7 +59,7 @@ async function main(): Promise<void> {
       httpConfig.staticDir = staticDir
     }
 
-    const app = await createHttpServer(ragServer, httpConfig)
+    const app = await createHttpServerWithManager(dbManager, httpConfig)
 
     await startServer(app, port)
 

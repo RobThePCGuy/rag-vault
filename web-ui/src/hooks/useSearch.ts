@@ -4,12 +4,14 @@ import { searchDocuments, type SearchResult } from '../api/client'
 
 export function useSearch() {
   const [results, setResults] = useState<SearchResult[]>([])
+  const [hasSearched, setHasSearched] = useState(false)
 
   const mutation = useMutation({
     mutationFn: ({ query, limit }: { query: string; limit?: number }) =>
       searchDocuments(query, limit),
     onSuccess: (data) => {
       setResults(data)
+      setHasSearched(true)
     },
   })
 
@@ -19,6 +21,7 @@ export function useSearch() {
 
   const clear = () => {
     setResults([])
+    setHasSearched(false)
   }
 
   return {
@@ -27,5 +30,6 @@ export function useSearch() {
     clear,
     isLoading: mutation.isPending,
     error: mutation.error,
+    hasSearched,
   }
 }

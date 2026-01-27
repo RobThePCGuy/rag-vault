@@ -2,7 +2,7 @@ import { SearchBox, SearchResults } from '../components/Search'
 import { useSearch } from '../hooks'
 
 export function SearchPage() {
-  const { results, search, isLoading, error } = useSearch()
+  const { results, search, isLoading, error, hasSearched } = useSearch()
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -24,13 +24,13 @@ export function SearchPage() {
         </div>
       )}
 
-      {!isLoading && results.length === 0 && !error && (
+      {!isLoading && !hasSearched && !error && (
         <div className="text-center py-12 text-gray-500">
           <p>Enter a search query to find relevant documents.</p>
         </div>
       )}
 
-      <SearchResults results={results} />
+      <SearchResults results={results} hasSearched={hasSearched && !isLoading} />
     </div>
   )
 }

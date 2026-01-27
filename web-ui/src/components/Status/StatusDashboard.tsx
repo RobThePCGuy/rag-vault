@@ -7,18 +7,18 @@ interface StatusDashboardProps {
 export function StatusDashboard({ status }: StatusDashboardProps) {
   const metrics = [
     {
-      label: 'Total Documents',
-      value: status.totalDocuments.toString(),
+      label: 'Documents',
+      value: status.documentCount.toString(),
       icon: DocumentIcon,
     },
     {
-      label: 'Total Chunks',
-      value: status.totalChunks.toString(),
+      label: 'Chunks',
+      value: status.chunkCount.toString(),
       icon: ChunkIcon,
     },
     {
-      label: 'Database Size',
-      value: formatBytes(status.dbSizeBytes),
+      label: 'Memory Usage',
+      value: formatBytes(status.memoryUsage * 1024 * 1024), // Convert MB to bytes
       icon: DatabaseIcon,
     },
   ]
@@ -42,22 +42,39 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
         ))}
       </div>
 
-      {/* Configuration */}
+      {/* System Info */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Configuration</h2>
+        <h2 className="text-lg font-medium text-gray-900 mb-4">System Info</h2>
         <dl className="space-y-3">
           <div className="flex justify-between">
-            <dt className="text-gray-500">Model</dt>
-            <dd className="text-gray-900 font-mono text-sm">{status.modelName}</dd>
+            <dt className="text-gray-500">Search Mode</dt>
+            <dd className="text-gray-900 font-mono text-sm">{status.searchMode}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500">Database Path</dt>
-            <dd className="text-gray-900 font-mono text-sm">{status.dbPath}</dd>
+            <dt className="text-gray-500">FTS Index</dt>
+            <dd className="text-gray-900 font-mono text-sm">{status.ftsIndexEnabled ? 'Enabled' : 'Disabled'}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-500">Uptime</dt>
+            <dd className="text-gray-900 font-mono text-sm">{formatUptime(status.uptime)}</dd>
           </div>
         </dl>
       </div>
     </div>
   )
+}
+
+function formatUptime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = Math.floor(seconds % 60)
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${secs}s`
+  }
+  return `${secs}s`
 }
 
 function formatBytes(bytes: number): string {

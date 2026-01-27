@@ -1,0 +1,118 @@
+// Config API client for database management
+
+const API_BASE = '/api/v1/config'
+
+/**
+ * Current database configuration
+ */
+export interface CurrentDatabaseConfig {
+  dbPath: string
+  modelName: string
+  name: string
+  documentCount: number
+  chunkCount: number
+}
+
+/**
+ * Database entry in recent list
+ */
+export interface DatabaseEntry {
+  path: string
+  name: string
+  lastAccessed: string
+  modelName?: string
+}
+
+/**
+ * Scanned database result
+ */
+export interface ScannedDatabase {
+  path: string
+  name: string
+  isKnown: boolean
+}
+
+/**
+ * API error response
+ */
+interface ApiError {
+  error: string
+}
+
+/**
+ * Generic fetch wrapper with error handling
+ */
+async function fetchConfigApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+    ...options,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error((data as ApiError).error || 'Request failed')
+  }
+
+  return data as T
+}
+
+/**
+ * Get current database configuration
+ */
+export async function getCurrentConfig(): Promise<CurrentDatabaseConfig | null> {
+  return fetchConfigApi<CurrentDatabaseConfig | null>('/current')
+}
+
+/**
+ * Get list of recent databases
+ */
+export async function getRecentDatabases(): Promise<DatabaseEntry[]> {
+  const data = await fetchConfigApi<{ databases: DatabaseEntry[] }>('/databases')
+  return data.databases
+}
+
+/**
+ * Switch to a different database
+ */
+export async function switchDatabase(dbPath: string): Promise<CurrentDatabaseConfig> {
+  const data = await fetchConfigApi<{ success: boolean; config: CurrentDatabaseConfig }>(
+    '/databases/switch',
+    {
+      method: 'POST',
+      body: JSON.stringify({ dbPath }),
+    }
+  )
+  return data.config
+}
+
+/**
+ * Create a new database
+ */
+export async function createDatabase(
+  dbPath: string,
+  name?: string
+): Promise<CurrentDatabaseConfig> {
+  const data = await fetchConfigApi<{ success: boolean; config: CurrentDatabaseConfig }>(
+    '/databases/create',
+    {
+      method: 'POST',
+      body: JSON.stringify({ dbPath, name }),
+    }
+  )
+  return data.config
+}
+
+/**
+ * Scan a directory for databases
+ */
+export async function scanForDatabases(scanPath: string): Promise<ScannedDatabase[]> {
+  const data = await fetchConfigApi<{ databases: ScannedDatabase[] }>('/databases/scan', {
+    method: 'POST',
+    body: JSON.stringify({ scanPath }),
+  })
+  return data.databases
+}

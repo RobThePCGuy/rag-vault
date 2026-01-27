@@ -8,7 +8,13 @@ import express, { type Express } from 'express'
 import multer from 'multer'
 import type { RAGServer } from '../server/index.js'
 import { createApiRouter } from './api-routes.js'
+import { createConfigRouter } from './config-routes.js'
+import type { DatabaseManager } from './database-manager.js'
 import { errorHandler, notFoundHandler } from './middleware/index.js'
+import type { ServerAccessor } from './types.js'
+
+// Re-export for backwards compatibility
+export type { ServerAccessor } from './types.js'
 
 /**
  * HTTP server configuration
@@ -23,11 +29,42 @@ export interface HttpServerConfig {
 }
 
 /**
- * Create and configure Express app
+ * Create and configure Express app with DatabaseManager
+ */
+export async function createHttpServerWithManager(
+  dbManager: DatabaseManager,
+  config: HttpServerConfig
+): Promise<Express> {
+  // Create server accessor
+  const serverAccessor: ServerAccessor = () => {
+    return dbManager.getServer()
+  }
+
+  // Create config router to add before error handlers
+  const configRouter = createConfigRouter(dbManager)
+
+  const app = await createHttpServerInternal(serverAccessor, config, configRouter)
+
+  return app
+}
+
+/**
+ * Create and configure Express app (legacy - direct RAGServer)
  */
 export async function createHttpServer(
   ragServer: RAGServer,
   config: HttpServerConfig
+): Promise<Express> {
+  return createHttpServerInternal(() => ragServer, config)
+}
+
+/**
+ * Internal function to create Express app
+ */
+async function createHttpServerInternal(
+  serverAccessor: ServerAccessor,
+  config: HttpServerConfig,
+  configRouter?: ReturnType<typeof createConfigRouter>
 ): Promise<Express> {
   const app = express()
 
@@ -80,7 +117,7 @@ export async function createHttpServer(
   })
 
   // API routes
-  const apiRouter = createApiRouter(ragServer)
+  const apiRouter = createApiRouter(serverAccessor)
 
   // Apply multer middleware to upload endpoint
   app.use('/api/v1/files/upload', upload.single('file'), (_req, _res, next) => {
@@ -89,6 +126,11 @@ export async function createHttpServer(
   })
 
   app.use('/api/v1', apiRouter)
+
+  // Add config routes if provided (must be before error handlers)
+  if (configRouter) {
+    app.use('/api/v1/config', configRouter)
+  }
 
   // Serve static files in production
   if (config.staticDir && existsSync(config.staticDir)) {

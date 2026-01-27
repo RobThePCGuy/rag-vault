@@ -487,8 +487,8 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
         // Fail if error does not occur
         expect(false).toBe(true)
       } catch (error) {
-        // Verify FileOperationError occurs (DOCX parse failure)
-        expect((error as Error).name).toBe('FileOperationError')
+        // Verify ParserFileOperationError occurs (DOCX parse failure)
+        expect((error as Error).name).toBe('ParserFileOperationError')
         expect((error as Error).message).toContain('Failed to parse DOCX')
       }
     })
@@ -515,15 +515,18 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       const mdContent = await parser.parseFile(testMdFile)
       expect(mdContent).toBe('# Test Markdown\n\nTest content for MD format')
 
-      // Test JSON file parsing
+      // Test JSON file parsing (numbers are filtered out for RAG optimization)
       const testJsonFile = resolve(localTestDataDir, 'test-all-formats.json')
-      writeFileSync(testJsonFile, JSON.stringify({ name: 'Test', value: 42 }))
+      writeFileSync(
+        testJsonFile,
+        JSON.stringify({ name: 'Test', description: 'A longer description for testing' })
+      )
       const jsonContent = await parser.parseFile(testJsonFile)
       expect(jsonContent).toContain('name: Test')
-      expect(jsonContent).toContain('value: 42')
+      expect(jsonContent).toContain('description: A longer description for testing')
 
       // Verify DOCX file branching exists
-      // Verify FileOperationError occurs with invalid DOCX file
+      // Verify ParserFileOperationError occurs with invalid DOCX file
       const fakeDocxFile = resolve(localTestDataDir, 'test-all-formats.docx')
       writeFileSync(fakeDocxFile, 'Not a real DOCX file')
       try {
@@ -531,8 +534,8 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
         // Fail if error does not occur
         expect(false).toBe(true)
       } catch (error) {
-        // Verify FileOperationError occurs (DOCX parse failure)
-        expect((error as Error).name).toBe('FileOperationError')
+        // Verify ParserFileOperationError occurs (DOCX parse failure)
+        expect((error as Error).name).toBe('ParserFileOperationError')
         expect((error as Error).message).toContain('Failed to parse DOCX')
       }
 
@@ -545,8 +548,8 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
         // Fail if error does not occur
         expect(false).toBe(true)
       } catch (error) {
-        // Verify ValidationError occurs (PDF not supported via parseFile)
-        expect((error as Error).name).toBe('ValidationError')
+        // Verify ParserValidationError occurs (PDF not supported via parseFile)
+        expect((error as Error).name).toBe('ParserValidationError')
         expect((error as Error).message).toContain('Unsupported file format')
       }
 

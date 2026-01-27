@@ -58,6 +58,13 @@ export class Embedder {
   }
 
   /**
+   * Get the model name/path
+   */
+  getModelName(): string {
+    return this.config.modelPath
+  }
+
+  /**
    * Initialize Transformers.js model
    */
   async initialize(): Promise<void> {

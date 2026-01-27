@@ -231,6 +231,24 @@ export class RAGServer {
   }
 
   /**
+   * Close the server and release resources
+   */
+  async close(): Promise<void> {
+    await this.vectorStore.close()
+    console.error('RAGServer closed')
+  }
+
+  /**
+   * Get the current database configuration
+   */
+  getConfig(): { dbPath: string; modelName: string } {
+    return {
+      dbPath: this.dbPath,
+      modelName: this.embedder.getModelName(),
+    }
+  }
+
+  /**
    * Execute query_documents logic (returns plain data)
    */
   private async executeQueryDocuments(args: QueryDocumentsInput): Promise<QueryResult[]> {

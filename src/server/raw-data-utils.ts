@@ -70,27 +70,13 @@ export function normalizeSource(source: string): string {
 }
 
 // ============================================
-// Format Utilities
+// Type Definitions
 // ============================================
 
 /**
  * Content format type for ingest_data
  */
 export type ContentFormat = 'text' | 'html' | 'markdown'
-
-/**
- * Get file extension from content format
- *
- * All formats return .md for consistency.
- * This allows generating unique path from source without knowing original format,
- * which is essential for delete_file with source parameter.
- *
- * @param _format - Content format (ignored, always returns 'md')
- * @returns File extension (without dot) - always 'md'
- */
-export function formatToExtension(_format: ContentFormat): string {
-  return 'md'
-}
 
 // ============================================
 // Path Generation
@@ -115,12 +101,16 @@ export function getRawDataDir(dbPath: string): string {
  * @param format - Content format
  * @returns Generated file path
  */
-export function generateRawDataPath(dbPath: string, source: string, format: ContentFormat): string {
+export function generateRawDataPath(
+  dbPath: string,
+  source: string,
+  _format: ContentFormat
+): string {
   const normalizedSource = normalizeSource(source)
   const encoded = encodeBase64Url(normalizedSource)
-  const extension = formatToExtension(format)
-  // Use resolve to ensure absolute path (required by validateFilePath)
-  return resolve(getRawDataDir(dbPath), `${encoded}.${extension}`)
+  // All formats use .md extension for consistency
+  // This allows generating unique path from source without knowing original format
+  return resolve(getRawDataDir(dbPath), `${encoded}.md`)
 }
 
 // ============================================

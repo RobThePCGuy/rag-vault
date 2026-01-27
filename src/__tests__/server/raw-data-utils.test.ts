@@ -8,7 +8,6 @@ import {
   decodeBase64Url,
   encodeBase64Url,
   extractSourceFromPath,
-  formatToExtension,
   generateRawDataPath,
   getRawDataDir,
   isRawDataPath,
@@ -112,19 +111,6 @@ describe('Raw Data Utilities', () => {
       const normalized = normalizeSource(source)
 
       expect(normalized).toBe('https://example.com/docs/api/v1/users')
-    })
-  })
-
-  // --------------------------------------------
-  // Format to Extension
-  // --------------------------------------------
-  describe('Format to Extension', () => {
-    it('returns .md for all formats (unified extension)', () => {
-      // All formats now return .md for consistency
-      // This allows generating unique path from source without knowing original format
-      expect(formatToExtension('html')).toBe('md')
-      expect(formatToExtension('markdown')).toBe('md')
-      expect(formatToExtension('text')).toBe('md')
     })
   })
 

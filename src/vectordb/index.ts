@@ -599,6 +599,16 @@ export class VectorStore {
   }
 
   /**
+   * Close the database connection and release resources
+   */
+  async close(): Promise<void> {
+    this.db = null
+    this.table = null
+    this.ftsEnabled = false
+    console.error('VectorStore: Connection closed')
+  }
+
+  /**
    * Get system status
    *
    * @returns System status information

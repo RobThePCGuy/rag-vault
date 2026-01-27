@@ -7,7 +7,7 @@
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DocumentParser, ValidationError } from '../../parser/index.js'
+import { DocumentParser, ParserValidationError } from '../../parser/index.js'
 import { RAGServer } from '../../server/index.js'
 
 // ============================================
@@ -153,7 +153,7 @@ describe('RAG MCP Server Security Test', () => {
         maxFileSize: 100 * 1024 * 1024,
       })
 
-      await expect(parser.parseFile('../../etc/passwd')).rejects.toThrow(ValidationError)
+      await expect(parser.parseFile('../../etc/passwd')).rejects.toThrow(ParserValidationError)
     })
 
     // AC interpretation: [Security requirement] Access outside baseDir with absolute paths is rejected
@@ -164,7 +164,7 @@ describe('RAG MCP Server Security Test', () => {
         maxFileSize: 100 * 1024 * 1024,
       })
 
-      await expect(parser.parseFile('/etc/passwd')).rejects.toThrow(ValidationError)
+      await expect(parser.parseFile('/etc/passwd')).rejects.toThrow(ParserValidationError)
     })
 
     // AC interpretation: [Security requirement] Access outside baseDir via symbolic links is rejected
@@ -183,7 +183,7 @@ describe('RAG MCP Server Security Test', () => {
         // Ignore symlink creation failure (if already exists)
       }
 
-      await expect(parser.parseFile(linkPath)).rejects.toThrow(ValidationError)
+      await expect(parser.parseFile(linkPath)).rejects.toThrow(ParserValidationError)
 
       // Cleanup
       await rm(linkPath, { force: true })

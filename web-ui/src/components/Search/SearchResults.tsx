@@ -1,12 +1,28 @@
+import { useState } from 'react'
 import type { SearchResult } from '../../api/client'
+import { EmptyState } from '../ui'
+import { DocumentPreview } from './DocumentPreview'
 
 interface SearchResultsProps {
   results: SearchResult[]
+  hasSearched: boolean
 }
 
-export function SearchResults({ results }: SearchResultsProps) {
-  if (results.length === 0) {
+export function SearchResults({ results, hasSearched }: SearchResultsProps) {
+  const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null)
+
+  if (!hasSearched) {
     return null
+  }
+
+  if (results.length === 0) {
+    return (
+      <EmptyState
+        icon={<SearchIcon />}
+        title="No results found"
+        description="Try different keywords or a broader query."
+      />
+    )
   }
 
   return (
@@ -18,9 +34,18 @@ export function SearchResults({ results }: SearchResultsProps) {
             key={`${result.filePath}-${result.chunkIndex}`}
             result={result}
             rank={index + 1}
+            onView={() => setSelectedResult(result)}
           />
         ))}
       </div>
+
+      {selectedResult && (
+        <DocumentPreview
+          result={selectedResult}
+          isOpen={true}
+          onClose={() => setSelectedResult(null)}
+        />
+      )}
     </div>
   )
 }
@@ -28,9 +53,10 @@ export function SearchResults({ results }: SearchResultsProps) {
 interface ResultCardProps {
   result: SearchResult
   rank: number
+  onView: () => void
 }
 
-function ResultCard({ result, rank }: ResultCardProps) {
+function ResultCard({ result, rank, onView }: ResultCardProps) {
   const displaySource = result.source || result.filePath
   const scoreColor = getScoreColor(result.score)
 
@@ -43,12 +69,21 @@ function ResultCard({ result, rank }: ResultCardProps) {
             {formatSource(displaySource)}
           </h3>
         </div>
-        <span
-          className={`px-2 py-0.5 text-xs font-medium rounded-full ${scoreColor}`}
-          title={`Distance score: ${result.score.toFixed(4)}`}
-        >
-          {formatScore(result.score)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`px-2 py-0.5 text-xs font-medium rounded-full ${scoreColor}`}
+            title={`Distance score: ${result.score.toFixed(4)}`}
+          >
+            {formatScore(result.score)}
+          </span>
+          <button
+            type="button"
+            onClick={onView}
+            className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+          >
+            View
+          </button>
+        </div>
       </div>
 
       <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{result.text}</p>
@@ -62,6 +97,19 @@ function ResultCard({ result, rank }: ResultCardProps) {
         )}
       </div>
     </div>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      />
+    </svg>
   )
 }
 

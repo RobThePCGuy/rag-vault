@@ -4,6 +4,7 @@ import { SearchPage } from './pages/SearchPage'
 import { UploadPage } from './pages/UploadPage'
 import { FilesPage } from './pages/FilesPage'
 import { StatusPage } from './pages/StatusPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/files" element={<FilesPage />} />
         <Route path="/status" element={<StatusPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </Layout>
   )

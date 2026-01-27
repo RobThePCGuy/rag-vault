@@ -26,11 +26,12 @@ export interface FileInfo {
  * System status
  */
 export interface SystemStatus {
-  totalDocuments: number
-  totalChunks: number
-  dbSizeBytes: number
-  modelName: string
-  dbPath: string
+  documentCount: number
+  chunkCount: number
+  memoryUsage: number
+  uptime: number
+  ftsIndexEnabled: boolean
+  searchMode: 'hybrid' | 'vector-only'
 }
 
 /**

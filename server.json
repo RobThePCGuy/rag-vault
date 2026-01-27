@@ -8,13 +8,13 @@
     "url": "https://github.com/RobThePCGuy/rag-vault",
     "source": "github"
   },
-  "version": "0.5.5",
+  "version": "1.0.0",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "rag-vault",
-      "version": "0.5.5",
+      "version": "1.0.0",
       "transport": {
         "type": "stdio"
       },

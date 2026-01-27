@@ -142,28 +142,8 @@ function mergeSentencesByY(sentences) {
 // ============================================
 // Sentence-Level Header/Footer Detection
 // ============================================
-/**
- * Calculate cosine similarity between two vectors
- */
-function cosineSimilarity(vec1, vec2) {
-    if (vec1.length !== vec2.length || vec1.length === 0) {
-        return 0;
-    }
-    let dotProduct = 0;
-    let norm1 = 0;
-    let norm2 = 0;
-    for (let i = 0; i < vec1.length; i++) {
-        const v1 = vec1[i] ?? 0;
-        const v2 = vec2[i] ?? 0;
-        dotProduct += v1 * v2;
-        norm1 += v1 * v1;
-        norm2 += v2 * v2;
-    }
-    const denominator = Math.sqrt(norm1) * Math.sqrt(norm2);
-    if (denominator === 0)
-        return 0;
-    return dotProduct / denominator;
-}
+// Use shared cosine similarity function
+const math_js_1 = require("../utils/math.js");
 /**
  * Calculate median pairwise similarity for a list of embeddings
  *
@@ -180,7 +160,7 @@ function medianPairwiseSimilarity(embeddings) {
             const embI = embeddings[i];
             const embJ = embeddings[j];
             if (embI && embJ) {
-                similarities.push(cosineSimilarity(embI, embJ));
+                similarities.push((0, math_js_1.cosineSimilarity)(embI, embJ));
             }
         }
     }

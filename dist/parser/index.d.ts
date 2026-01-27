@@ -1,4 +1,5 @@
 import { type EmbedderInterface } from './pdf-filter.js';
+export { ParserFileOperationError, ParserValidationError } from '../errors/index.js';
 /**
  * DocumentParser configuration
  */
@@ -7,22 +8,6 @@ export interface ParserConfig {
     baseDir: string;
     /** Maximum file size (100MB) */
     maxFileSize: number;
-}
-/**
- * Parser validation error (equivalent to 400)
- * Named to avoid collision with centralized ValidationError in src/errors/index.ts
- */
-export declare class ParserValidationError extends Error {
-    readonly cause?: Error | undefined;
-    constructor(message: string, cause?: Error | undefined);
-}
-/**
- * Parser file operation error (equivalent to 500)
- * Named to avoid collision with centralized FileOperationError in src/errors/index.ts
- */
-export declare class ParserFileOperationError extends Error {
-    readonly cause?: Error | undefined;
-    constructor(message: string, cause?: Error | undefined);
 }
 /**
  * Document parser class (PDF/DOCX/TXT/MD/JSON support)

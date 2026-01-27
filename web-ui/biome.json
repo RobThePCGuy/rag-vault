@@ -6,7 +6,8 @@
   },
   "css": {
     "parser": {
-      "cssModules": true
+      "cssModules": true,
+      "tailwindDirectives": true
     },
     "linter": {
       "enabled": false
@@ -26,7 +27,8 @@
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
-        "useButtonType": "warn"
+        "useButtonType": "warn",
+        "useSemanticElements": "off"
       },
       "style": {
         "useImportType": "warn",

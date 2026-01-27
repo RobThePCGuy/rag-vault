@@ -1,4 +1,5 @@
 import type { SystemStatus } from '../../api/client'
+import { formatBytes, formatUptime } from '../../utils/format'
 
 interface StatusDashboardProps {
   status: SystemStatus
@@ -52,7 +53,9 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
           </div>
           <div className="flex justify-between">
             <dt className="text-gray-500">FTS Index</dt>
-            <dd className="text-gray-900 font-mono text-sm">{status.ftsIndexEnabled ? 'Enabled' : 'Disabled'}</dd>
+            <dd className="text-gray-900 font-mono text-sm">
+              {status.ftsIndexEnabled ? 'Enabled' : 'Disabled'}
+            </dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-gray-500">Uptime</dt>
@@ -62,27 +65,6 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
       </div>
     </div>
   )
-}
-
-function formatUptime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const secs = Math.floor(seconds % 60)
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${secs}s`
-  }
-  if (minutes > 0) {
-    return `${minutes}m ${secs}s`
-  }
-  return `${secs}s`
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${(bytes / k ** i).toFixed(1)} ${sizes[i]}`
 }
 
 function DocumentIcon({ className }: { className?: string }) {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { SearchResult } from '../../api/client'
 import { Modal } from '../ui'
 
@@ -11,12 +11,26 @@ interface DocumentPreviewProps {
 export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProps) {
   const [copied, setCopied] = useState(false)
   const displaySource = result.source || result.filePath
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cleanup timeout on unmount to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(result.text)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      // Clear any existing timeout before setting a new one
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
     } catch {
       // Clipboard API not available
     }

@@ -1,3 +1,4 @@
+export { DatabaseError } from '../errors/index.js';
 /**
  * Grouping mode for quality filtering
  * - 'similar': Only return the most similar group (stops at first distance jump)
@@ -73,26 +74,43 @@ export interface SearchResult {
     metadata: DocumentMetadata;
 }
 /**
- * Database error
- */
-export declare class DatabaseError extends Error {
-    readonly cause?: Error | undefined;
-    constructor(message: string, cause?: Error | undefined);
-}
-/**
  * Vector storage class using LanceDB
  *
  * Responsibilities:
  * - LanceDB operations (insert, delete, search)
  * - Transaction handling (atomicity of delete→insert)
  * - Metadata management
+ *
+ * FTS Circuit Breaker:
+ * - Tracks FTS failures (max 3 before disabling)
+ * - Auto-recovers after 5-minute cooldown
+ * - Prevents permanent FTS disable from transient errors
  */
 export declare class VectorStore {
     private db;
     private table;
     private readonly config;
     private ftsEnabled;
+    private ftsFailureCount;
+    private ftsLastFailure;
+    /** Mutex to prevent race conditions in circuit breaker state transitions */
+    private circuitBreakerResetting;
     constructor(config: VectorStoreConfig);
+    /**
+     * Check if FTS should be attempted (circuit breaker logic)
+     * - Returns false if max failures reached and cooldown not elapsed
+     * - Resets failure count after successful cooldown period
+     * - Uses mutex to prevent race conditions during reset
+     */
+    private shouldAttemptFts;
+    /**
+     * Record FTS failure (circuit breaker)
+     */
+    private recordFtsFailure;
+    /**
+     * Record FTS success (resets circuit breaker)
+     */
+    private recordFtsSuccess;
     /**
      * Initialize LanceDB and create table
      */

@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { searchDocuments, type SearchResult } from '../api/client'
+import { useState } from 'react'
+import { type SearchResult, searchDocuments } from '../api/client'
 
 export function useSearch() {
   const [results, setResults] = useState<SearchResult[]>([])

@@ -18,8 +18,9 @@ const ACCEPTED_TYPES = {
 export function DropZone({ onFileSelect, isUploading }: DropZoneProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      if (acceptedFiles.length > 0) {
-        onFileSelect(acceptedFiles[0])
+      const file = acceptedFiles[0]
+      if (file) {
+        onFileSelect(file)
       }
     },
     [onFileSelect]

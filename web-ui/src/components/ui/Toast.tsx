@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export interface ToastData {
   id: string
@@ -36,13 +36,17 @@ const typeStyles = {
 export function Toast({ toast, onDismiss }: ToastProps) {
   const styles = typeStyles[toast.type]
 
+  // Use ref to avoid unstable onDismiss dependency causing timer recreation
+  const onDismissRef = useRef(onDismiss)
+  onDismissRef.current = onDismiss
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      onDismiss(toast.id)
+      onDismissRef.current(toast.id)
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [toast.id, onDismiss])
+  }, [toast.id])
 
   return (
     <div

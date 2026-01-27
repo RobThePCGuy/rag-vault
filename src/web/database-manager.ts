@@ -1,10 +1,11 @@
 // DatabaseManager - Manages RAG database lifecycle and configuration
 
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import type { RAGServer, RAGServerConfig } from '../server/index.js'
+import { RecentDatabasesFileSchema, StatusResponseSchema } from '../server/schemas.js'
 
 // ============================================
 // Constants
@@ -21,6 +22,47 @@ const LANCEDB_DIR_NAME = 'chunks.lance'
 
 /** Maximum number of recent databases to track */
 const MAX_RECENT_DATABASES = 10
+
+/**
+ * Get allowed scan roots from environment variable or default to home directory
+ * ALLOWED_SCAN_ROOTS: comma-separated list of absolute paths
+ */
+function getAllowedScanRoots(): string[] {
+  const envRoots = process.env['ALLOWED_SCAN_ROOTS']
+  if (envRoots) {
+    return envRoots.split(',').map((p) => path.resolve(p.trim()))
+  }
+  // Default: only allow scanning within home directory
+  return [homedir()]
+}
+
+/**
+ * Validate that a path is within allowed scan roots (prevents path traversal)
+ * @param targetPath - Path to validate (will be resolved and normalized)
+ * @returns true if path is within allowed roots
+ */
+function isPathWithinAllowedRoots(targetPath: string): boolean {
+  const allowedRoots = getAllowedScanRoots()
+  let resolvedPath: string
+
+  try {
+    // Resolve to absolute path and resolve symlinks
+    resolvedPath = existsSync(targetPath) ? realpathSync(targetPath) : path.resolve(targetPath)
+  } catch {
+    // If we can't resolve the path, reject it
+    return false
+  }
+
+  // Check if the resolved path is within any allowed root
+  return allowedRoots.some((root) => {
+    const normalizedRoot = path.normalize(root)
+    const normalizedTarget = path.normalize(resolvedPath)
+    // Ensure exact prefix match (avoid /home/user matching /home/username)
+    return (
+      normalizedTarget === normalizedRoot || normalizedTarget.startsWith(normalizedRoot + path.sep)
+    )
+  })
+}
 
 /**
  * Expand tilde (~) in path to home directory
@@ -117,7 +159,7 @@ export class DatabaseManager {
   private currentConfig: RAGServerConfig | null = null
   private serverFactory: (config: RAGServerConfig) => RAGServer
   private baseConfig: Omit<RAGServerConfig, 'dbPath'>
-  private switchLock = false
+  private switchPromise: Promise<void> | null = null
 
   constructor(
     serverFactory: (config: RAGServerConfig) => RAGServer,
@@ -166,7 +208,20 @@ export class DatabaseManager {
 
     const serverConfig = this.currentServer.getConfig()
     const statusResult = await this.currentServer.handleStatus()
-    const status = JSON.parse(statusResult.content[0].text)
+
+    // Safely extract text from response
+    // The return type is { content: [{ type: 'text'; text: string }] }
+    const firstContent = statusResult.content[0]
+    if (typeof firstContent.text !== 'string') {
+      throw new Error('Malformed server response: missing text in content')
+    }
+
+    // Parse and validate status response with Zod
+    const parsed = StatusResponseSchema.safeParse(JSON.parse(firstContent.text))
+    if (!parsed.success) {
+      throw new Error(`Invalid status response: ${parsed.error.message}`)
+    }
+    const status = parsed.data
 
     return {
       dbPath: serverConfig.dbPath,
@@ -179,10 +234,12 @@ export class DatabaseManager {
 
   /**
    * Switch to a different database
+   *
+   * Uses promise-based mutex to prevent race conditions from concurrent switch attempts.
    */
   async switchDatabase(newDbPath: string): Promise<void> {
-    // Prevent concurrent switches
-    if (this.switchLock) {
+    // Prevent concurrent switches using promise-based mutex
+    if (this.switchPromise) {
       throw new Error('Database switch already in progress')
     }
 
@@ -199,31 +256,37 @@ export class DatabaseManager {
       throw new Error(`Invalid database: ${resolvedPath} (missing LanceDB data)`)
     }
 
-    this.switchLock = true
+    // Set promise atomically before any async operations
+    this.switchPromise = this.performSwitch(resolvedPath).finally(() => {
+      this.switchPromise = null
+    })
 
-    try {
-      // Close current server
-      if (this.currentServer) {
-        await this.currentServer.close()
-      }
+    return this.switchPromise
+  }
 
-      // Create new server with new path
-      const config: RAGServerConfig = {
-        ...this.baseConfig,
-        dbPath: resolvedPath,
-      }
-
-      this.currentServer = this.serverFactory(config)
-      this.currentConfig = config
-      await this.currentServer.initialize()
-
-      // Update recent databases
-      await this.addToRecent(resolvedPath, this.baseConfig.modelName)
-
-      console.log(`Switched to database: ${resolvedPath}`)
-    } finally {
-      this.switchLock = false
+  /**
+   * Internal method to perform the actual database switch
+   */
+  private async performSwitch(resolvedPath: string): Promise<void> {
+    // Close current server
+    if (this.currentServer) {
+      await this.currentServer.close()
     }
+
+    // Create new server with new path
+    const config: RAGServerConfig = {
+      ...this.baseConfig,
+      dbPath: resolvedPath,
+    }
+
+    this.currentServer = this.serverFactory(config)
+    this.currentConfig = config
+    await this.currentServer.initialize()
+
+    // Update recent databases
+    await this.addToRecent(resolvedPath, this.baseConfig.modelName)
+
+    console.log(`Switched to database: ${resolvedPath}`)
   }
 
   /**
@@ -251,38 +314,50 @@ export class DatabaseManager {
 
   /**
    * Switch to a new (possibly empty) database
+   *
+   * Uses promise-based mutex to prevent race conditions from concurrent switch attempts.
    */
   private async switchToNewDatabase(newDbPath: string): Promise<void> {
-    if (this.switchLock) {
+    if (this.switchPromise) {
       throw new Error('Database switch already in progress')
     }
 
-    this.switchLock = true
+    // Set promise atomically before any async operations
+    this.switchPromise = this.performSwitchToNew(newDbPath).finally(() => {
+      this.switchPromise = null
+    })
 
-    try {
-      if (this.currentServer) {
-        await this.currentServer.close()
-      }
+    return this.switchPromise
+  }
 
-      const config: RAGServerConfig = {
-        ...this.baseConfig,
-        dbPath: newDbPath,
-      }
-
-      this.currentServer = this.serverFactory(config)
-      this.currentConfig = config
-      await this.currentServer.initialize()
-
-      await this.addToRecent(newDbPath, this.baseConfig.modelName)
-
-      console.log(`Created and switched to database: ${newDbPath}`)
-    } finally {
-      this.switchLock = false
+  /**
+   * Internal method to perform the actual switch to a new database
+   */
+  private async performSwitchToNew(newDbPath: string): Promise<void> {
+    if (this.currentServer) {
+      await this.currentServer.close()
     }
+
+    const config: RAGServerConfig = {
+      ...this.baseConfig,
+      dbPath: newDbPath,
+    }
+
+    this.currentServer = this.serverFactory(config)
+    this.currentConfig = config
+    await this.currentServer.initialize()
+
+    await this.addToRecent(newDbPath, this.baseConfig.modelName)
+
+    console.log(`Created and switched to database: ${newDbPath}`)
   }
 
   /**
    * Get list of recent databases
+   *
+   * Handles errors appropriately:
+   * - File not found: Normal case, returns empty array
+   * - Parse/validation error: Logs error but returns empty array to allow recovery
    */
   async getRecentDatabases(): Promise<DatabaseEntry[]> {
     await this.ensureConfigDir()
@@ -293,24 +368,54 @@ export class DatabaseManager {
 
     try {
       const content = await readFile(RECENT_DBS_FILE, 'utf-8')
-      const data = JSON.parse(content) as RecentDatabasesFile
+      const jsonData = JSON.parse(content)
+
+      // Validate with Zod schema
+      const parsed = RecentDatabasesFileSchema.safeParse(jsonData)
+      if (!parsed.success) {
+        console.error('Recent databases file has invalid format:', parsed.error.message)
+        console.error('File will be overwritten on next database access.')
+        return []
+      }
 
       // Filter out databases that no longer exist
-      const validDatabases = data.databases.filter((db) => existsSync(db.path))
+      const validDatabases = parsed.data.databases.filter((db) => existsSync(db.path))
 
       return validDatabases
     } catch (error) {
-      console.error('Failed to read recent databases:', error)
+      // Differentiate between file-not-found and other errors
+      const nodeError = error as NodeJS.ErrnoException
+      if (nodeError.code === 'ENOENT') {
+        // File was deleted between check and read - OK
+        return []
+      }
+
+      // JSON parse error or other issues - log but allow recovery
+      console.error('Failed to read recent databases (file may be corrupted):', error)
+      console.error('File will be overwritten on next database access.')
       return []
     }
   }
 
   /**
    * Scan a directory for LanceDB databases
+   *
+   * Security: Only scans within allowed roots (ALLOWED_SCAN_ROOTS env var or home directory)
+   * to prevent path traversal attacks.
    */
   async scanForDatabases(scanPath: string): Promise<ScannedDatabase[]> {
     // Expand tilde to home directory
     const resolvedPath = expandTilde(scanPath)
+
+    // Security: Validate path is within allowed roots
+    if (!isPathWithinAllowedRoots(resolvedPath)) {
+      const allowedRoots = getAllowedScanRoots()
+      throw new Error(
+        `Scan path "${resolvedPath}" is outside allowed roots. ` +
+          `Allowed: ${allowedRoots.join(', ')}. ` +
+          `Set ALLOWED_SCAN_ROOTS environment variable to allow additional paths.`
+      )
+    }
 
     const results: ScannedDatabase[] = []
     const recentDbs = await this.getRecentDatabases()

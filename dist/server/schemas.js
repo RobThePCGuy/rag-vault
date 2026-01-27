@@ -2,7 +2,7 @@
 // Zod schemas for MCP tool validation
 // Used by RAGServer with McpServer high-level API
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DeleteFileSchema = exports.IngestDataSchema = exports.IngestDataMetadataSchema = exports.IngestFileSchema = exports.QueryDocumentsSchema = exports.ContentFormatSchema = void 0;
+exports.RecentDatabasesFileSchema = exports.StatusResponseSchema = exports.DeleteFileSchema = exports.IngestDataSchema = exports.IngestDataMetadataSchema = exports.IngestFileSchema = exports.QueryDocumentsSchema = exports.ContentFormatSchema = void 0;
 const zod_1 = require("zod");
 /**
  * Content format enum for ingest_data
@@ -20,8 +20,9 @@ exports.QueryDocumentsSchema = zod_1.z.object({
         .number()
         .int()
         .positive()
+        .max(20, 'Limit cannot exceed 20')
         .optional()
-        .describe('Maximum number of results to return (default: 10). Recommended: 5 for precision, 10 for balance, 20 for broad exploration.'),
+        .describe('Maximum number of results to return (default: 10, max: 20). Recommended: 5 for precision, 10 for balance, 20 for broad exploration.'),
 });
 /**
  * ingest_file tool input schema
@@ -68,5 +69,31 @@ exports.DeleteFileSchema = zod_1.z
 })
     .refine((data) => data.filePath !== undefined || data.source !== undefined, {
     message: 'Either filePath or source must be provided',
+});
+// ============================================
+// Internal Response Validation Schemas
+// ============================================
+/**
+ * Schema for validating status response from RAG server
+ */
+exports.StatusResponseSchema = zod_1.z.object({
+    documentCount: zod_1.z.number(),
+    chunkCount: zod_1.z.number(),
+    memoryUsage: zod_1.z.number(),
+    uptime: zod_1.z.number(),
+    ftsIndexEnabled: zod_1.z.boolean(),
+    searchMode: zod_1.z.enum(['hybrid', 'vector-only']),
+});
+/**
+ * Schema for validating recent databases file structure
+ */
+exports.RecentDatabasesFileSchema = zod_1.z.object({
+    version: zod_1.z.number(),
+    databases: zod_1.z.array(zod_1.z.object({
+        path: zod_1.z.string(),
+        name: zod_1.z.string(),
+        lastAccessed: zod_1.z.string(),
+        modelName: zod_1.z.string().optional(),
+    })),
 });
 //# sourceMappingURL=schemas.js.map

@@ -1,5 +1,5 @@
-export { Spinner } from './Spinner'
 export { EmptyState } from './EmptyState'
+export { Modal } from './Modal'
+export { Spinner } from './Spinner'
 export { Toast, type ToastData } from './Toast'
 export { ToastContainer } from './ToastContainer'
-export { Modal } from './Modal'

@@ -2,6 +2,12 @@
 
 const API_BASE = '/api/v1'
 
+/** Default request timeout in milliseconds */
+const REQUEST_TIMEOUT_MS = 30_000
+
+/** Upload timeout in milliseconds (longer for large files) */
+const UPLOAD_TIMEOUT_MS = 300_000
+
 /**
  * Search result from query
  */
@@ -51,24 +57,41 @@ export interface ApiError {
 }
 
 /**
- * Generic fetch wrapper with error handling
+ * Generic fetch wrapper with error handling and timeout
  */
-async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  })
+async function fetchApi<T>(
+  endpoint: string,
+  options?: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS
+): Promise<T> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-  const data = await response.json()
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      ...options,
+      signal: controller.signal,
+    })
 
-  if (!response.ok) {
-    throw new Error((data as ApiError).error || 'Request failed')
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error((data as ApiError).error || 'Request failed')
+    }
+
+    return data as T
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return data as T
 }
 
 /**
@@ -83,24 +106,37 @@ export async function searchDocuments(query: string, limit?: number): Promise<Se
 }
 
 /**
- * Upload a file
+ * Upload a file with timeout protection
  */
 export async function uploadFile(file: File): Promise<IngestResult> {
-  const formData = new FormData()
-  formData.append('file', file)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS)
 
-  const response = await fetch(`${API_BASE}/files/upload`, {
-    method: 'POST',
-    body: formData,
-  })
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
 
-  const data = await response.json()
+    const response = await fetch(`${API_BASE}/files/upload`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    })
 
-  if (!response.ok) {
-    throw new Error((data as ApiError).error || 'Upload failed')
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error((data as ApiError).error || 'Upload failed')
+    }
+
+    return data as IngestResult
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Upload timed out')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
   }
-
-  return data as IngestResult
 }
 
 /**

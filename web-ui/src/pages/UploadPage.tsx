@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DropZone, ContentPaste } from '../components/Upload'
+import { ContentPaste, DropZone } from '../components/Upload'
 import { Spinner } from '../components/ui'
 import { useUpload } from '../hooks'
 

@@ -1,3 +1,4 @@
+export { EmbeddingError } from '../errors/index.js';
 /**
  * Embedder configuration
  */
@@ -8,13 +9,6 @@ export interface EmbedderConfig {
     batchSize: number;
     /** Model cache directory */
     cacheDir: string;
-}
-/**
- * Embedding generation error
- */
-export declare class EmbeddingError extends Error {
-    readonly cause?: Error | undefined;
-    constructor(message: string, cause?: Error | undefined);
 }
 /**
  * Embedding generation class using Transformers.js
@@ -53,8 +47,9 @@ export declare class Embedder {
      * Convert multiple texts to embedding vectors with batch processing
      *
      * @param texts - Array of texts
+     * @param signal - Optional AbortSignal for cancellation support
      * @returns Array of embedding vectors (dimension depends on model)
      */
-    embedBatch(texts: string[]): Promise<number[][]>;
+    embedBatch(texts: string[], signal?: AbortSignal): Promise<number[][]>;
 }
 //# sourceMappingURL=index.d.ts.map

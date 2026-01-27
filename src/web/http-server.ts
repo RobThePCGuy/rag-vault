@@ -1,17 +1,81 @@
 // HTTP server for web frontend
 
+import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
+import compression from 'compression'
 import cors from 'cors'
-import express, { type Express } from 'express'
+import express, { type Express, type Request, type Response, type NextFunction } from 'express'
+import { fileTypeFromBuffer } from 'file-type'
+import helmet from 'helmet'
 import multer from 'multer'
 import type { RAGServer } from '../server/index.js'
 import { createApiRouter } from './api-routes.js'
 import { createConfigRouter } from './config-routes.js'
 import type { DatabaseManager } from './database-manager.js'
-import { errorHandler, notFoundHandler } from './middleware/index.js'
+import {
+  apiKeyAuth,
+  createRateLimiter,
+  createRequestLogger,
+  errorHandler,
+  getRateLimitConfigFromEnv,
+  isRequestLoggingEnabled,
+  notFoundHandler,
+} from './middleware/index.js'
 import type { ServerAccessor } from './types.js'
+
+// ============================================
+// Constants
+// ============================================
+
+/** Default JSON body limit (5MB) - prevents DoS from large payloads */
+const DEFAULT_JSON_LIMIT = '5mb'
+
+/** Default allowed CORS origins (localhost only for security) */
+const DEFAULT_CORS_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+]
+
+/** File size limit for uploads (100MB) */
+const FILE_SIZE_LIMIT_BYTES = 100 * 1024 * 1024
+
+/** Default request timeout (30 seconds) */
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000
+
+/** Minimum allowed request timeout (1 second) */
+const MIN_REQUEST_TIMEOUT_MS = 1_000
+
+/**
+ * Get request timeout from environment variable or use default
+ * @returns Request timeout in milliseconds
+ */
+function getRequestTimeoutMs(): number {
+  const envValue = process.env['REQUEST_TIMEOUT_MS']
+  if (!envValue) return DEFAULT_REQUEST_TIMEOUT_MS
+
+  const parsed = Number.parseInt(envValue, 10)
+  if (Number.isNaN(parsed) || parsed < MIN_REQUEST_TIMEOUT_MS) {
+    console.warn(
+      `Invalid REQUEST_TIMEOUT_MS value "${envValue}". Using default ${DEFAULT_REQUEST_TIMEOUT_MS}ms.`
+    )
+    return DEFAULT_REQUEST_TIMEOUT_MS
+  }
+  return parsed
+}
+
+/** Allowed MIME types for file uploads (validated by magic bytes) */
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'text/markdown',
+  'text/html',
+  'application/json',
+]
 
 // Re-export for backwards compatibility
 export type { ServerAccessor } from './types.js'
@@ -61,6 +125,68 @@ export async function createHttpServer(
 /**
  * Internal function to create Express app
  */
+/**
+ * Validate file content using magic bytes
+ * Returns true if file type is allowed, false otherwise
+ */
+async function validateFileContent(filePath: string): Promise<boolean> {
+  try {
+    const buffer = await readFile(filePath)
+    const type = await fileTypeFromBuffer(buffer)
+
+    // Allow text files which may not have magic bytes
+    if (!type) {
+      // Check if it's likely a text file by looking for common text patterns
+      const sample = buffer.subarray(0, 1024).toString('utf-8')
+      const isLikelyText = !sample.includes('\x00') // No null bytes
+      return isLikelyText
+    }
+
+    return ALLOWED_MIME_TYPES.includes(type.mime)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Request timeout middleware
+ * Aborts requests that take longer than the specified timeout
+ */
+function requestTimeout(timeoutMs: number) {
+  return (_req: Request, res: Response, next: NextFunction): void => {
+    const timeoutId = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(503).json({
+          error: 'Request timeout',
+          code: 'REQUEST_TIMEOUT',
+        })
+      }
+    }, timeoutMs)
+
+    res.on('finish', () => clearTimeout(timeoutId))
+    res.on('close', () => clearTimeout(timeoutId))
+
+    next()
+  }
+}
+
+/**
+ * Parse CORS origins from environment variable with validation
+ */
+function parseCorsOrigins(env: string | undefined): string | string[] {
+  if (!env || env.trim() === '') return DEFAULT_CORS_ORIGINS
+  if (env === '*') {
+    console.warn(
+      '[SECURITY] CORS_ORIGINS="*" allows all origins. This is not recommended for production environments.'
+    )
+    return '*'
+  }
+  return env
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean)
+}
+
 async function createHttpServerInternal(
   serverAccessor: ServerAccessor,
   config: HttpServerConfig,
@@ -68,9 +194,61 @@ async function createHttpServerInternal(
 ): Promise<Express> {
   const app = express()
 
-  // Middleware
-  app.use(cors())
-  app.use(express.json({ limit: '50mb' }))
+  // Security headers (helmet)
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"], // For Tailwind CSS
+          imgSrc: ["'self'", 'data:'],
+          connectSrc: ["'self'"],
+        },
+      },
+    })
+  )
+
+  // Response compression
+  app.use(compression())
+
+  // Request timeout for API routes (configurable via REQUEST_TIMEOUT_MS env var)
+  app.use('/api', requestTimeout(getRequestTimeoutMs()))
+
+  // CORS configuration
+  // CORS_ORIGINS env var: comma-separated list of allowed origins, or "*" for all
+  const corsOrigins = parseCorsOrigins(process.env['CORS_ORIGINS'])
+
+  app.use(
+    cors({
+      origin: corsOrigins,
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+    })
+  )
+
+  // JSON body parser with size limit to prevent DoS
+  const jsonLimit = process.env['JSON_BODY_LIMIT'] || DEFAULT_JSON_LIMIT
+  app.use(express.json({ limit: jsonLimit }))
+
+  // Request ID tracking for tracing and debugging
+  app.use((req, res, next) => {
+    const requestId = (req.headers['x-request-id'] as string) || randomUUID()
+    res.setHeader('X-Request-ID', requestId)
+    next()
+  })
+
+  // Request logging (enabled when REQUEST_LOGGING=true)
+  if (isRequestLoggingEnabled()) {
+    app.use(createRequestLogger())
+  }
+
+  // Rate limiting (configurable via RATE_LIMIT_* env vars)
+  const rateLimitConfig = getRateLimitConfigFromEnv()
+  app.use('/api', createRateLimiter(rateLimitConfig))
+
+  // API Key authentication (enabled when RAG_API_KEY env var is set)
+  app.use('/api', apiKeyAuth)
 
   // Ensure upload directory exists
   if (!existsSync(config.uploadDir)) {
@@ -93,22 +271,14 @@ async function createHttpServerInternal(
   const upload = multer({
     storage,
     limits: {
-      fileSize: 100 * 1024 * 1024, // 100MB
+      fileSize: FILE_SIZE_LIMIT_BYTES,
     },
     fileFilter: (_req, file, cb) => {
-      // Allow common document types
-      const allowedTypes = [
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain',
-        'text/markdown',
-        'text/html',
-        'application/json',
-      ]
+      // Allow common document types by MIME type or extension
       const allowedExtensions = ['.pdf', '.docx', '.txt', '.md', '.html', '.json']
 
       const ext = path.extname(file.originalname).toLowerCase()
-      if (allowedTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
+      if (ALLOWED_MIME_TYPES.includes(file.mimetype) || allowedExtensions.includes(ext)) {
         cb(null, true)
       } else {
         cb(new Error(`File type not allowed: ${file.mimetype}`))
@@ -119,11 +289,34 @@ async function createHttpServerInternal(
   // API routes
   const apiRouter = createApiRouter(serverAccessor)
 
-  // Apply multer middleware to upload endpoint
-  app.use('/api/v1/files/upload', upload.single('file'), (_req, _res, next) => {
-    // Multer adds file to req.file
-    next()
-  })
+  // Apply multer middleware to upload endpoint with magic byte validation
+  app.use(
+    '/api/v1/files/upload',
+    upload.single('file'),
+    async (req: Request, res: Response, next: NextFunction) => {
+      // Multer adds file to req.file
+      const file = req.file
+      if (file) {
+        // Validate file content using magic bytes
+        const isValid = await validateFileContent(file.path)
+        if (!isValid) {
+          // Delete the uploaded file
+          const { unlink } = await import('node:fs/promises')
+          try {
+            await unlink(file.path)
+          } catch {
+            // Ignore deletion errors
+          }
+          res.status(400).json({
+            error: 'File content does not match allowed types',
+            code: 'INVALID_FILE_CONTENT',
+          })
+          return
+        }
+      }
+      next()
+    }
+  )
 
   app.use('/api/v1', apiRouter)
 

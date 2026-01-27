@@ -89,7 +89,7 @@ export declare class SemanticChunker {
     private sigmoid;
     /**
      * Calculate cosine similarity between two vectors
-     * Public for testing
+     * Public for testing - delegates to shared utility
      */
     cosineSimilarity(vec1: number[], vec2: number[]): number;
 }

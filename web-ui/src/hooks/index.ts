@@ -1,12 +1,12 @@
-export { useSearch } from './useSearch'
-export { useFiles } from './useFiles'
-export { useUpload } from './useUpload'
-export { useStatus } from './useStatus'
+export { useToast } from '../contexts/ToastContext'
 export {
+  useCreateDatabase,
   useCurrentConfig,
   useRecentDatabases,
-  useSwitchDatabase,
-  useCreateDatabase,
   useScanDatabases,
+  useSwitchDatabase,
 } from './useConfig'
-export { useToast } from '../contexts/ToastContext'
+export { useFiles } from './useFiles'
+export { useSearch } from './useSearch'
+export { useStatus } from './useStatus'
+export { useUpload } from './useUpload'

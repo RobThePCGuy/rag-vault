@@ -4,6 +4,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.encodeBase64Url = encodeBase64Url;
 exports.decodeBase64Url = decodeBase64Url;
+exports.validateSourceProtocol = validateSourceProtocol;
 exports.normalizeSource = normalizeSource;
 exports.getRawDataDir = getRawDataDir;
 exports.generateRawDataPath = generateRawDataPath;
@@ -50,13 +51,44 @@ function decodeBase64Url(base64url) {
 // Source Normalization
 // ============================================
 /**
+ * Blocked protocols that could be dangerous or lead to security issues.
+ * - javascript: XSS attacks
+ * - vbscript: VBScript execution
+ * - data: Can embed malicious content
+ */
+const BLOCKED_PROTOCOLS = ['javascript:', 'vbscript:', 'data:'];
+/**
+ * Validate that a source doesn't use a dangerous protocol
+ *
+ * @param source - Source identifier to validate
+ * @throws Error if the protocol is blocked
+ */
+function validateSourceProtocol(source) {
+    try {
+        const parsed = new URL(source);
+        if (BLOCKED_PROTOCOLS.includes(parsed.protocol)) {
+            throw new Error(`Blocked protocol: ${parsed.protocol}. These protocols are not allowed for security reasons.`);
+        }
+    }
+    catch (error) {
+        // If it's our validation error, rethrow it
+        if (error instanceof Error && error.message.startsWith('Blocked protocol')) {
+            throw error;
+        }
+        // Not a valid URL format - this is OK, could be a simple identifier
+    }
+}
+/**
  * Normalize source URL by removing query string and fragment
  * Only normalizes HTTP(S) URLs. Other sources (e.g., "clipboard://...") are returned as-is
  *
  * @param source - Source identifier (URL or custom ID)
  * @returns Normalized source
+ * @throws Error if the source uses a disallowed protocol
  */
 function normalizeSource(source) {
+    // Validate protocol before processing
+    validateSourceProtocol(source);
     try {
         const parsed = new URL(source);
         // Only normalize HTTP(S) URLs

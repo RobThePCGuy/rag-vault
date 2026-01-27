@@ -1,6 +1,10 @@
 // VectorStore implementation with LanceDB integration
 
 import { type Connection, Index, type Table, connect } from '@lancedb/lancedb'
+import { DatabaseError } from '../errors/index.js'
+
+// Re-export error class for backwards compatibility
+export { DatabaseError } from '../errors/index.js'
 
 // ============================================
 // Constants
@@ -21,6 +25,49 @@ const FTS_INDEX_NAME = 'fts_index_v2'
 
 /** Threshold for cleaning up old index versions (1 minute) */
 const FTS_CLEANUP_THRESHOLD_MS = 60 * 1000
+
+/** FTS circuit breaker: max failures before disabling FTS */
+const FTS_MAX_FAILURES = 3
+
+/** FTS circuit breaker: cooldown period before retry (5 minutes) */
+const FTS_COOLDOWN_MS = 5 * 60 * 1000
+
+// ============================================
+// Error Codes (for robust error handling)
+// ============================================
+
+/**
+ * Known LanceDB error patterns for delete operations
+ * Used instead of fragile string matching
+ */
+const DELETE_IGNORABLE_PATTERNS = [
+  'not found',
+  'does not exist',
+  'no matching',
+  'no rows',
+  'empty result',
+] as const
+
+/**
+ * Regex for validating file paths before use in queries.
+ * Allows alphanumeric characters, slashes, dots, underscores, hyphens, colons (Windows), and spaces.
+ * Rejects paths with SQL injection attempts or path traversal.
+ */
+const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/
+
+/**
+ * Validate file path to prevent SQL injection and path traversal attacks.
+ * @param filePath - The file path to validate
+ * @returns true if path is safe for use in queries
+ */
+function isValidFilePath(filePath: string): boolean {
+  if (!filePath || typeof filePath !== 'string') return false
+  if (filePath.includes('..')) return false // Path traversal
+  if (filePath.includes("'") || filePath.includes('"')) return false // Quote injection
+  if (filePath.includes(';')) return false // SQL terminator
+  if (filePath.includes('--')) return false // SQL comment
+  return SAFE_PATH_REGEX.test(filePath)
+}
 
 // ============================================
 // Type Definitions
@@ -166,23 +213,6 @@ function toSearchResult(raw: unknown): SearchResult {
 }
 
 // ============================================
-// Error Classes
-// ============================================
-
-/**
- * Database error
- */
-export class DatabaseError extends Error {
-  constructor(
-    message: string,
-    public override readonly cause?: Error
-  ) {
-    super(message)
-    this.name = 'DatabaseError'
-  }
-}
-
-// ============================================
 // VectorStore Class
 // ============================================
 
@@ -193,15 +223,84 @@ export class DatabaseError extends Error {
  * - LanceDB operations (insert, delete, search)
  * - Transaction handling (atomicity of delete→insert)
  * - Metadata management
+ *
+ * FTS Circuit Breaker:
+ * - Tracks FTS failures (max 3 before disabling)
+ * - Auto-recovers after 5-minute cooldown
+ * - Prevents permanent FTS disable from transient errors
  */
 export class VectorStore {
   private db: Connection | null = null
   private table: Table | null = null
   private readonly config: VectorStoreConfig
   private ftsEnabled = false
+  private ftsFailureCount = 0
+  private ftsLastFailure: number | null = null
+  /** Mutex to prevent race conditions in circuit breaker state transitions */
+  private circuitBreakerResetting = false
 
   constructor(config: VectorStoreConfig) {
     this.config = config
+  }
+
+  /**
+   * Check if FTS should be attempted (circuit breaker logic)
+   * - Returns false if max failures reached and cooldown not elapsed
+   * - Resets failure count after successful cooldown period
+   * - Uses mutex to prevent race conditions during reset
+   */
+  private shouldAttemptFts(): boolean {
+    if (!this.ftsEnabled) return false
+
+    // If under failure threshold, allow FTS
+    if (this.ftsFailureCount < FTS_MAX_FAILURES) return true
+
+    // Check if cooldown period has elapsed
+    if (this.ftsLastFailure && Date.now() - this.ftsLastFailure > FTS_COOLDOWN_MS) {
+      // Use mutex to prevent multiple concurrent resets (race condition protection)
+      if (this.circuitBreakerResetting) {
+        // Another call is already resetting, don't allow FTS yet
+        return false
+      }
+
+      // Acquire mutex and reset circuit breaker (half-open state)
+      this.circuitBreakerResetting = true
+      this.ftsFailureCount = 0
+      this.ftsLastFailure = null
+      this.circuitBreakerResetting = false
+      console.error('VectorStore: FTS circuit breaker reset - attempting recovery')
+      return true
+    }
+
+    return false
+  }
+
+  /**
+   * Record FTS failure (circuit breaker)
+   */
+  private recordFtsFailure(error: Error): void {
+    this.ftsFailureCount++
+    this.ftsLastFailure = Date.now()
+    console.error(
+      `VectorStore: FTS failure ${this.ftsFailureCount}/${FTS_MAX_FAILURES}: ${error.message}`
+    )
+
+    if (this.ftsFailureCount >= FTS_MAX_FAILURES) {
+      console.error(
+        `VectorStore: FTS circuit breaker OPEN - will retry after ${FTS_COOLDOWN_MS / 1000}s cooldown`
+      )
+    }
+  }
+
+  /**
+   * Record FTS success (resets circuit breaker)
+   */
+  private recordFtsSuccess(): void {
+    if (this.ftsFailureCount > 0) {
+      console.error('VectorStore: FTS recovered successfully - circuit breaker reset')
+      this.ftsFailureCount = 0
+      this.ftsLastFailure = null
+    }
   }
 
   /**
@@ -246,10 +345,17 @@ export class VectorStore {
       return
     }
 
+    // Validate file path before use in query to prevent SQL injection
+    if (!isValidFilePath(filePath)) {
+      throw new DatabaseError(`Invalid file path: contains disallowed characters or patterns`)
+    }
+
+    // Escape path before try block so it's available in catch for logging
+    const escapedFilePath = filePath.replace(/'/g, "''")
+
     try {
       // Use LanceDB delete API to remove records matching filePath
-      // Escape single quotes to prevent SQL injection
-      const escapedFilePath = filePath.replace(/'/g, "''")
+      // Path is pre-validated, escaping is belt-and-suspenders defense
 
       // LanceDB's delete method doesn't throw errors if targets don't exist,
       // so call delete directly
@@ -260,18 +366,25 @@ export class VectorStore {
       // Rebuild FTS index after deleting data
       await this.rebuildFtsIndex()
     } catch (error) {
-      // If error occurs, output warning log
-      console.warn(`VectorStore: Error occurred while deleting file "${filePath}":`, error)
-      // Don't treat as error if deletion targets don't exist or table is empty
-      // Otherwise throw exception
+      // Build error context for debugging
+      const errorContext = {
+        operation: 'deleteChunks',
+        filePath,
+        query: `\`filePath\` = '${escapedFilePath}'`,
+        errorMessage: (error as Error).message,
+      }
+      console.warn('VectorStore delete error:', errorContext)
+
+      // Check if this is a known ignorable error (no matching records)
       const errorMessage = (error as Error).message.toLowerCase()
-      if (
-        !errorMessage.includes('not found') &&
-        !errorMessage.includes('does not exist') &&
-        !errorMessage.includes('no matching')
-      ) {
+      const isIgnorable = DELETE_IGNORABLE_PATTERNS.some((pattern) =>
+        errorMessage.includes(pattern)
+      )
+
+      if (!isIgnorable) {
         throw new DatabaseError(`Failed to delete chunks for file: ${filePath}`, error as Error)
       }
+      // Ignorable errors (no matching records) are logged but not thrown
     }
   }
 
@@ -475,9 +588,9 @@ export class VectorStore {
         results = this.applyGrouping(results, this.config.grouping)
       }
 
-      // Step 3: Apply keyword boost if enabled
+      // Step 3: Apply keyword boost if enabled (with circuit breaker)
       const hybridWeight = this.config.hybridWeight ?? 0.6
-      if (this.ftsEnabled && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
+      if (this.shouldAttemptFts() && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
         try {
           // Get unique filePaths from vector results to filter FTS search
           const uniqueFilePaths = [...new Set(results.map((r) => r.filePath))]
@@ -495,9 +608,13 @@ export class VectorStore {
             .toArray()
 
           results = this.applyKeywordBoost(results, ftsResults, hybridWeight)
+
+          // FTS succeeded - reset circuit breaker
+          this.recordFtsSuccess()
         } catch (ftsError) {
-          console.error('VectorStore: FTS search failed, using vector-only results:', ftsError)
-          this.ftsEnabled = false
+          // Record failure for circuit breaker (will auto-recover after cooldown)
+          this.recordFtsFailure(ftsError as Error)
+          // Continue with vector-only results
         }
       }
 
@@ -616,6 +733,8 @@ export class VectorStore {
     this.db = null
     this.table = null
     this.ftsEnabled = false
+    this.ftsFailureCount = 0
+    this.ftsLastFailure = null
     console.error('VectorStore: Connection closed')
   }
 
@@ -658,6 +777,9 @@ export class VectorStore {
       // Get uptime (in seconds)
       const uptime = process.uptime()
 
+      // Determine effective FTS state (considering circuit breaker)
+      const ftsEffectivelyEnabled = this.shouldAttemptFts()
+
       return {
         documentCount,
         chunkCount,
@@ -665,7 +787,7 @@ export class VectorStore {
         uptime,
         ftsIndexEnabled: this.ftsEnabled,
         searchMode:
-          this.ftsEnabled && (this.config.hybridWeight ?? 0.6) > 0 ? 'hybrid' : 'vector-only',
+          ftsEffectivelyEnabled && (this.config.hybridWeight ?? 0.6) > 0 ? 'hybrid' : 'vector-only',
       }
     } catch (error) {
       throw new DatabaseError('Failed to get status', error as Error)

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { type FormEvent, useState } from 'react'
 
 interface ContentPasteProps {
   onIngest: (content: string, source: string, format: 'text' | 'html' | 'markdown') => void

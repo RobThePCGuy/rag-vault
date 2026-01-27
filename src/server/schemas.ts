@@ -20,9 +20,10 @@ export const QueryDocumentsSchema = z.object({
     .number()
     .int()
     .positive()
+    .max(20, 'Limit cannot exceed 20')
     .optional()
     .describe(
-      'Maximum number of results to return (default: 10). Recommended: 5 for precision, 10 for balance, 20 for broad exploration.'
+      'Maximum number of results to return (default: 10, max: 20). Recommended: 5 for precision, 10 for balance, 20 for broad exploration.'
     ),
 })
 
@@ -129,3 +130,34 @@ export interface StatusOutput {
   ftsIndexEnabled: boolean
   searchMode: 'hybrid' | 'vector-only'
 }
+
+// ============================================
+// Internal Response Validation Schemas
+// ============================================
+
+/**
+ * Schema for validating status response from RAG server
+ */
+export const StatusResponseSchema = z.object({
+  documentCount: z.number(),
+  chunkCount: z.number(),
+  memoryUsage: z.number(),
+  uptime: z.number(),
+  ftsIndexEnabled: z.boolean(),
+  searchMode: z.enum(['hybrid', 'vector-only']),
+})
+
+/**
+ * Schema for validating recent databases file structure
+ */
+export const RecentDatabasesFileSchema = z.object({
+  version: z.number(),
+  databases: z.array(
+    z.object({
+      path: z.string(),
+      name: z.string(),
+      lastAccessed: z.string(),
+      modelName: z.string().optional(),
+    })
+  ),
+})

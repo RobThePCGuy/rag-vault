@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { DatabaseEntry } from '../../api/config'
 import { Spinner } from '../ui'
+import { formatDate } from '../../utils/format'
 
 interface DatabaseSwitcherProps {
   databases: DatabaseEntry[]
@@ -89,38 +90,6 @@ export function DatabaseSwitcher({
       </div>
     </div>
   )
-}
-
-function formatDate(isoString: string): string {
-  const date = new Date(isoString)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-
-  // Less than 1 minute
-  if (diff < 60000) {
-    return 'Just now'
-  }
-
-  // Less than 1 hour
-  if (diff < 3600000) {
-    const minutes = Math.floor(diff / 60000)
-    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-  }
-
-  // Less than 24 hours
-  if (diff < 86400000) {
-    const hours = Math.floor(diff / 3600000)
-    return `${hours} hour${hours > 1 ? 's' : ''} ago`
-  }
-
-  // Less than 7 days
-  if (diff < 604800000) {
-    const days = Math.floor(diff / 86400000)
-    return `${days} day${days > 1 ? 's' : ''} ago`
-  }
-
-  // Format as date
-  return date.toLocaleDateString()
 }
 
 function SwitchIcon({ className }: { className?: string }) {

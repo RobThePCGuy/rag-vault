@@ -10,6 +10,24 @@ const express_1 = require("express");
 const index_js_1 = require("../errors/index.js");
 const index_js_2 = require("./middleware/index.js");
 /**
+ * Extract text from a RAG server response with proper bounds checking
+ * @throws RAGError if the response format is invalid
+ */
+function extractResultText(result) {
+    if (!result.content || !Array.isArray(result.content) || result.content.length === 0) {
+        throw new index_js_1.RAGError('Malformed server response: missing content array', {
+            statusCode: 500,
+        });
+    }
+    const firstContent = result.content[0];
+    if (!firstContent || typeof firstContent.text !== 'string') {
+        throw new index_js_1.RAGError('Malformed server response: missing text in content', {
+            statusCode: 500,
+        });
+    }
+    return firstContent.text;
+}
+/**
  * Create API router with all endpoints
  * @param serverOrAccessor - RAGServer instance or accessor function
  */
@@ -34,7 +52,7 @@ function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleQueryDocuments(queryInput);
-        const data = JSON.parse(result.content[0].text);
+        const data = JSON.parse(extractResultText(result));
         res.json({ results: data });
     }));
     // POST /api/v1/files/upload - Upload files (multipart)
@@ -48,7 +66,7 @@ function createApiRouter(serverOrAccessor) {
         const server = getServer();
         const absolutePath = node_path_1.default.resolve(file.path);
         const result = await server.handleIngestFile({ filePath: absolutePath });
-        const data = JSON.parse(result.content[0].text);
+        const data = JSON.parse(extractResultText(result));
         res.json(data);
     }));
     // POST /api/v1/data - Ingest content strings
@@ -62,14 +80,14 @@ function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleIngestData({ content, metadata });
-        const data = JSON.parse(result.content[0].text);
+        const data = JSON.parse(extractResultText(result));
         res.json(data);
     }));
     // GET /api/v1/files - List ingested files
     router.get('/files', (0, index_js_2.asyncHandler)(async (_req, res) => {
         const server = getServer();
         const result = await server.handleListFiles();
-        const data = JSON.parse(result.content[0].text);
+        const data = JSON.parse(extractResultText(result));
         res.json({ files: data });
     }));
     // DELETE /api/v1/files - Delete file/source
@@ -87,16 +105,23 @@ function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleDeleteFile(deleteInput);
-        const data = JSON.parse(result.content[0].text);
+        const data = JSON.parse(extractResultText(result));
         res.json(data);
     }));
     // GET /api/v1/status - System status
     router.get('/status', (0, index_js_2.asyncHandler)(async (_req, res) => {
         const server = getServer();
         const result = await server.handleStatus();
-        const data = JSON.parse(result.content[0].text);
+        const data = JSON.parse(extractResultText(result));
         res.json(data);
     }));
+    // GET /api/v1/health - Lightweight health check for load balancers
+    router.get('/health', (_req, res) => {
+        res.json({
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+        });
+    });
     return router;
 }
 //# sourceMappingURL=api-routes.js.map

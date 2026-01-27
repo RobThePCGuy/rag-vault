@@ -59,13 +59,14 @@
     "test:safe": "pnpm test && pnpm cleanup:processes",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit",
-    "setup": "pnpm install && pnpm web:build && pnpm install --prefix web-ui && pnpm ui:build && pnpm web:dev",
-    "ui:build": "pnpm build --prefix web-ui",
+    "setup:web": "pnpm install && pnpm web:build && pnpm --prefix web-ui install && pnpm ui:build && pnpm web:dev",
+    "ui:build": "pnpm --prefix web-ui build",
     "ui:dev": "cd web-ui && pnpm dev",
-    "web": "tsx src/web/index.ts",
     "web:build": "pnpm build",
-    "web:dev": "concurrently -n api,ui -c blue,magenta \"tsx watch src/web/index.ts\" \"pnpm --prefix web-ui dev\"",
-    "web:start": "node dist/web/index.js"
+    "web:dev": "concurrently -n api,ui -c blue,magenta \"pnpm web:watch\" \"pnpm --prefix web-ui dev\"",
+    "web:start": "node dist/web/index.js",
+	"web:watch": "tsx watch src/web/index.ts",
+    "web": "tsx src/web/index.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^3.7.6",

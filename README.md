@@ -227,7 +227,7 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `RAG_HYBRID_WEIGHT` | `0.6` | Keyword boost strength (0 = semantic only, 1 = keywords dominate) |
+| `RAG_HYBRID_WEIGHT` | `0.6` | Keyword boost strength. 0 = semantic-only, higher = stronger boost for exact keyword matches |
 | `RAG_GROUPING` | — | `similar` = top group only, `related` = top 2 groups |
 | `RAG_MAX_DISTANCE` | — | Filter out results below this relevance threshold |
 

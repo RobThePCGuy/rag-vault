@@ -16,11 +16,19 @@ export declare function encodeBase64Url(str: string): string;
  */
 export declare function decodeBase64Url(base64url: string): string;
 /**
+ * Validate that a source doesn't use a dangerous protocol
+ *
+ * @param source - Source identifier to validate
+ * @throws Error if the protocol is blocked
+ */
+export declare function validateSourceProtocol(source: string): void;
+/**
  * Normalize source URL by removing query string and fragment
  * Only normalizes HTTP(S) URLs. Other sources (e.g., "clipboard://...") are returned as-is
  *
  * @param source - Source identifier (URL or custom ID)
  * @returns Normalized source
+ * @throws Error if the source uses a disallowed protocol
  */
 export declare function normalizeSource(source: string): string;
 /**

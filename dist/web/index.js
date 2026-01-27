@@ -42,8 +42,16 @@ const node_fs_1 = require("node:fs");
 const node_path_1 = __importDefault(require("node:path"));
 const config_js_1 = require("../utils/config.js");
 const process_handlers_js_1 = require("../utils/process-handlers.js");
+const index_js_1 = require("./middleware/index.js");
 // Setup global error handlers
 (0, process_handlers_js_1.setupProcessHandlers)();
+// Setup graceful shutdown
+(0, process_handlers_js_1.setupGracefulShutdown)();
+// Register rate limiter cleanup for graceful shutdown
+(0, process_handlers_js_1.onShutdown)(() => {
+    console.error('Cleaning up rate limiter...');
+    (0, index_js_1.stopRateLimiterCleanup)();
+});
 /**
  * Entry point - Start RAG Web Server
  */

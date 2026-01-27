@@ -120,4 +120,67 @@ export interface StatusOutput {
     ftsIndexEnabled: boolean;
     searchMode: 'hybrid' | 'vector-only';
 }
+/**
+ * Schema for validating status response from RAG server
+ */
+export declare const StatusResponseSchema: z.ZodObject<{
+    documentCount: z.ZodNumber;
+    chunkCount: z.ZodNumber;
+    memoryUsage: z.ZodNumber;
+    uptime: z.ZodNumber;
+    ftsIndexEnabled: z.ZodBoolean;
+    searchMode: z.ZodEnum<["hybrid", "vector-only"]>;
+}, "strip", z.ZodTypeAny, {
+    documentCount: number;
+    chunkCount: number;
+    memoryUsage: number;
+    ftsIndexEnabled: boolean;
+    searchMode: "hybrid" | "vector-only";
+    uptime: number;
+}, {
+    documentCount: number;
+    chunkCount: number;
+    memoryUsage: number;
+    ftsIndexEnabled: boolean;
+    searchMode: "hybrid" | "vector-only";
+    uptime: number;
+}>;
+/**
+ * Schema for validating recent databases file structure
+ */
+export declare const RecentDatabasesFileSchema: z.ZodObject<{
+    version: z.ZodNumber;
+    databases: z.ZodArray<z.ZodObject<{
+        path: z.ZodString;
+        name: z.ZodString;
+        lastAccessed: z.ZodString;
+        modelName: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        name: string;
+        path: string;
+        lastAccessed: string;
+        modelName?: string | undefined;
+    }, {
+        name: string;
+        path: string;
+        lastAccessed: string;
+        modelName?: string | undefined;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    version: number;
+    databases: {
+        name: string;
+        path: string;
+        lastAccessed: string;
+        modelName?: string | undefined;
+    }[];
+}, {
+    version: number;
+    databases: {
+        name: string;
+        path: string;
+        lastAccessed: string;
+        modelName?: string | undefined;
+    }[];
+}>;
 //# sourceMappingURL=schemas.d.ts.map

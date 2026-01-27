@@ -4,10 +4,24 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { buildRAGConfig } from '../utils/config.js'
-import { setupProcessHandlers } from '../utils/process-handlers.js'
+import {
+  onShutdown,
+  setupGracefulShutdown,
+  setupProcessHandlers,
+} from '../utils/process-handlers.js'
+import { stopRateLimiterCleanup } from './middleware/index.js'
 
 // Setup global error handlers
 setupProcessHandlers()
+
+// Setup graceful shutdown
+setupGracefulShutdown()
+
+// Register rate limiter cleanup for graceful shutdown
+onShutdown(() => {
+  console.error('Cleaning up rate limiter...')
+  stopRateLimiterCleanup()
+})
 
 /**
  * Entry point - Start RAG Web Server

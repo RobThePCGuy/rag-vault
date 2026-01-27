@@ -3,6 +3,7 @@
 
 import type { TextChunk } from './index.js'
 import { splitIntoSentences } from './sentence-splitter.js'
+import { cosineSimilarity as cosineSimilarityUtil } from '../utils/math.js'
 
 // ============================================
 // Type Definitions
@@ -311,28 +312,9 @@ export class SemanticChunker {
 
   /**
    * Calculate cosine similarity between two vectors
-   * Public for testing
+   * Public for testing - delegates to shared utility
    */
   cosineSimilarity(vec1: number[], vec2: number[]): number {
-    if (vec1.length !== vec2.length || vec1.length === 0) {
-      return 0
-    }
-
-    let dotProduct = 0
-    let norm1 = 0
-    let norm2 = 0
-
-    for (let i = 0; i < vec1.length; i++) {
-      const v1 = vec1[i] ?? 0
-      const v2 = vec2[i] ?? 0
-      dotProduct += v1 * v2
-      norm1 += v1 * v1
-      norm2 += v2 * v2
-    }
-
-    const denominator = Math.sqrt(norm1) * Math.sqrt(norm2)
-    if (denominator === 0) return 0
-
-    return dotProduct / denominator
+    return cosineSimilarityUtil(vec1, vec2)
   }
 }

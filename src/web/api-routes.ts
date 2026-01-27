@@ -3,10 +3,29 @@
 import path from 'node:path'
 import type { Request, Response, Router } from 'express'
 import { Router as createRouter } from 'express'
-import { ValidationError } from '../errors/index.js'
+import { RAGError, ValidationError } from '../errors/index.js'
 import type { RAGServer } from '../server/index.js'
 import { asyncHandler } from './middleware/index.js'
 import type { ServerAccessor } from './types.js'
+
+/**
+ * Extract text from a RAG server response with proper bounds checking
+ * @throws RAGError if the response format is invalid
+ */
+function extractResultText(result: { content?: Array<{ text?: string }> }): string {
+  if (!result.content || !Array.isArray(result.content) || result.content.length === 0) {
+    throw new RAGError('Malformed server response: missing content array', {
+      statusCode: 500,
+    })
+  }
+  const firstContent = result.content[0]
+  if (!firstContent || typeof firstContent.text !== 'string') {
+    throw new RAGError('Malformed server response: missing text in content', {
+      statusCode: 500,
+    })
+  }
+  return firstContent.text
+}
 
 /**
  * Search request body
@@ -66,7 +85,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       }
       const server = getServer()
       const result = await server.handleQueryDocuments(queryInput)
-      const data = JSON.parse(result.content[0].text)
+      const data = JSON.parse(extractResultText(result))
       res.json({ results: data })
     })
   )
@@ -85,7 +104,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       const server = getServer()
       const absolutePath = path.resolve(file.path)
       const result = await server.handleIngestFile({ filePath: absolutePath })
-      const data = JSON.parse(result.content[0].text)
+      const data = JSON.parse(extractResultText(result))
       res.json(data)
     })
   )
@@ -106,7 +125,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
 
       const server = getServer()
       const result = await server.handleIngestData({ content, metadata })
-      const data = JSON.parse(result.content[0].text)
+      const data = JSON.parse(extractResultText(result))
       res.json(data)
     })
   )
@@ -117,7 +136,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
     asyncHandler(async (_req: Request, res: Response) => {
       const server = getServer()
       const result = await server.handleListFiles()
-      const data = JSON.parse(result.content[0].text)
+      const data = JSON.parse(extractResultText(result))
       res.json({ files: data })
     })
   )
@@ -141,7 +160,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       }
       const server = getServer()
       const result = await server.handleDeleteFile(deleteInput)
-      const data = JSON.parse(result.content[0].text)
+      const data = JSON.parse(extractResultText(result))
       res.json(data)
     })
   )
@@ -152,10 +171,18 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
     asyncHandler(async (_req: Request, res: Response) => {
       const server = getServer()
       const result = await server.handleStatus()
-      const data = JSON.parse(result.content[0].text)
+      const data = JSON.parse(extractResultText(result))
       res.json(data)
     })
   )
+
+  // GET /api/v1/health - Lightweight health check for load balancers
+  router.get('/health', (_req: Request, res: Response) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    })
+  })
 
   return router
 }

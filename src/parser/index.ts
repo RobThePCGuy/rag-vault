@@ -15,6 +15,12 @@ import { extname, isAbsolute, resolve } from 'node:path'
 const MIN_STRING_LENGTH = 20
 
 /**
+ * Maximum JSON content size (10MB) to prevent memory exhaustion
+ * during JSON parsing of large files
+ */
+const MAX_JSON_CONTENT_SIZE = 10 * 1024 * 1024
+
+/**
  * Key allowlist for prose-related fields (case-insensitive partial match)
  * These keys likely contain meaningful text even if short
  */
@@ -77,7 +83,11 @@ function looksLikeProse(str: string): boolean {
 import mammoth from 'mammoth'
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
+import { ParserFileOperationError, ParserValidationError } from '../errors/index.js'
 import { type EmbedderInterface, type PageData, filterPageBoundarySentences } from './pdf-filter.js'
+
+// Re-export error classes for backwards compatibility
+export { ParserFileOperationError, ParserValidationError } from '../errors/index.js'
 
 // ============================================
 // Type Definitions
@@ -91,34 +101,6 @@ export interface ParserConfig {
   baseDir: string
   /** Maximum file size (100MB) */
   maxFileSize: number
-}
-
-/**
- * Parser validation error (equivalent to 400)
- * Named to avoid collision with centralized ValidationError in src/errors/index.ts
- */
-export class ParserValidationError extends Error {
-  constructor(
-    message: string,
-    public override readonly cause?: Error
-  ) {
-    super(message)
-    this.name = 'ParserValidationError'
-  }
-}
-
-/**
- * Parser file operation error (equivalent to 500)
- * Named to avoid collision with centralized FileOperationError in src/errors/index.ts
- */
-export class ParserFileOperationError extends Error {
-  constructor(
-    message: string,
-    public override readonly cause?: Error
-  ) {
-    super(message)
-    this.name = 'ParserFileOperationError'
-  }
 }
 
 // ============================================
@@ -344,6 +326,14 @@ export class DocumentParser {
   private async parseJson(filePath: string): Promise<string> {
     try {
       const content = await readFile(filePath, 'utf-8')
+
+      // Check size limit before parsing to prevent memory exhaustion
+      if (content.length > MAX_JSON_CONTENT_SIZE) {
+        throw new ParserValidationError(
+          `JSON content size (${content.length} bytes) exceeds limit (${MAX_JSON_CONTENT_SIZE} bytes)`
+        )
+      }
+
       try {
         const data = JSON.parse(content)
         const text = this.jsonToText(data)

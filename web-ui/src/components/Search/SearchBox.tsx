@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { type FormEvent, useState } from 'react'
 
 interface SearchBoxProps {
   onSearch: (query: string, limit?: number) => void

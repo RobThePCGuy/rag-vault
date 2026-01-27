@@ -3,6 +3,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VectorStore = exports.DatabaseError = void 0;
 const lancedb_1 = require("@lancedb/lancedb");
+const index_js_1 = require("../errors/index.js");
+// Re-export error class for backwards compatibility
+var index_js_2 = require("../errors/index.js");
+Object.defineProperty(exports, "DatabaseError", { enumerable: true, get: function () { return index_js_2.DatabaseError; } });
 // ============================================
 // Constants
 // ============================================
@@ -18,6 +22,48 @@ const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = 2;
 const FTS_INDEX_NAME = 'fts_index_v2';
 /** Threshold for cleaning up old index versions (1 minute) */
 const FTS_CLEANUP_THRESHOLD_MS = 60 * 1000;
+/** FTS circuit breaker: max failures before disabling FTS */
+const FTS_MAX_FAILURES = 3;
+/** FTS circuit breaker: cooldown period before retry (5 minutes) */
+const FTS_COOLDOWN_MS = 5 * 60 * 1000;
+// ============================================
+// Error Codes (for robust error handling)
+// ============================================
+/**
+ * Known LanceDB error patterns for delete operations
+ * Used instead of fragile string matching
+ */
+const DELETE_IGNORABLE_PATTERNS = [
+    'not found',
+    'does not exist',
+    'no matching',
+    'no rows',
+    'empty result',
+];
+/**
+ * Regex for validating file paths before use in queries.
+ * Allows alphanumeric characters, slashes, dots, underscores, hyphens, colons (Windows), and spaces.
+ * Rejects paths with SQL injection attempts or path traversal.
+ */
+const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/;
+/**
+ * Validate file path to prevent SQL injection and path traversal attacks.
+ * @param filePath - The file path to validate
+ * @returns true if path is safe for use in queries
+ */
+function isValidFilePath(filePath) {
+    if (!filePath || typeof filePath !== 'string')
+        return false;
+    if (filePath.includes('..'))
+        return false; // Path traversal
+    if (filePath.includes("'") || filePath.includes('"'))
+        return false; // Quote injection
+    if (filePath.includes(';'))
+        return false; // SQL terminator
+    if (filePath.includes('--'))
+        return false; // SQL comment
+    return SAFE_PATH_REGEX.test(filePath);
+}
 // ============================================
 // Type Guards
 // ============================================
@@ -50,7 +96,7 @@ function isLanceDBRawResult(value) {
  */
 function toSearchResult(raw) {
     if (!isLanceDBRawResult(raw)) {
-        throw new DatabaseError('Invalid search result format from LanceDB');
+        throw new index_js_1.DatabaseError('Invalid search result format from LanceDB');
     }
     return {
         filePath: raw.filePath,
@@ -61,20 +107,6 @@ function toSearchResult(raw) {
     };
 }
 // ============================================
-// Error Classes
-// ============================================
-/**
- * Database error
- */
-class DatabaseError extends Error {
-    constructor(message, cause) {
-        super(message);
-        this.cause = cause;
-        this.name = 'DatabaseError';
-    }
-}
-exports.DatabaseError = DatabaseError;
-// ============================================
 // VectorStore Class
 // ============================================
 /**
@@ -84,13 +116,72 @@ exports.DatabaseError = DatabaseError;
  * - LanceDB operations (insert, delete, search)
  * - Transaction handling (atomicity of delete→insert)
  * - Metadata management
+ *
+ * FTS Circuit Breaker:
+ * - Tracks FTS failures (max 3 before disabling)
+ * - Auto-recovers after 5-minute cooldown
+ * - Prevents permanent FTS disable from transient errors
  */
 class VectorStore {
     constructor(config) {
         this.db = null;
         this.table = null;
         this.ftsEnabled = false;
+        this.ftsFailureCount = 0;
+        this.ftsLastFailure = null;
+        /** Mutex to prevent race conditions in circuit breaker state transitions */
+        this.circuitBreakerResetting = false;
         this.config = config;
+    }
+    /**
+     * Check if FTS should be attempted (circuit breaker logic)
+     * - Returns false if max failures reached and cooldown not elapsed
+     * - Resets failure count after successful cooldown period
+     * - Uses mutex to prevent race conditions during reset
+     */
+    shouldAttemptFts() {
+        if (!this.ftsEnabled)
+            return false;
+        // If under failure threshold, allow FTS
+        if (this.ftsFailureCount < FTS_MAX_FAILURES)
+            return true;
+        // Check if cooldown period has elapsed
+        if (this.ftsLastFailure && Date.now() - this.ftsLastFailure > FTS_COOLDOWN_MS) {
+            // Use mutex to prevent multiple concurrent resets (race condition protection)
+            if (this.circuitBreakerResetting) {
+                // Another call is already resetting, don't allow FTS yet
+                return false;
+            }
+            // Acquire mutex and reset circuit breaker (half-open state)
+            this.circuitBreakerResetting = true;
+            this.ftsFailureCount = 0;
+            this.ftsLastFailure = null;
+            this.circuitBreakerResetting = false;
+            console.error('VectorStore: FTS circuit breaker reset - attempting recovery');
+            return true;
+        }
+        return false;
+    }
+    /**
+     * Record FTS failure (circuit breaker)
+     */
+    recordFtsFailure(error) {
+        this.ftsFailureCount++;
+        this.ftsLastFailure = Date.now();
+        console.error(`VectorStore: FTS failure ${this.ftsFailureCount}/${FTS_MAX_FAILURES}: ${error.message}`);
+        if (this.ftsFailureCount >= FTS_MAX_FAILURES) {
+            console.error(`VectorStore: FTS circuit breaker OPEN - will retry after ${FTS_COOLDOWN_MS / 1000}s cooldown`);
+        }
+    }
+    /**
+     * Record FTS success (resets circuit breaker)
+     */
+    recordFtsSuccess() {
+        if (this.ftsFailureCount > 0) {
+            console.error('VectorStore: FTS recovered successfully - circuit breaker reset');
+            this.ftsFailureCount = 0;
+            this.ftsLastFailure = null;
+        }
     }
     /**
      * Initialize LanceDB and create table
@@ -115,7 +206,7 @@ class VectorStore {
             console.error(`VectorStore initialized: ${this.config.dbPath}`);
         }
         catch (error) {
-            throw new DatabaseError('Failed to initialize VectorStore', error);
+            throw new index_js_1.DatabaseError('Failed to initialize VectorStore', error);
         }
     }
     /**
@@ -129,10 +220,15 @@ class VectorStore {
             console.error('VectorStore: Skipping deletion as table does not exist');
             return;
         }
+        // Validate file path before use in query to prevent SQL injection
+        if (!isValidFilePath(filePath)) {
+            throw new index_js_1.DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
+        }
+        // Escape path before try block so it's available in catch for logging
+        const escapedFilePath = filePath.replace(/'/g, "''");
         try {
             // Use LanceDB delete API to remove records matching filePath
-            // Escape single quotes to prevent SQL injection
-            const escapedFilePath = filePath.replace(/'/g, "''");
+            // Path is pre-validated, escaping is belt-and-suspenders defense
             // LanceDB's delete method doesn't throw errors if targets don't exist,
             // so call delete directly
             // Note: Field names are case-sensitive, use backticks for camelCase fields
@@ -142,16 +238,21 @@ class VectorStore {
             await this.rebuildFtsIndex();
         }
         catch (error) {
-            // If error occurs, output warning log
-            console.warn(`VectorStore: Error occurred while deleting file "${filePath}":`, error);
-            // Don't treat as error if deletion targets don't exist or table is empty
-            // Otherwise throw exception
+            // Build error context for debugging
+            const errorContext = {
+                operation: 'deleteChunks',
+                filePath,
+                query: `\`filePath\` = '${escapedFilePath}'`,
+                errorMessage: error.message,
+            };
+            console.warn('VectorStore delete error:', errorContext);
+            // Check if this is a known ignorable error (no matching records)
             const errorMessage = error.message.toLowerCase();
-            if (!errorMessage.includes('not found') &&
-                !errorMessage.includes('does not exist') &&
-                !errorMessage.includes('no matching')) {
-                throw new DatabaseError(`Failed to delete chunks for file: ${filePath}`, error);
+            const isIgnorable = DELETE_IGNORABLE_PATTERNS.some((pattern) => errorMessage.includes(pattern));
+            if (!isIgnorable) {
+                throw new index_js_1.DatabaseError(`Failed to delete chunks for file: ${filePath}`, error);
             }
+            // Ignorable errors (no matching records) are logged but not thrown
         }
     }
     /**
@@ -167,7 +268,7 @@ class VectorStore {
             if (!this.table) {
                 // Create table on first insertion
                 if (!this.db) {
-                    throw new DatabaseError('VectorStore is not initialized. Call initialize() first.');
+                    throw new index_js_1.DatabaseError('VectorStore is not initialized. Call initialize() first.');
                 }
                 // LanceDB's createTable API accepts data as Record<string, unknown>[]
                 const records = chunks.map((chunk) => chunk);
@@ -186,7 +287,7 @@ class VectorStore {
             console.error(`VectorStore: Inserted ${chunks.length} chunks`);
         }
         catch (error) {
-            throw new DatabaseError('Failed to insert chunks', error);
+            throw new index_js_1.DatabaseError('Failed to insert chunks', error);
         }
     }
     /**
@@ -239,6 +340,8 @@ class VectorStore {
         if (!this.table || !this.ftsEnabled) {
             return;
         }
+        // TODO(perf): optimize() after every write keeps FTS correct, but can be expensive at scale.
+        // If ingestion throughput becomes an issue, consider debouncing or batching optimize calls.
         // Optimize table and clean up old versions
         const cleanupThreshold = new Date(Date.now() - FTS_CLEANUP_THRESHOLD_MS);
         await this.table.optimize({ cleanupOlderThan: cleanupThreshold });
@@ -310,11 +413,12 @@ class VectorStore {
             return [];
         }
         if (limit < 1 || limit > 20) {
-            throw new DatabaseError(`Invalid limit: expected 1-20, got ${limit}`);
+            throw new index_js_1.DatabaseError(`Invalid limit: expected 1-20, got ${limit}`);
         }
         try {
             // Step 1: Semantic (vector) search - always the primary search
             const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER;
+            // Assumes normalized embeddings so dot behaves like cosine distance (lower is better, [0,2]).
             let query = this.table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit);
             // Apply distance threshold at query level
             if (this.config.maxDistance !== undefined) {
@@ -328,9 +432,9 @@ class VectorStore {
             if (this.config.grouping && results.length > 1) {
                 results = this.applyGrouping(results, this.config.grouping);
             }
-            // Step 3: Apply keyword boost if enabled
+            // Step 3: Apply keyword boost if enabled (with circuit breaker)
             const hybridWeight = this.config.hybridWeight ?? 0.6;
-            if (this.ftsEnabled && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
+            if (this.shouldAttemptFts() && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
                 try {
                     // Get unique filePaths from vector results to filter FTS search
                     const uniqueFilePaths = [...new Set(results.map((r) => r.filePath))];
@@ -345,17 +449,20 @@ class VectorStore {
                         .limit(results.length * 2) // Enough to cover all vector results
                         .toArray();
                     results = this.applyKeywordBoost(results, ftsResults, hybridWeight);
+                    // FTS succeeded - reset circuit breaker
+                    this.recordFtsSuccess();
                 }
                 catch (ftsError) {
-                    console.error('VectorStore: FTS search failed, using vector-only results:', ftsError);
-                    this.ftsEnabled = false;
+                    // Record failure for circuit breaker (will auto-recover after cooldown)
+                    this.recordFtsFailure(ftsError);
+                    // Continue with vector-only results
                 }
             }
             // Return top results after all filtering and boosting
             return results.slice(0, limit);
         }
         catch (error) {
-            throw new DatabaseError('Failed to search vectors', error);
+            throw new index_js_1.DatabaseError('Failed to search vectors', error);
         }
     }
     /**
@@ -445,7 +552,7 @@ class VectorStore {
             }));
         }
         catch (error) {
-            throw new DatabaseError('Failed to list files', error);
+            throw new index_js_1.DatabaseError('Failed to list files', error);
         }
     }
     /**
@@ -455,6 +562,8 @@ class VectorStore {
         this.db = null;
         this.table = null;
         this.ftsEnabled = false;
+        this.ftsFailureCount = 0;
+        this.ftsLastFailure = null;
         console.error('VectorStore: Connection closed');
     }
     /**
@@ -484,17 +593,19 @@ class VectorStore {
             const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024;
             // Get uptime (in seconds)
             const uptime = process.uptime();
+            // Determine effective FTS state (considering circuit breaker)
+            const ftsEffectivelyEnabled = this.shouldAttemptFts();
             return {
                 documentCount,
                 chunkCount,
                 memoryUsage,
                 uptime,
                 ftsIndexEnabled: this.ftsEnabled,
-                searchMode: this.ftsEnabled && (this.config.hybridWeight ?? 0.6) > 0 ? 'hybrid' : 'vector-only',
+                searchMode: ftsEffectivelyEnabled && (this.config.hybridWeight ?? 0.6) > 0 ? 'hybrid' : 'vector-only',
             };
         }
         catch (error) {
-            throw new DatabaseError('Failed to get status', error);
+            throw new index_js_1.DatabaseError('Failed to get status', error);
         }
     }
 }

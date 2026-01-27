@@ -61,7 +61,7 @@ export declare class DatabaseManager {
     private currentConfig;
     private serverFactory;
     private baseConfig;
-    private switchLock;
+    private switchPromise;
     constructor(serverFactory: (config: RAGServerConfig) => RAGServer, baseConfig: Omit<RAGServerConfig, 'dbPath'>);
     /**
      * Initialize with a database path
@@ -77,22 +77,41 @@ export declare class DatabaseManager {
     getCurrentConfig(): Promise<CurrentDatabaseConfig | null>;
     /**
      * Switch to a different database
+     *
+     * Uses promise-based mutex to prevent race conditions from concurrent switch attempts.
      */
     switchDatabase(newDbPath: string): Promise<void>;
+    /**
+     * Internal method to perform the actual database switch
+     */
+    private performSwitch;
     /**
      * Create a new database
      */
     createDatabase(options: CreateDatabaseOptions): Promise<void>;
     /**
      * Switch to a new (possibly empty) database
+     *
+     * Uses promise-based mutex to prevent race conditions from concurrent switch attempts.
      */
     private switchToNewDatabase;
     /**
+     * Internal method to perform the actual switch to a new database
+     */
+    private performSwitchToNew;
+    /**
      * Get list of recent databases
+     *
+     * Handles errors appropriately:
+     * - File not found: Normal case, returns empty array
+     * - Parse/validation error: Logs error but returns empty array to allow recovery
      */
     getRecentDatabases(): Promise<DatabaseEntry[]>;
     /**
      * Scan a directory for LanceDB databases
+     *
+     * Security: Only scans within allowed roots (ALLOWED_SCAN_ROOTS env var or home directory)
+     * to prevent path traversal attacks.
      */
     scanForDatabases(scanPath: string): Promise<ScannedDatabase[]>;
     /**

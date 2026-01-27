@@ -3,20 +3,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Embedder = exports.EmbeddingError = void 0;
 const transformers_1 = require("@huggingface/transformers");
-// ============================================
-// Error Classes
-// ============================================
-/**
- * Embedding generation error
- */
-class EmbeddingError extends Error {
-    constructor(message, cause) {
-        super(message);
-        this.cause = cause;
-        this.name = 'EmbeddingError';
-    }
-}
-exports.EmbeddingError = EmbeddingError;
+const index_js_1 = require("../errors/index.js");
+// Re-export error class for backwards compatibility
+var index_js_2 = require("../errors/index.js");
+Object.defineProperty(exports, "EmbeddingError", { enumerable: true, get: function () { return index_js_2.EmbeddingError; } });
 // ============================================
 // Embedder Class
 // ============================================
@@ -59,7 +49,7 @@ class Embedder {
             console.error('Embedder: Model loaded successfully');
         }
         catch (error) {
-            throw new EmbeddingError(`Failed to initialize Embedder: ${error.message}`, error);
+            throw new index_js_1.EmbeddingError(`Failed to initialize Embedder: ${error.message}`, error);
         }
     }
     /**
@@ -82,7 +72,7 @@ class Embedder {
             // Clear initPromise on failure to allow retry
             this.initPromise = null;
             // Enhance error message with detailed guidance
-            throw new EmbeddingError(`Failed to initialize embedder on first use: ${error.message}\n\nPossible causes:\n  • Network connectivity issues during model download\n  • Insufficient disk space (need ~90MB)\n  • Corrupted model cache\n\nRecommended actions:\n  1. Check your internet connection and try again\n  2. Ensure sufficient disk space is available\n  3. If problem persists, delete cache: ${this.config.cacheDir}\n  4. Then retry your query\n`, error);
+            throw new index_js_1.EmbeddingError(`Failed to initialize embedder on first use: ${error.message}\n\nPossible causes:\n  • Network connectivity issues during model download\n  • Insufficient disk space (need ~90MB)\n  • Corrupted model cache\n\nRecommended actions:\n  1. Check your internet connection and try again\n  2. Ensure sufficient disk space is available\n  3. If problem persists, delete cache: ${this.config.cacheDir}\n  4. Then retry your query\n`, error);
         });
         await this.initPromise;
     }
@@ -98,7 +88,7 @@ class Embedder {
         try {
             // Fail-fast for empty string: cannot generate meaningful embedding
             if (text.length === 0) {
-                throw new EmbeddingError('Cannot generate embedding for empty text');
+                throw new index_js_1.EmbeddingError('Cannot generate embedding for empty text');
             }
             // Use type assertion to avoid complex Transformers.js type definitions
             // This is due to external library type definition constraints, runtime behavior is guaranteed
@@ -110,19 +100,20 @@ class Embedder {
             return embedding;
         }
         catch (error) {
-            if (error instanceof EmbeddingError) {
+            if (error instanceof index_js_1.EmbeddingError) {
                 throw error;
             }
-            throw new EmbeddingError(`Failed to generate embedding: ${error.message}`, error);
+            throw new index_js_1.EmbeddingError(`Failed to generate embedding: ${error.message}`, error);
         }
     }
     /**
      * Convert multiple texts to embedding vectors with batch processing
      *
      * @param texts - Array of texts
+     * @param signal - Optional AbortSignal for cancellation support
      * @returns Array of embedding vectors (dimension depends on model)
      */
-    async embedBatch(texts) {
+    async embedBatch(texts, signal) {
         // Lazy initialization: initialize on first use if not already initialized
         await this.ensureInitialized();
         if (texts.length === 0) {
@@ -132,6 +123,10 @@ class Embedder {
             const embeddings = [];
             // Process in batches according to batch size
             for (let i = 0; i < texts.length; i += this.config.batchSize) {
+                // Check for cancellation before each batch
+                if (signal?.aborted) {
+                    throw new index_js_1.EmbeddingError('Embedding operation was cancelled');
+                }
                 const batch = texts.slice(i, i + this.config.batchSize);
                 const batchEmbeddings = await Promise.all(batch.map((text) => this.embed(text)));
                 embeddings.push(...batchEmbeddings);
@@ -139,7 +134,11 @@ class Embedder {
             return embeddings;
         }
         catch (error) {
-            throw new EmbeddingError(`Failed to generate batch embeddings: ${error.message}`, error);
+            if (error instanceof index_js_1.EmbeddingError) {
+                throw error;
+            }
+            const message = error instanceof Error ? error.message : String(error);
+            throw new index_js_1.EmbeddingError(`Failed to generate batch embeddings: ${message}`, error instanceof Error ? error : undefined);
         }
     }
 }

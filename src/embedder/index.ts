@@ -1,6 +1,10 @@
 // Embedder implementation with Transformers.js
 
 import { env, pipeline } from '@huggingface/transformers'
+import { EmbeddingError } from '../errors/index.js'
+
+// Re-export error class for backwards compatibility
+export { EmbeddingError } from '../errors/index.js'
 
 // ============================================
 // Type Definitions
@@ -16,23 +20,6 @@ export interface EmbedderConfig {
   batchSize: number
   /** Model cache directory */
   cacheDir: string
-}
-
-// ============================================
-// Error Classes
-// ============================================
-
-/**
- * Embedding generation error
- */
-export class EmbeddingError extends Error {
-  constructor(
-    message: string,
-    public override readonly cause?: Error
-  ) {
-    super(message)
-    this.name = 'EmbeddingError'
-  }
 }
 
 // ============================================
@@ -168,9 +155,10 @@ export class Embedder {
    * Convert multiple texts to embedding vectors with batch processing
    *
    * @param texts - Array of texts
+   * @param signal - Optional AbortSignal for cancellation support
    * @returns Array of embedding vectors (dimension depends on model)
    */
-  async embedBatch(texts: string[]): Promise<number[][]> {
+  async embedBatch(texts: string[], signal?: AbortSignal): Promise<number[][]> {
     // Lazy initialization: initialize on first use if not already initialized
     await this.ensureInitialized()
 
@@ -183,6 +171,11 @@ export class Embedder {
 
       // Process in batches according to batch size
       for (let i = 0; i < texts.length; i += this.config.batchSize) {
+        // Check for cancellation before each batch
+        if (signal?.aborted) {
+          throw new EmbeddingError('Embedding operation was cancelled')
+        }
+
         const batch = texts.slice(i, i + this.config.batchSize)
         const batchEmbeddings = await Promise.all(batch.map((text) => this.embed(text)))
         embeddings.push(...batchEmbeddings)
@@ -190,9 +183,13 @@ export class Embedder {
 
       return embeddings
     } catch (error) {
+      if (error instanceof EmbeddingError) {
+        throw error
+      }
+      const message = error instanceof Error ? error.message : String(error)
       throw new EmbeddingError(
-        `Failed to generate batch embeddings: ${(error as Error).message}`,
-        error as Error
+        `Failed to generate batch embeddings: ${message}`,
+        error instanceof Error ? error : undefined
       )
     }
   }

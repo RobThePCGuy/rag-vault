@@ -1,16 +1,16 @@
 import {
+  CreateDatabaseCard,
   CurrentDatabaseCard,
   DatabaseSwitcher,
-  CreateDatabaseCard,
   ScanDatabasesCard,
 } from '../components/Settings'
 import { Spinner } from '../components/ui'
 import {
+  useCreateDatabase,
   useCurrentConfig,
   useRecentDatabases,
-  useSwitchDatabase,
-  useCreateDatabase,
   useScanDatabases,
+  useSwitchDatabase,
 } from '../hooks'
 
 export function SettingsPage() {

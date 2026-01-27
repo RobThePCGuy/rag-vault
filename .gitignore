@@ -31,6 +31,8 @@ test-output.json
 # OS specific files
 .DS_Store
 Thumbs.db
+uploads/
+lancedb/
 
 # Temporary files
 *.tmp

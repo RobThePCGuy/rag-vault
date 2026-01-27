@@ -337,15 +337,6 @@ src/
 web-ui/          # React frontend
 ```
 
-## Contributing
-
-Contributions welcome. Before opening a PR:
-
-1. `pnpm test` — all tests pass
-2. `pnpm check:all` — no type/lint errors
-3. Add tests for new features
-4. Update docs if behavior changes
-
 ## License
 
 MIT — free for personal and commercial use.
@@ -354,4 +345,6 @@ MIT — free for personal and commercial use.
 
 Built with [Model Context Protocol](https://modelcontextprotocol.io/), [LanceDB](https://lancedb.com/), and [Transformers.js](https://huggingface.co/docs/transformers.js).
 
-> Fork of [mcp-local-rag](https://github.com/shinpr/mcp-local-rag) by Shinsuke Kagawa
+> Started as a fork of [mcp-local-rag](https://github.com/shinpr/mcp-local-rag) by [Shinsuke Kagawa](https://github.com/shinpr). Now it’s its own thing.
+> Huge credit to upstream contributors for the foundation, I’ve been iterating hard from there.
+> Local-first dev tools, all the way.

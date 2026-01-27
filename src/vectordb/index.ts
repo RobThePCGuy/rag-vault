@@ -45,7 +45,11 @@ export interface VectorStoreConfig {
   maxDistance?: number
   /** Grouping mode for quality filtering (optional) */
   grouping?: GroupingMode
-  /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only, default 0.6) */
+  /**
+   * Hybrid weight: controls how strongly BM25 boosts candidates from vector search.
+   * 0 = no keyword boost (vector-only), higher values increase keyword match influence.
+   * Default: 0.6
+   */
   hybridWeight?: number
 }
 
@@ -91,7 +95,11 @@ export interface SearchResult {
   chunkIndex: number
   /** Chunk text */
   text: string
-  /** Distance score using dot product (0 = identical, 1 = orthogonal, 2 = opposite) */
+  /**
+   * Distance score (lower = more similar).
+   * Uses dot product on normalized embeddings (equivalent to cosine distance).
+   * Range: [0, 2] where 0 = identical, 1 = orthogonal, 2 = opposite.
+   */
   score: number
   /** Metadata */
   metadata: DocumentMetadata
@@ -361,6 +369,8 @@ export class VectorStore {
       return
     }
 
+    // TODO(perf): optimize() after every write keeps FTS correct, but can be expensive at scale.
+    // If ingestion throughput becomes an issue, consider debouncing or batching optimize calls.
     // Optimize table and clean up old versions
     const cleanupThreshold = new Date(Date.now() - FTS_CLEANUP_THRESHOLD_MS)
     await this.table.optimize({ cleanupOlderThan: cleanupThreshold })
@@ -446,6 +456,7 @@ export class VectorStore {
     try {
       // Step 1: Semantic (vector) search - always the primary search
       const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER
+      // Assumes normalized embeddings so dot behaves like cosine distance (lower is better, [0,2]).
       let query = this.table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit)
 
       // Apply distance threshold at query level

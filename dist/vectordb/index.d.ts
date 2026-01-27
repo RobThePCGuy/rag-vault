@@ -16,7 +16,11 @@ export interface VectorStoreConfig {
     maxDistance?: number;
     /** Grouping mode for quality filtering (optional) */
     grouping?: GroupingMode;
-    /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only, default 0.6) */
+    /**
+     * Hybrid weight: controls how strongly BM25 boosts candidates from vector search.
+     * 0 = no keyword boost (vector-only), higher values increase keyword match influence.
+     * Default: 0.6
+     */
     hybridWeight?: number;
 }
 /**
@@ -59,7 +63,11 @@ export interface SearchResult {
     chunkIndex: number;
     /** Chunk text */
     text: string;
-    /** Distance score using dot product (0 = identical, 1 = orthogonal, 2 = opposite) */
+    /**
+     * Distance score (lower = more similar).
+     * Uses dot product on normalized embeddings (equivalent to cosine distance).
+     * Range: [0, 2] where 0 = identical, 1 = orthogonal, 2 = opposite.
+     */
     score: number;
     /** Metadata */
     metadata: DocumentMetadata;

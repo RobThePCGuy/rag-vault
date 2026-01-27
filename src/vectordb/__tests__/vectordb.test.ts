@@ -774,4 +774,202 @@ describe('VectorStore', () => {
       })
     })
   })
+
+  /**
+   * Distance Semantics Contract:
+   *
+   * The VectorStore uses dot product distance on normalized embeddings.
+   * This is equivalent to cosine distance and has the following semantics:
+   * - Range: [0, 2]
+   * - 0 = identical vectors
+   * - 1 = orthogonal vectors
+   * - 2 = opposite vectors
+   *
+   * Results are sorted ascending (lower distance = more similar).
+   */
+  describe('Dot product distance semantics', () => {
+    /**
+     * Create a normalized vector with explicit values for testing distance properties
+     */
+    function createSpecificNormalizedVector(values: number[]): number[] {
+      const norm = Math.sqrt(values.reduce((sum, x) => sum + x * x, 0))
+      return values.map((x) => x / norm)
+    }
+
+    it('should return lower distance for more similar vectors (ascending sort)', async () => {
+      const distanceDbPath = './tmp/test-vectordb-distance-sort'
+      if (fs.existsSync(distanceDbPath)) {
+        fs.rmSync(distanceDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: distanceDbPath,
+          tableName: 'chunks',
+        })
+        await store.initialize()
+
+        // Use explicit geometry: identical vs opposite vectors
+        const baseValues = new Array(384).fill(0).map((_, i) => Math.sin(i + 1))
+        const queryVector = createSpecificNormalizedVector(baseValues)
+
+        // Similar vector: identical = should have lowest distance (~0)
+        const similarChunk = createTestChunk(
+          'Similar document',
+          '/test/similar.txt',
+          0,
+          createSpecificNormalizedVector(baseValues)
+        )
+
+        // Different vector: opposite = should have highest distance (~2)
+        const differentChunk = createTestChunk(
+          'Different document',
+          '/test/different.txt',
+          0,
+          createSpecificNormalizedVector(baseValues.map((x) => -x))
+        )
+
+        await store.insertChunks([differentChunk]) // Insert different first
+        await store.insertChunks([similarChunk])
+
+        const results = await store.search(queryVector, undefined, 10)
+
+        expect(results).toHaveLength(2)
+
+        // Contract: Results sorted by distance ascending (lower = better)
+        // Similar document should come first
+        expect(results[0]?.filePath).toBe('/test/similar.txt')
+        expect(results[1]?.filePath).toBe('/test/different.txt')
+
+        // Contract: First result should have lower score than second
+        expect(results[0]!.score).toBeLessThan(results[1]!.score)
+      } finally {
+        if (fs.existsSync(distanceDbPath)) {
+          fs.rmSync(distanceDbPath, { recursive: true })
+        }
+      }
+    })
+
+    it('should return distance ~0 for identical vectors', async () => {
+      const identicalDbPath = './tmp/test-vectordb-identical'
+      if (fs.existsSync(identicalDbPath)) {
+        fs.rmSync(identicalDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: identicalDbPath,
+          tableName: 'chunks',
+        })
+        await store.initialize()
+
+        const queryVector = createNormalizedVector(42)
+
+        // Insert chunk with identical vector
+        const identicalChunk = createTestChunk(
+          'Identical vector document',
+          '/test/identical.txt',
+          0,
+          createNormalizedVector(42) // Same seed = identical vector
+        )
+        await store.insertChunks([identicalChunk])
+
+        const results = await store.search(queryVector, undefined, 10)
+
+        expect(results).toHaveLength(1)
+
+        // Contract: Identical vectors should have distance ~0
+        // Allow small floating point tolerance
+        expect(results[0]!.score).toBeCloseTo(0, 5)
+      } finally {
+        if (fs.existsSync(identicalDbPath)) {
+          fs.rmSync(identicalDbPath, { recursive: true })
+        }
+      }
+    })
+
+    it('should return distance ~2 for opposite vectors', async () => {
+      const oppositeDbPath = './tmp/test-vectordb-opposite'
+      if (fs.existsSync(oppositeDbPath)) {
+        fs.rmSync(oppositeDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: oppositeDbPath,
+          tableName: 'chunks',
+        })
+        await store.initialize()
+
+        // Create a simple normalized vector
+        const baseValues = new Array(384).fill(0).map((_, i) => Math.sin(i + 1))
+        const queryVector = createSpecificNormalizedVector(baseValues)
+
+        // Create opposite vector (negate all values)
+        const oppositeValues = baseValues.map((x) => -x)
+        const oppositeVector = createSpecificNormalizedVector(oppositeValues)
+
+        const oppositeChunk = createTestChunk(
+          'Opposite vector document',
+          '/test/opposite.txt',
+          0,
+          oppositeVector
+        )
+        await store.insertChunks([oppositeChunk])
+
+        const results = await store.search(queryVector, undefined, 10)
+
+        expect(results).toHaveLength(1)
+
+        // Contract: Opposite vectors should have distance ~2
+        // Dot product of normalized opposite vectors: -1
+        // LanceDB dot product distance = 1 - dot_product = 1 - (-1) = 2
+        expect(results[0]!.score).toBeCloseTo(2, 3)
+      } finally {
+        if (fs.existsSync(oppositeDbPath)) {
+          fs.rmSync(oppositeDbPath, { recursive: true })
+        }
+      }
+    })
+
+    it('should have distance in range [0, 2]', async () => {
+      const rangeDbPath = './tmp/test-vectordb-range'
+      if (fs.existsSync(rangeDbPath)) {
+        fs.rmSync(rangeDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: rangeDbPath,
+          tableName: 'chunks',
+        })
+        await store.initialize()
+
+        const queryVector = createNormalizedVector(1)
+
+        // Insert documents with various vectors (batch insert to avoid multiple optimize() calls)
+        const chunks = Array.from({ length: 10 }, (_, i) =>
+          createTestChunk(
+            `Document ${i + 1}`,
+            `/test/doc${i + 1}.txt`,
+            0,
+            createNormalizedVector((i + 1) * 10)
+          )
+        )
+        await store.insertChunks(chunks)
+
+        const results = await store.search(queryVector, undefined, 10)
+
+        // Contract: All distances should be in [0, 2] range (with epsilon for floating point)
+        for (const result of results) {
+          expect(result.score).toBeGreaterThanOrEqual(-1e-6)
+          expect(result.score).toBeLessThanOrEqual(2 + 1e-6)
+        }
+      } finally {
+        if (fs.existsSync(rangeDbPath)) {
+          fs.rmSync(rangeDbPath, { recursive: true })
+        }
+      }
+    })
+  })
 })

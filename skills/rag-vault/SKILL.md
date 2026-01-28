@@ -1,6 +1,7 @@
 ---
 name: rag-vault
-description: Provides score interpretation (< 0.3 good, > 0.5 skip), query optimization, and source naming for query_documents, ingest_file, ingest_data tools. Use this skill when working with RAG, searching documents, ingesting files, saving web content, or handling PDF, HTML, DOCX, TXT, Markdown, JSON.
+description: This skill should be used when the user asks to "search documents", "query RAG", "ingest file", "ingest PDF", "save web page", "add to knowledge base", or mentions document search, semantic search, vector search, or RAG operations. Provides score interpretation (< 0.3 good, > 0.5 skip), query optimization, and ingestion guidance for query_documents, ingest_file, ingest_data tools.
+version: 1.0.0
 ---
 
 # RAG Vault Skills
@@ -9,7 +10,7 @@ description: Provides score interpretation (< 0.3 good, > 0.5 skip), query optim
 
 | Tool | Use When |
 |------|----------|
-| `ingest_file` | Local files (PDF, DOCX, TXT, MD, JSON) |
+| `ingest_file` | Local files (PDF, DOCX, TXT, MD, JSON, JSONL) |
 | `ingest_data` | Raw content (HTML, text) with source URL |
 | `query_documents` | Semantic + keyword hybrid search |
 | `delete_file` / `list_files` / `status` | Management |

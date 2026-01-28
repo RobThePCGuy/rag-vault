@@ -65,7 +65,7 @@ ingest_data({
 Results from HTML include `source` field:
 ```json
 {
-  "filePath": "raw-data/abc123.html",
+  "filePath": "raw-data/abc123.md",
   "source": "https://example.com/page",
   "text": "...",
   "score": 0.25

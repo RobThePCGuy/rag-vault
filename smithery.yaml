@@ -1,0 +1,4 @@
+name: rag-vault
+description: Local RAG MCP Server - Easy-to-setup document search with minimal configuration
+version: 1.0.0
+repository: https://github.com/RobThePCGuy/rag-vault

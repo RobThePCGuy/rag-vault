@@ -78,7 +78,7 @@ class RAGServer {
             };
         });
         // ingest_file tool
-        this.server.tool('ingest_file', 'Ingest a document file (PDF, DOCX, TXT, MD) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents.', {
+        this.server.tool('ingest_file', 'Ingest a document file (PDF, DOCX, TXT, MD, JSON, JSONL) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents.', {
             filePath: zod_1.z.string(),
         }, async (args) => {
             const result = await this.executeIngestFile(args);

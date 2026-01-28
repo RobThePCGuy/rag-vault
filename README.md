@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/)
+[![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/servers/io.github.RobThePCGuy/rag-vault)
 
 **Your documents. Your machine. Your control.**
 
@@ -16,6 +16,16 @@ RAG Vault gives AI coding assistants instant access to your private documents—
 | "Semantic search misses exact code terms" | Hybrid search: meaning + exact matches like `useEffect` |
 | "Setup requires Docker, Python, databases..." | One `npx` command. Done. |
 | "Cloud APIs charge per query" | Free forever. No subscriptions. |
+
+## Security
+
+RAG Vault includes security features for production deployment:
+- **API Authentication** — Optional API key via `RAG_API_KEY`
+- **Rate Limiting** — Configurable request throttling
+- **CORS Control** — Restrict allowed origins
+- **Security Headers** — Helmet.js protection
+
+See [SECURITY.md](SECURITY.md) for complete documentation.
 
 ## Get Started in 30 Seconds
 
@@ -80,6 +90,30 @@ args = ["-y", "github:RobThePCGuy/rag-vault"]
 BASE_DIR = "/path/to/your/documents"
 ```
 
+### Install Skills (Optional)
+
+For enhanced AI guidance on query formulation and result interpretation, install the RAG Vault skills:
+
+```bash
+# Claude Code (project-level - recommended for team projects)
+npx github:RobThePCGuy/rag-vault skills install --claude-code
+
+# Claude Code (user-level - available in all projects)
+npx github:RobThePCGuy/rag-vault skills install --claude-code --global
+
+# Codex (user-level)
+npx github:RobThePCGuy/rag-vault skills install --codex
+
+# Custom location
+npx github:RobThePCGuy/rag-vault skills install --path /your/custom/path
+```
+
+Skills teach Claude best practices for:
+- Query formulation and expansion strategies
+- Score interpretation (< 0.3 = good match, > 0.5 = skip)
+- When to use `ingest_file` vs `ingest_data`
+- HTML ingestion and URL handling
+
 Restart your AI tool, and start talking:
 
 ```
@@ -115,10 +149,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### REST API
 
-The web server exposes a REST API for programmatic access:
+The web server exposes a REST API for programmatic access. Set `RAG_API_KEY` to require authentication:
 
 ```bash
-# Search documents
+# With authentication (when RAG_API_KEY is set)
+curl -X POST "http://localhost:3000/api/v1/search" \
+  -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "authentication", "limit": 5}'
+
+# Search documents (no auth required if RAG_API_KEY is not set)
 curl -X POST "http://localhost:3000/api/v1/search" \
   -H "Content-Type: application/json" \
   -d '{"query": "authentication", "limit": 5}'
@@ -137,6 +177,9 @@ curl -X DELETE "http://localhost:3000/api/v1/files" \
 
 # Get system status
 curl "http://localhost:3000/api/v1/status"
+
+# Health check (for load balancers)
+curl "http://localhost:3000/api/v1/health"
 ```
 
 ## Real-World Examples
@@ -231,6 +274,26 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 | `RAG_GROUPING` | — | `similar` = top group only, `related` = top 2 groups |
 | `RAG_MAX_DISTANCE` | — | Filter out results below this relevance threshold |
 
+### Security (optional)
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `RAG_API_KEY` | — | API key for authentication |
+| `CORS_ORIGINS` | localhost | Allowed origins (comma-separated, or `*`) |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit time window (ms) |
+| `RATE_LIMIT_MAX_REQUESTS` | `100` | Max requests per window |
+
+### Advanced
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `ALLOWED_SCAN_ROOTS` | Home directory | Directories allowed for database scanning |
+| `JSON_BODY_LIMIT` | `5mb` | Max request body size |
+| `REQUEST_TIMEOUT_MS` | `30000` | API request timeout |
+| `REQUEST_LOGGING` | `false` | Enable request audit logging |
+
+> Copy [`.env.example`](.env.example) for a complete configuration template.
+
 **For code-heavy content**, try:
 
 ```json
@@ -298,6 +361,9 @@ Copy the `DB_PATH` directory (default: `./lancedb/`).
 | File too large | Default limit is 100MB. Set `MAX_FILE_SIZE` higher or split the file. |
 | Path outside BASE_DIR | All file paths must be under `BASE_DIR`. Use absolute paths. |
 | MCP tools not showing | Verify config syntax, restart your AI tool completely (Cmd+Q on Mac). |
+| 401 Unauthorized | API key required. Set `RAG_API_KEY` or use correct header format. |
+| 429 Too Many Requests | Rate limited. Wait for reset or increase `RATE_LIMIT_MAX_REQUESTS`. |
+| CORS errors | Add your origin to `CORS_ORIGINS` environment variable. |
 
 ## Development
 
@@ -336,6 +402,11 @@ src/
 
 web-ui/          # React frontend
 ```
+
+## Documentation
+
+- [SECURITY.md](SECURITY.md) — Security configuration and best practices
+- [.env.example](.env.example) — Complete environment variable template
 
 ## License
 

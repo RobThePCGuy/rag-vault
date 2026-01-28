@@ -67,6 +67,13 @@
           "isRequired": false,
           "format": "string",
           "isSecret": false
+        },
+        {
+          "name": "RAG_HYBRID_WEIGHT",
+          "description": "Keyword boost strength for hybrid search. 0.0 = semantic only, 1.0 = keyword only. Default 0.6. Higher values give more weight to exact keyword matches, useful for code and technical terms.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         }
       ],
       "features": {

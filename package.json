@@ -1,5 +1,5 @@
 {
-  "name": "rag-vault",
+  "name": "@robthepcguy/rag-vault",
   "version": "1.0.0",
   "description": "Local RAG MCP Server - Easy-to-setup document search with minimal configuration",
   "main": "dist/index.js",
@@ -128,7 +128,7 @@
       "esbuild",
       "onnxruntime-node",
       "protobufjs",
-      "rag-vault",
+      "@robthepcguy/rag-vault",
       "sharp"
     ]
   }

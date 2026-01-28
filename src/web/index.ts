@@ -38,17 +38,24 @@ async function main(): Promise<void> {
     const uploadDir = process.env['UPLOAD_DIR'] || './uploads/'
 
     // Determine static files directory
-    // Check relative to cwd for development and relative to dist for production
+    // Check multiple locations: cwd for dev, package dir for npx/global install
     let staticDir: string | undefined
     const cwd = process.cwd()
-    const devStaticPath = path.resolve(cwd, 'web-ui/dist')
-    const prodStaticPath = path.resolve(cwd, 'dist/web-ui')
+    // __dirname points to dist/web/ when compiled, so go up to package root
+    const packageDir = path.resolve(__dirname, '../..')
 
-    // Check which exists
-    if (existsSync(devStaticPath)) {
-      staticDir = devStaticPath
-    } else if (existsSync(prodStaticPath)) {
-      staticDir = prodStaticPath
+    const possiblePaths = [
+      path.resolve(cwd, 'web-ui/dist'),           // Dev: running from repo root
+      path.resolve(packageDir, 'web-ui/dist'),    // npx/global: relative to package
+      path.resolve(cwd, 'dist/web-ui'),           // Legacy prod path
+    ]
+
+    // Find first existing path
+    for (const p of possiblePaths) {
+      if (existsSync(p)) {
+        staticDir = p
+        break
+      }
     }
 
     // Build RAG config from environment

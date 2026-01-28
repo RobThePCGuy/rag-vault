@@ -65,17 +65,22 @@ async function main() {
         const port = Number.parseInt(process.env['WEB_PORT'] || '3000', 10);
         const uploadDir = process.env['UPLOAD_DIR'] || './uploads/';
         // Determine static files directory
-        // Check relative to cwd for development and relative to dist for production
+        // Check multiple locations: cwd for dev, package dir for npx/global install
         let staticDir;
         const cwd = process.cwd();
-        const devStaticPath = node_path_1.default.resolve(cwd, 'web-ui/dist');
-        const prodStaticPath = node_path_1.default.resolve(cwd, 'dist/web-ui');
-        // Check which exists
-        if ((0, node_fs_1.existsSync)(devStaticPath)) {
-            staticDir = devStaticPath;
-        }
-        else if ((0, node_fs_1.existsSync)(prodStaticPath)) {
-            staticDir = prodStaticPath;
+        // __dirname points to dist/web/ when compiled, so go up to package root
+        const packageDir = node_path_1.default.resolve(__dirname, '../..');
+        const possiblePaths = [
+            node_path_1.default.resolve(cwd, 'web-ui/dist'), // Dev: running from repo root
+            node_path_1.default.resolve(packageDir, 'web-ui/dist'), // npx/global: relative to package
+            node_path_1.default.resolve(cwd, 'dist/web-ui'), // Legacy prod path
+        ];
+        // Find first existing path
+        for (const p of possiblePaths) {
+            if ((0, node_fs_1.existsSync)(p)) {
+                staticDir = p;
+                break;
+            }
         }
         // Build RAG config from environment
         const config = (0, config_js_1.buildRAGConfig)();

@@ -1,18 +1,16 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.RobThePCGuy/rag-vault",
-  "description": "Easy-to-setup local RAG server with minimal configuration",
-  "vendor": "RobThePCGuy",
-  "license": "MIT",
+  "description": "Local RAG MCP server with hybrid search, PDF/DOCX support, and zero-config setup",
+  "version": "1.0.0",
   "repository": {
     "url": "https://github.com/RobThePCGuy/rag-vault",
     "source": "github"
   },
-  "version": "1.0.0",
+  "websiteUrl": "https://github.com/RobThePCGuy/rag-vault#readme",
   "packages": [
     {
       "registryType": "npm",
-      "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "rag-vault",
       "version": "1.0.0",
       "transport": {
@@ -48,69 +46,20 @@
           "isSecret": false
         },
         {
-          "name": "MAX_FILE_SIZE",
-          "description": "Maximum file size in bytes (defaults to 104857600 / 100MB)",
-          "isRequired": false,
-          "format": "string",
-          "isSecret": false
-        },
-        {
-          "name": "RAG_MAX_DISTANCE",
-          "description": "Maximum distance threshold for filtering search results. Results with distance greater than this value will be excluded. Lower values mean stricter filtering (e.g., 0.5 for high relevance only)",
+          "name": "RAG_HYBRID_WEIGHT",
+          "description": "Keyword boost strength for hybrid search. 0.0 = semantic only, 1.0 = keyword only. Default 0.6",
           "isRequired": false,
           "format": "string",
           "isSecret": false
         },
         {
           "name": "RAG_GROUPING",
-          "description": "Grouping mode for quality filtering. 'similar' returns only the most similar group (stops at first distance jump). 'related' includes related groups (stops at second distance jump). Unset means no grouping filter",
-          "isRequired": false,
-          "format": "string",
-          "isSecret": false
-        },
-        {
-          "name": "RAG_HYBRID_WEIGHT",
-          "description": "Keyword boost strength for hybrid search. 0.0 = semantic only, 1.0 = keyword only. Default 0.6. Higher values give more weight to exact keyword matches, useful for code and technical terms.",
+          "description": "Grouping mode: 'similar' (top group only) or 'related' (top 2 groups)",
           "isRequired": false,
           "format": "string",
           "isSecret": false
         }
-      ],
-      "features": {
-        "tools": {
-          "supported": true,
-          "list": [
-            "query_documents",
-            "ingest_file",
-            "ingest_data",
-            "list_files",
-            "delete_file",
-            "status"
-          ]
-        },
-        "prompts": {
-          "supported": false
-        },
-        "resources": {
-          "supported": false
-        }
-      }
+      ]
     }
-  ],
-  "tags": [
-    "rag",
-    "vector-search",
-    "semantic-search",
-    "embeddings",
-    "local-ai",
-    "offline",
-    "privacy",
-    "document-search",
-    "pdf",
-    "cursor",
-    "claude-code",
-    "skills"
-  ],
-  "homepage": "https://github.com/RobThePCGuy/rag-vault",
-  "documentation": "https://github.com/RobThePCGuy/rag-vault#readme"
+  ]
 }

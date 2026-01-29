@@ -49,6 +49,14 @@ interface ScanDatabasesRequest {
 }
 
 /**
+ * Delete database request body
+ */
+interface DeleteDatabaseRequest {
+  dbPath: string
+  deleteFiles?: boolean
+}
+
+/**
  * Add/remove allowed root request body
  */
 interface AllowedRootRequest {
@@ -123,6 +131,22 @@ export function createConfigRouter(dbManager: DatabaseManager): Router {
 
       const databases = await dbManager.scanForDatabases(scanPath)
       res.json({ databases })
+    })
+  )
+
+  // DELETE /api/v1/config/databases - Delete a database
+  router.delete(
+    '/databases',
+    asyncHandler(async (req: Request, res: Response) => {
+      const { dbPath, deleteFiles } = req.body as DeleteDatabaseRequest
+
+      if (!dbPath || typeof dbPath !== 'string') {
+        throw new ValidationError('dbPath is required and must be a string')
+      }
+
+      await dbManager.deleteDatabase(dbPath, deleteFiles ?? false)
+      const databases = await dbManager.getRecentDatabases()
+      res.json({ success: true, databases })
     })
   )
 

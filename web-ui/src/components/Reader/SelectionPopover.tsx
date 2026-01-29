@@ -14,6 +14,8 @@ interface SelectionPopoverProps {
   onSelectionAction?: (action: SelectionAction) => void
   /** Whether actions are currently loading */
   isActionLoading?: boolean
+  /** Whether to show the margin indicator (auto-search is active) */
+  showMarginIndicator?: boolean
 }
 
 const COLORS: { color: HighlightColor; bg: string; ring: string }[] = [
@@ -42,11 +44,13 @@ export function SelectionPopover({
   onClose,
   onSelectionAction,
   isActionLoading = false,
+  showMarginIndicator = true,
 }: SelectionPopoverProps) {
   // Calculate position - center above selection
   const hasActions = !!onSelectionAction
+  const showIndicator = showMarginIndicator && !hasActions
   const popoverWidth = hasActions ? 220 : 160
-  const popoverHeight = hasActions ? 80 : 44
+  const popoverHeight = hasActions ? 80 : showIndicator ? 70 : 44
   const gap = 8
 
   // Position above the selection, centered
@@ -88,7 +92,18 @@ export function SelectionPopover({
           ))}
         </div>
 
-        {/* Row 2: X-Ray Vision actions */}
+        {/* Row 2: Margin indicator (when auto-search is active) */}
+        {showIndicator && (
+          <div className="flex items-center justify-center gap-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+            <span className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
+              <MarginIcon className="w-3 h-3" />
+              See margin
+              <ArrowRightIcon className="w-3 h-3" />
+            </span>
+          </div>
+        )}
+
+        {/* Row 2: X-Ray Vision actions (legacy - only if handler provided) */}
         {hasActions && (
           <div className="flex items-center justify-center gap-1 pt-1.5 border-t border-gray-200 dark:border-gray-700">
             {ACTIONS.map(({ action, icon, title }) => (
@@ -114,5 +129,26 @@ export function SelectionPopover({
         )}
       </motion.div>
     </>
+  )
+}
+
+function MarginIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+      />
+    </svg>
+  )
+}
+
+function ArrowRightIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    </svg>
   )
 }

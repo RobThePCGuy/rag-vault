@@ -15,6 +15,7 @@ import {
   useAllowedRoots,
   useCreateDatabase,
   useCurrentConfig,
+  useDeleteDatabase,
   useRecentDatabases,
   useRemoveAllowedRoot,
   useScanDatabases,
@@ -50,6 +51,7 @@ export function SettingsPage() {
   )
   const { databases, isLoading: isLoadingDatabases } = useRecentDatabases()
   const { switchDatabase, isLoading: isSwitching } = useSwitchDatabase()
+  const { deleteDatabase, isLoading: isDeleting } = useDeleteDatabase()
   const { createDatabase, isLoading: isCreating, error: createError } = useCreateDatabase()
   const {
     scan,
@@ -64,6 +66,18 @@ export function SettingsPage() {
 
   const handleSwitch = (dbPath: string) => {
     switchDatabase(dbPath)
+  }
+
+  const handleDelete = async (dbPath: string, deleteFiles: boolean) => {
+    await new Promise<void>((resolve, reject) => {
+      deleteDatabase(
+        { dbPath, deleteFiles },
+        {
+          onSuccess: () => resolve(),
+          onError: (error) => reject(error),
+        }
+      )
+    })
   }
 
   const handleCreate = (dbPath: string, _name?: string, modelName?: string) => {
@@ -126,7 +140,8 @@ export function SettingsPage() {
                 databases={databases}
                 currentDbPath={config?.dbPath}
                 onSwitch={handleSwitch}
-                isLoading={isSwitching}
+                onDelete={handleDelete}
+                isLoading={isSwitching || isDeleting}
               />
             </motion.div>
           )}

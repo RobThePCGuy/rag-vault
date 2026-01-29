@@ -68,16 +68,6 @@ function chunkKey(ref: ChunkRef): string {
 }
 
 /**
- * Check if two chunk refs refer to the same chunk
- */
-function sameChunk(a: ChunkRef, b: ChunkRef): boolean {
-  if (a.fingerprint && b.fingerprint) {
-    return a.fingerprint === b.fingerprint
-  }
-  return a.filePath === b.filePath && a.chunkIndex === b.chunkIndex
-}
-
-/**
  * FeedbackStore: In-memory store for feedback events
  * Can be persisted to disk for long-term learning
  */
@@ -185,7 +175,7 @@ export class FeedbackStore {
     const targetKey = chunkKey(target)
     for (const pinnedTarget of sourcePins) {
       const coPins = this.coPinnedWith.get(pinnedTarget)
-      if (coPins && coPins.has(targetKey) && (coPins.get(targetKey) || 0) >= 2) {
+      if (coPins?.has(targetKey) && (coPins.get(targetKey) || 0) >= 2) {
         return true
       }
     }
@@ -202,7 +192,7 @@ export class FeedbackStore {
       const targetRef: ChunkRef = {
         filePath: result.filePath,
         chunkIndex: result.chunkIndex,
-        fingerprint: result.fingerprint,
+        ...(result.fingerprint && { fingerprint: result.fingerprint }),
       }
 
       let boost = 1.0

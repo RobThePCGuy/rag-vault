@@ -7,6 +7,7 @@ export {
   useBrowseDirectory,
   useCreateDatabase,
   useCurrentConfig,
+  useDeleteDatabase,
   useExportConfig,
   useHybridWeight,
   useImportConfig,
@@ -69,3 +70,6 @@ export { useInferredBacklinks, type InferredBacklink } from './useInferredBackli
 export { useCrossDocumentRelated, type CrossDocumentGroup } from './useCrossDocumentRelated'
 export { useReadingStats, formatReadingTime } from './useReadingStats'
 export { useDiscoveryMode, getSuggestionReasonText, type DiscoverySuggestion, type DiscoveryStep } from './useDiscoveryMode'
+
+// Zettelkasten Reader
+export { useAutoSelectionSearch } from './useAutoSelectionSearch'

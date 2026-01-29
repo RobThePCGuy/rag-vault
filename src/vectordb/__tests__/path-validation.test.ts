@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest'
 import { isValidFilePath } from '../index.js'
 
 describe('Path Validation Patterns', () => {
-
   describe('Valid paths', () => {
     it('should accept simple file paths', () => {
       expect(isValidFilePath('/path/to/file.txt')).toBe(true)

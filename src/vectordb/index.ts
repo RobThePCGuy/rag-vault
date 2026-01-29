@@ -476,7 +476,9 @@ export class VectorStore {
           throw new DatabaseError('VectorStore is not initialized. Call initialize() first.')
         }
         // LanceDB's createTable API accepts data as Record<string, unknown>[]
-        const records = chunksWithFingerprints.map((chunk) => chunk as unknown as Record<string, unknown>)
+        const records = chunksWithFingerprints.map(
+          (chunk) => chunk as unknown as Record<string, unknown>
+        )
         this.table = await this.db.createTable(this.config.tableName, records)
         console.error(`VectorStore: Created table "${this.config.tableName}"`)
 
@@ -484,7 +486,9 @@ export class VectorStore {
         await this.ensureFtsIndex()
       } else {
         // Add data to existing table
-        const records = chunksWithFingerprints.map((chunk) => chunk as unknown as Record<string, unknown>)
+        const records = chunksWithFingerprints.map(
+          (chunk) => chunk as unknown as Record<string, unknown>
+        )
         await this.table.add(records)
 
         // Rebuild FTS index after adding new data
@@ -892,7 +896,10 @@ export class VectorStore {
       const sourceVector = sourceChunk?.vector as number[] | undefined
 
       if (!sourceVector || !Array.isArray(sourceVector)) {
-        throw new DatabaseError('Source chunk does not have a valid vector')
+        // Chunk exists but has no embedding (e.g., upload timed out mid-process)
+        // Return empty results instead of throwing - allows batch operations to continue
+        console.warn(`Chunk ${filePath}:${chunkIndex} has no valid vector (possibly corrupted)`)
+        return []
       }
 
       // Search for similar chunks using the source vector
@@ -920,8 +927,9 @@ export class VectorStore {
 
       return results.slice(0, limit)
     } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error)
       throw new DatabaseError(
-        `Failed to find related chunks for: ${filePath}:${chunkIndex}`,
+        `Failed to find related chunks for: ${filePath}:${chunkIndex}: ${cause}`,
         error as Error
       )
     }

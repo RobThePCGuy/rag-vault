@@ -4,6 +4,7 @@ import {
   addAllowedRoot,
   browseDirectory,
   createDatabase,
+  deleteDatabase,
   exportConfig,
   getAllowedRoots,
   getAvailableModels,
@@ -168,6 +169,45 @@ export function useScanDatabases() {
     error: mutation.error,
     data: mutation.data,
     reset: mutation.reset,
+  }
+}
+
+/**
+ * Hook for deleting a database
+ */
+export function useDeleteDatabase() {
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+
+  const mutation = useMutation({
+    mutationFn: ({ dbPath, deleteFiles }: { dbPath: string; deleteFiles: boolean }) =>
+      deleteDatabase(dbPath, deleteFiles),
+    onSuccess: (_data, variables) => {
+      // Invalidate databases list
+      queryClient.invalidateQueries({ queryKey: ['config', 'databases'] })
+      const dbName = variables.dbPath.split('/').pop() || variables.dbPath
+      addToast({
+        type: 'success',
+        title: 'Database removed',
+        message: variables.deleteFiles
+          ? `Deleted ${dbName} and its files`
+          : `Removed ${dbName} from list`,
+      })
+    },
+    onError: (error: Error) => {
+      addToast({
+        type: 'error',
+        title: 'Failed to delete database',
+        message: error.message,
+      })
+    },
+  })
+
+  return {
+    deleteDatabase: mutation.mutate,
+    deleteDatabaseAsync: mutation.mutateAsync,
+    isLoading: mutation.isPending,
+    error: mutation.error,
   }
 }
 

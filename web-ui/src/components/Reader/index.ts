@@ -21,3 +21,12 @@ export { TableOfContents } from './TableOfContents'
 export { TagPicker } from './TagPicker'
 export { TrailManager } from './TrailManager'
 export { UnifiedTextRenderer, type SearchMatch, type TextRange } from './UnifiedTextRenderer'
+export {
+  ZettelSlip,
+  ZettelEmptyState,
+  ZettelSectionHeader,
+  ZettelLoadingSlip,
+  slipVariants,
+  type ZettelSlipProps,
+  type ZettelSlipType,
+} from './ZettelSlip'

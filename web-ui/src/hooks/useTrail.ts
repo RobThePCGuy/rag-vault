@@ -111,21 +111,6 @@ function findNodeById(node: TrailNode | null, nodeId: string): TrailNode | null 
 }
 
 /**
- * Find a node's parent in the tree
- */
-function findParentNode(root: TrailNode | null, nodeId: string): TrailNode | null {
-  if (!root) return null
-
-  for (const child of root.children) {
-    if (child.id === nodeId) return root
-    const found = findParentNode(child, nodeId)
-    if (found) return found
-  }
-
-  return null
-}
-
-/**
  * Hook for managing exploration trails with Folgezettel branching
  * Records navigation steps and allows saving/loading trails
  */

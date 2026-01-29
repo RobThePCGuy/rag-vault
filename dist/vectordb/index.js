@@ -567,6 +567,95 @@ class VectorStore {
         console.error('VectorStore: Connection closed');
     }
     /**
+     * Get all chunks for a document, ordered by chunkIndex
+     *
+     * @param filePath - File path (absolute)
+     * @returns Array of chunks ordered by chunkIndex
+     */
+    async getDocumentChunks(filePath) {
+        if (!this.table) {
+            return [];
+        }
+        // Validate file path before use in query
+        if (!isValidFilePath(filePath)) {
+            throw new index_js_1.DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
+        }
+        try {
+            const escapedFilePath = filePath.replace(/'/g, "''");
+            const results = await this.table
+                .query()
+                .where(`\`filePath\` = '${escapedFilePath}'`)
+                .toArray();
+            // Convert to SearchResult format and sort by chunkIndex
+            const chunks = results.map((record) => ({
+                filePath: record.filePath,
+                chunkIndex: record.chunkIndex,
+                text: record.text,
+                score: 0, // No distance score for direct retrieval
+                metadata: record.metadata,
+            }));
+            return chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
+        }
+        catch (error) {
+            throw new index_js_1.DatabaseError(`Failed to get document chunks for: ${filePath}`, error);
+        }
+    }
+    /**
+     * Find related chunks using a chunk's stored embedding
+     *
+     * @param filePath - File path of the source chunk
+     * @param chunkIndex - Index of the source chunk
+     * @param limit - Number of results to return (default 5)
+     * @param excludeSameDocument - Whether to exclude chunks from the same document (default true)
+     * @returns Array of related chunks with similarity scores
+     */
+    async findRelatedChunks(filePath, chunkIndex, limit = 5, excludeSameDocument = true) {
+        if (!this.table) {
+            return [];
+        }
+        // Validate file path before use in query
+        if (!isValidFilePath(filePath)) {
+            throw new index_js_1.DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
+        }
+        try {
+            // First, fetch the source chunk to get its vector
+            const escapedFilePath = filePath.replace(/'/g, "''");
+            const sourceResults = await this.table
+                .query()
+                .where(`\`filePath\` = '${escapedFilePath}' AND \`chunkIndex\` = ${chunkIndex}`)
+                .toArray();
+            if (sourceResults.length === 0) {
+                return [];
+            }
+            const sourceChunk = sourceResults[0];
+            const sourceVector = sourceChunk?.vector;
+            if (!sourceVector || !Array.isArray(sourceVector)) {
+                throw new index_js_1.DatabaseError('Source chunk does not have a valid vector');
+            }
+            // Search for similar chunks using the source vector
+            // Request more candidates to allow for filtering
+            const candidateLimit = excludeSameDocument ? limit * 3 : limit + 1;
+            let query = this.table.vectorSearch(sourceVector).distanceType('dot').limit(candidateLimit);
+            // Apply distance threshold if configured
+            if (this.config.maxDistance !== undefined) {
+                query = query.distanceRange(undefined, this.config.maxDistance);
+            }
+            const vectorResults = await query.toArray();
+            // Convert to SearchResult format with type validation
+            let results = vectorResults.map((result) => toSearchResult(result));
+            // Filter out the source chunk itself
+            results = results.filter((r) => !(r.filePath === filePath && r.chunkIndex === chunkIndex));
+            // Optionally filter out same-document chunks
+            if (excludeSameDocument) {
+                results = results.filter((r) => r.filePath !== filePath);
+            }
+            return results.slice(0, limit);
+        }
+        catch (error) {
+            throw new index_js_1.DatabaseError(`Failed to find related chunks for: ${filePath}:${chunkIndex}`, error);
+        }
+    }
+    /**
      * Get system status
      *
      * @returns System status information

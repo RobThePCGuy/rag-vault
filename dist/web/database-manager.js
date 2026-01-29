@@ -43,7 +43,7 @@ function readUserAllowedRoots() {
         return [];
     }
     try {
-        const content = JSON.parse(require('fs').readFileSync(ALLOWED_ROOTS_FILE, 'utf-8'));
+        const content = JSON.parse(require('node:fs').readFileSync(ALLOWED_ROOTS_FILE, 'utf-8'));
         if (Array.isArray(content.roots)) {
             return content.roots.map((p) => node_path_1.default.resolve(p));
         }
@@ -59,9 +59,9 @@ function readUserAllowedRoots() {
 function writeUserAllowedRoots(roots) {
     const dir = node_path_1.default.dirname(ALLOWED_ROOTS_FILE);
     if (!(0, node_fs_1.existsSync)(dir)) {
-        require('fs').mkdirSync(dir, { recursive: true });
+        require('node:fs').mkdirSync(dir, { recursive: true });
     }
-    require('fs').writeFileSync(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8');
+    require('node:fs').writeFileSync(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8');
 }
 /**
  * Check if a path is within a set of allowed roots

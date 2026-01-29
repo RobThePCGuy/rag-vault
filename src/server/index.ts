@@ -249,6 +249,22 @@ export class RAGServer {
   }
 
   /**
+   * Get the current hybrid search weight
+   * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+   */
+  getHybridWeight(): number {
+    return this.vectorStore.getHybridWeight()
+  }
+
+  /**
+   * Set the hybrid search weight at runtime
+   * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+   */
+  setHybridWeight(weight: number): void {
+    this.vectorStore.setHybridWeight(weight)
+  }
+
+  /**
    * Execute query_documents logic (returns plain data)
    */
   private async executeQueryDocuments(args: QueryDocumentsInput): Promise<QueryResult[]> {
@@ -636,6 +652,133 @@ export class RAGServer {
       const errorMessage = getErrorMessage(error as Error)
       console.error('Failed to delete file:', errorMessage)
       throw new Error(`Failed to delete file: ${errorMessage}`)
+    }
+  }
+
+  /**
+   * Get all chunks for a document (for Reader feature)
+   */
+  async handleGetDocumentChunks(
+    filePath: string
+  ): Promise<{ content: [{ type: 'text'; text: string }] }> {
+    try {
+      const chunks = await this.vectorStore.getDocumentChunks(filePath)
+
+      // Enrich with source information for raw-data files
+      const enrichedChunks = chunks.map((chunk) => {
+        if (isRawDataPath(chunk.filePath)) {
+          const source = extractSourceFromPath(chunk.filePath)
+          if (source) {
+            return { ...chunk, source }
+          }
+        }
+        return chunk
+      })
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(enrichedChunks, null, 2),
+          },
+        ],
+      }
+    } catch (error) {
+      const errorMessage = getErrorMessage(error as Error)
+      console.error('Failed to get document chunks:', errorMessage)
+      throw new Error(`Failed to get document chunks: ${errorMessage}`)
+    }
+  }
+
+  /**
+   * Find related chunks for a given chunk (for Reader margin suggestions)
+   */
+  async handleFindRelatedChunks(
+    filePath: string,
+    chunkIndex: number,
+    limit?: number,
+    excludeSameDocument?: boolean
+  ): Promise<{ content: [{ type: 'text'; text: string }] }> {
+    try {
+      const relatedChunks = await this.vectorStore.findRelatedChunks(
+        filePath,
+        chunkIndex,
+        limit ?? 5,
+        excludeSameDocument ?? true
+      )
+
+      // Enrich with source information for raw-data files
+      const enrichedChunks = relatedChunks.map((chunk) => {
+        if (isRawDataPath(chunk.filePath)) {
+          const source = extractSourceFromPath(chunk.filePath)
+          if (source) {
+            return { ...chunk, source }
+          }
+        }
+        return chunk
+      })
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(enrichedChunks, null, 2),
+          },
+        ],
+      }
+    } catch (error) {
+      const errorMessage = getErrorMessage(error as Error)
+      console.error('Failed to find related chunks:', errorMessage)
+      throw new Error(`Failed to find related chunks: ${errorMessage}`)
+    }
+  }
+
+  /**
+   * Batch find related chunks for multiple source chunks
+   */
+  async handleBatchFindRelatedChunks(
+    chunks: Array<{ filePath: string; chunkIndex: number }>,
+    limit?: number
+  ): Promise<{ content: [{ type: 'text'; text: string }] }> {
+    try {
+      const results: Record<string, unknown[]> = {}
+
+      // Process each chunk in parallel
+      await Promise.all(
+        chunks.map(async (chunk) => {
+          const key = `${chunk.filePath}:${chunk.chunkIndex}`
+          const relatedChunks = await this.vectorStore.findRelatedChunks(
+            chunk.filePath,
+            chunk.chunkIndex,
+            limit ?? 5,
+            true // Always exclude same document for batch
+          )
+
+          // Enrich with source information
+          results[key] = relatedChunks.map((related) => {
+            if (isRawDataPath(related.filePath)) {
+              const source = extractSourceFromPath(related.filePath)
+              if (source) {
+                return { ...related, source }
+              }
+            }
+            return related
+          })
+        })
+      )
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(results, null, 2),
+          },
+        ],
+      }
+    } catch (error) {
+      const errorMessage = getErrorMessage(error as Error)
+      console.error('Failed to batch find related chunks:', errorMessage)
+      throw new Error(`Failed to batch find related chunks: ${errorMessage}`)
     }
   }
 

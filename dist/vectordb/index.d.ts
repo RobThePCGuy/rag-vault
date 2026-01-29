@@ -194,6 +194,23 @@ export declare class VectorStore {
      */
     close(): Promise<void>;
     /**
+     * Get all chunks for a document, ordered by chunkIndex
+     *
+     * @param filePath - File path (absolute)
+     * @returns Array of chunks ordered by chunkIndex
+     */
+    getDocumentChunks(filePath: string): Promise<SearchResult[]>;
+    /**
+     * Find related chunks using a chunk's stored embedding
+     *
+     * @param filePath - File path of the source chunk
+     * @param chunkIndex - Index of the source chunk
+     * @param limit - Number of results to return (default 5)
+     * @param excludeSameDocument - Whether to exclude chunks from the same document (default true)
+     * @returns Array of related chunks with similarity scores
+     */
+    findRelatedChunks(filePath: string, chunkIndex: number, limit?: number, excludeSameDocument?: boolean): Promise<SearchResult[]>;
+    /**
      * Get system status
      *
      * @returns System status information

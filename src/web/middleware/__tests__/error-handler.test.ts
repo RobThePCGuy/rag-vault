@@ -1,7 +1,7 @@
 // Tests for error handling middleware
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NextFunction, Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import { RAGError } from '../../../errors/index.js'
 import { errorHandler, notFoundHandler } from '../error-handler.js'
 

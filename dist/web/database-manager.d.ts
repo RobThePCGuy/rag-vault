@@ -212,6 +212,16 @@ export declare class DatabaseManager {
      */
     importConfig(config: ExportedConfig): void;
     /**
+     * Get the current hybrid search weight
+     * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    getHybridWeight(): number;
+    /**
+     * Set the hybrid search weight at runtime
+     * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    setHybridWeight(weight: number): void;
+    /**
      * Add a database to recent list
      */
     private addToRecent;

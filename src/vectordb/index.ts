@@ -919,8 +919,7 @@ export class VectorStore {
         memoryUsage,
         uptime,
         ftsIndexEnabled: this.ftsEnabled,
-        searchMode:
-          ftsEffectivelyEnabled && this.getHybridWeight() > 0 ? 'hybrid' : 'vector-only',
+        searchMode: ftsEffectivelyEnabled && this.getHybridWeight() > 0 ? 'hybrid' : 'vector-only',
       }
     } catch (error) {
       throw new DatabaseError('Failed to get status', error as Error)

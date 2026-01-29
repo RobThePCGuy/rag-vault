@@ -153,6 +153,20 @@ class RAGServer {
         };
     }
     /**
+     * Get the current hybrid search weight
+     * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    getHybridWeight() {
+        return this.vectorStore.getHybridWeight();
+    }
+    /**
+     * Set the hybrid search weight at runtime
+     * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    setHybridWeight(weight) {
+        this.vectorStore.setHybridWeight(weight);
+    }
+    /**
      * Execute query_documents logic (returns plain data)
      */
     async executeQueryDocuments(args) {

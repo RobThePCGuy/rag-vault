@@ -95,7 +95,18 @@ export declare class VectorStore {
     private ftsLastFailure;
     /** Mutex to prevent race conditions in circuit breaker state transitions */
     private circuitBreakerResetting;
+    /** Runtime override for hybrid weight (allows dynamic adjustment) */
+    private hybridWeightOverride;
     constructor(config: VectorStoreConfig);
+    /**
+     * Get the current hybrid weight (runtime override or config default)
+     */
+    getHybridWeight(): number;
+    /**
+     * Set the hybrid weight at runtime
+     * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    setHybridWeight(weight: number): void;
     /**
      * Check if FTS should be attempted (circuit breaker logic)
      * - Returns false if max failures reached and cooldown not elapsed

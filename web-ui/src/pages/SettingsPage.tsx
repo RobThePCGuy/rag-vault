@@ -5,6 +5,7 @@ import {
   CurrentDatabaseCard,
   DatabaseSwitcher,
   ExportImportCard,
+  HybridWeightCard,
   ScanDatabasesCard,
 } from '../components/Settings'
 import { Spinner } from '../components/ui'
@@ -158,6 +159,11 @@ export function SettingsPage() {
               isAdding={isAddingRoot}
               isRemoving={isRemovingRoot}
             />
+          </motion.div>
+
+          {/* Hybrid Search Weight */}
+          <motion.div variants={itemVariants}>
+            <HybridWeightCard />
           </motion.div>
 
           {/* Export / Import */}

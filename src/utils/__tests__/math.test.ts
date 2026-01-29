@@ -67,5 +67,4 @@ describe('Math Utilities', () => {
       expect(dotProduct([], [])).toBe(0)
     })
   })
-
 })

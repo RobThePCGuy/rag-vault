@@ -1,7 +1,16 @@
 import type { NextFunction, Request, Response } from 'express'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ValidationError } from '../../errors/index.js'
-import type { DatabaseManager, AllowedRootsResponse, CurrentDatabaseConfig, DatabaseEntry, DirectoryEntry, ScannedDatabase, AvailableModel, ExportedConfig } from '../database-manager.js'
+import type {
+  DatabaseManager,
+  AllowedRootsResponse,
+  CurrentDatabaseConfig,
+  DatabaseEntry,
+  DirectoryEntry,
+  ScannedDatabase,
+  AvailableModel,
+  ExportedConfig,
+} from '../database-manager.js'
 import { createConfigRouter } from '../config-routes.js'
 
 // ============================================
@@ -43,15 +52,19 @@ function createMockDatabaseManager(): Partial<DatabaseManager> {
       { name: 'folder1', path: '/test/folder1', isDirectory: true },
       { name: 'file.txt', path: '/test/file.txt', isDirectory: false },
     ] as DirectoryEntry[]),
-    getAvailableModels: vi.fn().mockReturnValue([
-      { id: 'model1', name: 'Model 1', description: 'Test model', isDefault: true },
-    ] as AvailableModel[]),
+    getAvailableModels: vi
+      .fn()
+      .mockReturnValue([
+        { id: 'model1', name: 'Model 1', description: 'Test model', isDefault: true },
+      ] as AvailableModel[]),
     exportConfig: vi.fn().mockReturnValue({
       version: 1,
       exportedAt: '2024-01-01T00:00:00Z',
       allowedRoots: ['/test'],
     } as ExportedConfig),
     importConfig: vi.fn(),
+    getHybridWeight: vi.fn().mockReturnValue(0.6),
+    setHybridWeight: vi.fn(),
   }
 }
 
@@ -59,10 +72,7 @@ function createMockDatabaseManager(): Partial<DatabaseManager> {
 // Mock Express request and response
 // ============================================
 
-function createMockReq(
-  body: unknown = {},
-  query: Record<string, string> = {}
-): Partial<Request> {
+function createMockReq(body: unknown = {}, query: Record<string, string> = {}): Partial<Request> {
   return { body, query }
 }
 
@@ -92,11 +102,9 @@ interface RouteLayer {
 function getRouteHandler(
   router: { stack: RouteLayer[] },
   path: string,
-  method: 'get' | 'post' | 'delete'
+  method: 'get' | 'post' | 'delete' | 'put'
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) | undefined {
-  const layer = router.stack.find(
-    (l) => l.route?.path === path && l.route?.methods?.[method]
-  )
+  const layer = router.stack.find((l) => l.route?.path === path && l.route?.methods?.[method])
   return layer?.route?.stack?.[0]?.handle
 }
 
@@ -553,8 +561,100 @@ describe('Config Routes', () => {
     })
   })
 
+  describe('GET /hybrid-weight', () => {
+    it('should return current hybrid weight', async () => {
+      const router = createConfigRouter(mockDbManager as DatabaseManager)
+      const handler = getRouteHandler(router, '/hybrid-weight', 'get')
+
+      expect(handler).toBeDefined()
+
+      if (handler) {
+        const req = createMockReq()
+        const { res, json } = createMockRes()
+
+        await handler(req as Request, res as Response, vi.fn())
+
+        expect(mockDbManager.getHybridWeight).toHaveBeenCalled()
+        expect(json).toHaveBeenCalledWith({ weight: 0.6 })
+      }
+    })
+  })
+
+  describe('PUT /hybrid-weight', () => {
+    it('should set hybrid weight', async () => {
+      const router = createConfigRouter(mockDbManager as DatabaseManager)
+      const handler = getRouteHandler(router, '/hybrid-weight', 'put')
+
+      expect(handler).toBeDefined()
+
+      if (handler) {
+        const req = createMockReq({ weight: 0.7 })
+        const { res, json } = createMockRes()
+
+        await handler(req as Request, res as Response, vi.fn())
+
+        expect(mockDbManager.setHybridWeight).toHaveBeenCalledWith(0.7)
+        expect(json).toHaveBeenCalledWith({ success: true, weight: 0.7 })
+      }
+    })
+
+    it('should return 400 if weight is missing', async () => {
+      const router = createConfigRouter(mockDbManager as DatabaseManager)
+      const handler = getRouteHandler(router, '/hybrid-weight', 'put')
+
+      if (handler) {
+        const req = createMockReq({})
+        const { res } = createMockRes()
+        const next = vi.fn()
+
+        await handler(req as Request, res as Response, next)
+
+        expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
+        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+          'weight is required and must be a number'
+        )
+      }
+    })
+
+    it('should return 400 if weight is out of range (too low)', async () => {
+      const router = createConfigRouter(mockDbManager as DatabaseManager)
+      const handler = getRouteHandler(router, '/hybrid-weight', 'put')
+
+      if (handler) {
+        const req = createMockReq({ weight: -0.1 })
+        const { res } = createMockRes()
+        const next = vi.fn()
+
+        await handler(req as Request, res as Response, next)
+
+        expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
+        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+          'weight must be between 0.0 and 1.0'
+        )
+      }
+    })
+
+    it('should return 400 if weight is out of range (too high)', async () => {
+      const router = createConfigRouter(mockDbManager as DatabaseManager)
+      const handler = getRouteHandler(router, '/hybrid-weight', 'put')
+
+      if (handler) {
+        const req = createMockReq({ weight: 1.5 })
+        const { res } = createMockRes()
+        const next = vi.fn()
+
+        await handler(req as Request, res as Response, next)
+
+        expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
+        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+          'weight must be between 0.0 and 1.0'
+        )
+      }
+    })
+  })
+
   describe('Router configuration', () => {
-    it('should have all 11 expected routes', () => {
+    it('should have all 13 expected routes', () => {
       const router = createConfigRouter(mockDbManager as DatabaseManager)
 
       const routes = router.stack
@@ -576,6 +676,8 @@ describe('Config Routes', () => {
       expect(routes).toContainEqual({ path: '/models', methods: ['get'] })
       expect(routes).toContainEqual({ path: '/export', methods: ['get'] })
       expect(routes).toContainEqual({ path: '/import', methods: ['post'] })
+      expect(routes).toContainEqual({ path: '/hybrid-weight', methods: ['get'] })
+      expect(routes).toContainEqual({ path: '/hybrid-weight', methods: ['put'] })
     })
   })
 })

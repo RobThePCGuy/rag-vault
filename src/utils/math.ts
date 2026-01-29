@@ -59,4 +59,3 @@ export function dotProduct(vec1: number[], vec2: number[]): number {
 
   return result
 }
-

@@ -104,6 +104,23 @@ function createConfigRouter(dbManager) {
         const info = dbManager.getAllowedRootsInfo();
         res.json({ success: true, ...info });
     }));
+    // GET /api/v1/config/hybrid-weight - Get current hybrid search weight
+    router.get('/hybrid-weight', (0, index_js_2.asyncHandler)(async (_req, res) => {
+        const weight = dbManager.getHybridWeight();
+        res.json({ weight });
+    }));
+    // PUT /api/v1/config/hybrid-weight - Set hybrid search weight
+    router.put('/hybrid-weight', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const { weight } = req.body;
+        if (typeof weight !== 'number') {
+            throw new index_js_1.ValidationError('weight is required and must be a number');
+        }
+        if (weight < 0 || weight > 1) {
+            throw new index_js_1.ValidationError('weight must be between 0.0 and 1.0');
+        }
+        dbManager.setHybridWeight(weight);
+        res.json({ success: true, weight });
+    }));
     return router;
 }
 //# sourceMappingURL=config-routes.js.map

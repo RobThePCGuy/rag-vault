@@ -529,6 +529,26 @@ class DatabaseManager {
         writeUserAllowedRoots(validRoots);
     }
     /**
+     * Get the current hybrid search weight
+     * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    getHybridWeight() {
+        if (!this.currentServer) {
+            return 0.6; // Default value
+        }
+        return this.currentServer.getHybridWeight();
+    }
+    /**
+     * Set the hybrid search weight at runtime
+     * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    setHybridWeight(weight) {
+        if (!this.currentServer) {
+            throw new Error('DatabaseManager not initialized. Call initialize() first.');
+        }
+        this.currentServer.setHybridWeight(weight);
+    }
+    /**
      * Add a database to recent list
      */
     async addToRecent(dbPath, modelName) {

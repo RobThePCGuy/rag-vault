@@ -59,6 +59,16 @@ export declare class RAGServer {
         modelName: string;
     };
     /**
+     * Get the current hybrid search weight
+     * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    getHybridWeight(): number;
+    /**
+     * Set the hybrid search weight at runtime
+     * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    setHybridWeight(weight: number): void;
+    /**
      * Execute query_documents logic (returns plain data)
      */
     private executeQueryDocuments;

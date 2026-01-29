@@ -217,5 +217,33 @@ export function createConfigRouter(dbManager: DatabaseManager): Router {
     })
   )
 
+  // GET /api/v1/config/hybrid-weight - Get current hybrid search weight
+  router.get(
+    '/hybrid-weight',
+    asyncHandler(async (_req: Request, res: Response) => {
+      const weight = dbManager.getHybridWeight()
+      res.json({ weight })
+    })
+  )
+
+  // PUT /api/v1/config/hybrid-weight - Set hybrid search weight
+  router.put(
+    '/hybrid-weight',
+    asyncHandler(async (req: Request, res: Response) => {
+      const { weight } = req.body as SetHybridWeightRequest
+
+      if (typeof weight !== 'number') {
+        throw new ValidationError('weight is required and must be a number')
+      }
+
+      if (weight < 0 || weight > 1) {
+        throw new ValidationError('weight must be between 0.0 and 1.0')
+      }
+
+      dbManager.setHybridWeight(weight)
+      res.json({ success: true, weight })
+    })
+  )
+
   return router
 }

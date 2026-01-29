@@ -198,4 +198,3 @@ export function getErrorMessage(error: Error): string {
   }
   return error.stack || error.message
 }
-

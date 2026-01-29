@@ -131,7 +131,25 @@ class VectorStore {
         this.ftsLastFailure = null;
         /** Mutex to prevent race conditions in circuit breaker state transitions */
         this.circuitBreakerResetting = false;
+        /** Runtime override for hybrid weight (allows dynamic adjustment) */
+        this.hybridWeightOverride = null;
         this.config = config;
+    }
+    /**
+     * Get the current hybrid weight (runtime override or config default)
+     */
+    getHybridWeight() {
+        return this.hybridWeightOverride ?? this.config.hybridWeight ?? 0.6;
+    }
+    /**
+     * Set the hybrid weight at runtime
+     * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+     */
+    setHybridWeight(weight) {
+        if (weight < 0 || weight > 1) {
+            throw new Error('Hybrid weight must be between 0.0 and 1.0');
+        }
+        this.hybridWeightOverride = weight;
     }
     /**
      * Check if FTS should be attempted (circuit breaker logic)
@@ -433,7 +451,7 @@ class VectorStore {
                 results = this.applyGrouping(results, this.config.grouping);
             }
             // Step 3: Apply keyword boost if enabled (with circuit breaker)
-            const hybridWeight = this.config.hybridWeight ?? 0.6;
+            const hybridWeight = this.getHybridWeight();
             if (this.shouldAttemptFts() && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
                 try {
                     // Get unique filePaths from vector results to filter FTS search
@@ -690,7 +708,7 @@ class VectorStore {
                 memoryUsage,
                 uptime,
                 ftsIndexEnabled: this.ftsEnabled,
-                searchMode: ftsEffectivelyEnabled && (this.config.hybridWeight ?? 0.6) > 0 ? 'hybrid' : 'vector-only',
+                searchMode: ftsEffectivelyEnabled && this.getHybridWeight() > 0 ? 'hybrid' : 'vector-only',
             };
         }
         catch (error) {

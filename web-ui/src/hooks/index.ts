@@ -8,10 +8,12 @@ export {
   useCreateDatabase,
   useCurrentConfig,
   useExportConfig,
+  useHybridWeight,
   useImportConfig,
   useRecentDatabases,
   useRemoveAllowedRoot,
   useScanDatabases,
+  useSetHybridWeight,
   useSwitchDatabase,
 } from './useConfig'
 export { useFiles } from './useFiles'

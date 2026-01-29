@@ -247,3 +247,23 @@ export async function importConfig(config: ExportedConfig): Promise<AllowedRoots
     body: JSON.stringify({ config }),
   })
 }
+
+/**
+ * Get current hybrid search weight
+ * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+ */
+export async function getHybridWeight(): Promise<number> {
+  const data = await fetchConfigApi<{ weight: number }>('/hybrid-weight')
+  return data.weight
+}
+
+/**
+ * Set hybrid search weight
+ * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+ */
+export async function setHybridWeight(weight: number): Promise<void> {
+  await fetchConfigApi<{ success: boolean; weight: number }>('/hybrid-weight', {
+    method: 'PUT',
+    body: JSON.stringify({ weight }),
+  })
+}

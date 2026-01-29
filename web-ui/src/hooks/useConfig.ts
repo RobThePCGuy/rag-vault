@@ -7,10 +7,12 @@ import {
   getAllowedRoots,
   getAvailableModels,
   getCurrentConfig,
+  getHybridWeight,
   getRecentDatabases,
   importConfig,
   removeAllowedRoot,
   scanForDatabases,
+  setHybridWeight,
   switchDatabase,
 } from '../api/config'
 import type { ExportedConfig } from '../api/config'
@@ -359,6 +361,57 @@ export function useImportConfig() {
   return {
     importConfig: mutation.mutate,
     importConfigAsync: mutation.mutateAsync,
+    isLoading: mutation.isPending,
+    error: mutation.error,
+  }
+}
+
+/**
+ * Hook for getting hybrid search weight
+ */
+export function useHybridWeight() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['config', 'hybrid-weight'],
+    queryFn: getHybridWeight,
+  })
+
+  return {
+    weight: data ?? 0.6,
+    isLoading,
+    error,
+    refetch,
+  }
+}
+
+/**
+ * Hook for setting hybrid search weight
+ */
+export function useSetHybridWeight() {
+  const queryClient = useQueryClient()
+  const { addToast } = useToast()
+
+  const mutation = useMutation({
+    mutationFn: (weight: number) => setHybridWeight(weight),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'hybrid-weight'] })
+      addToast({
+        type: 'success',
+        title: 'Search weight updated',
+        message: 'Hybrid search weight has been adjusted',
+      })
+    },
+    onError: (error: Error) => {
+      addToast({
+        type: 'error',
+        title: 'Failed to update search weight',
+        message: error.message,
+      })
+    },
+  })
+
+  return {
+    setWeight: mutation.mutate,
+    setWeightAsync: mutation.mutateAsync,
     isLoading: mutation.isPending,
     error: mutation.error,
   }

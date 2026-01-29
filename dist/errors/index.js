@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmbeddingError = exports.ParserFileOperationError = exports.ParserValidationError = exports.DatabaseError = exports.ValidationError = exports.RAGError = exports.ErrorCodes = void 0;
 exports.getErrorMessage = getErrorMessage;
-exports.isRAGError = isRAGError;
 // ============================================
 // Error Codes
 // ============================================
@@ -159,12 +158,5 @@ function getErrorMessage(error) {
         return error.message;
     }
     return error.stack || error.message;
-}
-/**
- * Check if an error is a RAGError instance
- * @internal - available for internal use but may be useful for consumers
- */
-function isRAGError(error) {
-    return error instanceof RAGError;
 }
 //# sourceMappingURL=index.js.map

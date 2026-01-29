@@ -1,7 +1,7 @@
 // Tests for math utility functions
 
 import { describe, expect, it } from 'vitest'
-import { cosineSimilarity, dotProduct, euclideanNorm } from '../math.js'
+import { cosineSimilarity, dotProduct } from '../math.js'
 
 describe('Math Utilities', () => {
   describe('cosineSimilarity', () => {
@@ -68,21 +68,4 @@ describe('Math Utilities', () => {
     })
   })
 
-  describe('euclideanNorm', () => {
-    it('should calculate norm correctly', () => {
-      expect(euclideanNorm([3, 4])).toBe(5) // sqrt(9 + 16)
-    })
-
-    it('should return 0 for zero vector', () => {
-      expect(euclideanNorm([0, 0, 0])).toBe(0)
-    })
-
-    it('should handle unit vectors', () => {
-      expect(euclideanNorm([1, 0, 0])).toBe(1)
-    })
-
-    it('should handle empty vector', () => {
-      expect(euclideanNorm([])).toBe(0)
-    })
-  })
 })

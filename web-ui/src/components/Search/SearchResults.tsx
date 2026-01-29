@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { SearchResult } from '../../api/client'
 import { EmptyState } from '../ui'
 import { DocumentPreview } from './DocumentPreview'
@@ -10,6 +11,13 @@ interface SearchResultsProps {
 
 export function SearchResults({ results, hasSearched }: SearchResultsProps) {
   const [selectedResult, setSelectedResult] = useState<SearchResult | null>(null)
+  const navigate = useNavigate()
+
+  const handleRead = (result: SearchResult) => {
+    const params = new URLSearchParams({ path: result.filePath })
+    params.set('chunk', String(result.chunkIndex))
+    navigate(`/read?${params.toString()}`)
+  }
 
   if (!hasSearched) {
     return null
@@ -27,7 +35,7 @@ export function SearchResults({ results, hasSearched }: SearchResultsProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-gray-900">Results ({results.length})</h2>
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Results ({results.length})</h2>
       <div className="space-y-3">
         {results.map((result, index) => (
           <ResultCard
@@ -35,6 +43,7 @@ export function SearchResults({ results, hasSearched }: SearchResultsProps) {
             result={result}
             rank={index + 1}
             onView={() => setSelectedResult(result)}
+            onRead={() => handleRead(result)}
           />
         ))}
       </div>
@@ -54,18 +63,19 @@ interface ResultCardProps {
   result: SearchResult
   rank: number
   onView: () => void
+  onRead: () => void
 }
 
-function ResultCard({ result, rank, onView }: ResultCardProps) {
+function ResultCard({ result, rank, onView, onRead }: ResultCardProps) {
   const displaySource = result.source || result.filePath
   const scoreColor = getScoreColor(result.score)
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-400">#{rank}</span>
-          <h3 className="font-medium text-gray-900 truncate" title={displaySource}>
+          <span className="text-sm font-medium text-gray-400 dark:text-gray-500">#{rank}</span>
+          <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate" title={displaySource}>
             {formatSource(displaySource)}
           </h3>
         </div>
@@ -78,17 +88,24 @@ function ResultCard({ result, rank, onView }: ResultCardProps) {
           </span>
           <button
             type="button"
+            onClick={onRead}
+            className="px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
+          >
+            Read
+          </button>
+          <button
+            type="button"
             onClick={onView}
-            className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+            className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
           >
             View
           </button>
         </div>
       </div>
 
-      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{result.text}</p>
+      <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap line-clamp-4">{result.text}</p>
 
-      <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
+      <div className="mt-2 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
         <span>Chunk #{result.chunkIndex}</span>
         {result.source && (
           <span className="truncate" title={result.filePath}>

@@ -65,7 +65,9 @@ export function validateSourceProtocol(source: string): void {
   try {
     const parsed = new URL(source)
     if (BLOCKED_PROTOCOLS.includes(parsed.protocol as (typeof BLOCKED_PROTOCOLS)[number])) {
-      throw new Error(`Blocked protocol: ${parsed.protocol}. These protocols are not allowed for security reasons.`)
+      throw new Error(
+        `Blocked protocol: ${parsed.protocol}. These protocols are not allowed for security reasons.`
+      )
     }
   } catch (error) {
     // If it's our validation error, rethrow it

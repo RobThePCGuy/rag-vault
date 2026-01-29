@@ -137,6 +137,36 @@ export declare class RAGServer {
         }];
     }>;
     /**
+     * Get all chunks for a document (for Reader feature)
+     */
+    handleGetDocumentChunks(filePath: string): Promise<{
+        content: [{
+            type: 'text';
+            text: string;
+        }];
+    }>;
+    /**
+     * Find related chunks for a given chunk (for Reader margin suggestions)
+     */
+    handleFindRelatedChunks(filePath: string, chunkIndex: number, limit?: number, excludeSameDocument?: boolean): Promise<{
+        content: [{
+            type: 'text';
+            text: string;
+        }];
+    }>;
+    /**
+     * Batch find related chunks for multiple source chunks
+     */
+    handleBatchFindRelatedChunks(chunks: Array<{
+        filePath: string;
+        chunkIndex: number;
+    }>, limit?: number): Promise<{
+        content: [{
+            type: 'text';
+            text: string;
+        }];
+    }>;
+    /**
      * Start the server
      */
     run(): Promise<void>;

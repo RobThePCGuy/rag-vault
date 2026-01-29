@@ -145,7 +145,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Preview content** — Click any result to see the full chunk in context
 - **Manage files** — View all indexed documents, delete what you don't need
 - **Switch databases** — Create and switch between multiple knowledge bases
-- **Monitor status** — See document counts, database size, system health
+- **Monitor status** — See document counts, memory usage, and search mode
+- **Export/Import settings** — Back up and restore your vault configuration
+- **Theme preferences** — Switch between light, dark, or system theme
+- **Folder browser** — Navigate directories to select documents
 
 ### REST API
 
@@ -180,6 +183,23 @@ curl "http://localhost:3000/api/v1/status"
 
 # Health check (for load balancers)
 curl "http://localhost:3000/api/v1/health"
+```
+
+### Reader API Endpoints
+
+For programmatic document reading and cross-document discovery:
+
+```bash
+# Get all chunks for a document (ordered by index)
+curl "http://localhost:3000/api/v1/documents/chunks?filePath=/path/to/doc.pdf"
+
+# Find related chunks for cross-document discovery
+curl "http://localhost:3000/api/v1/chunks/related?filePath=/path/to/doc.pdf&chunkIndex=0&limit=5"
+
+# Batch request for multiple chunks (efficient for UIs)
+curl -X POST "http://localhost:3000/api/v1/chunks/batch-related" \
+  -H "Content-Type: application/json" \
+  -d '{"chunks": [{"filePath": "/path/to/doc.pdf", "chunkIndex": 0}], "limit": 3}'
 ```
 
 ## Real-World Examples

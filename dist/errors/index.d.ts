@@ -65,9 +65,4 @@ export declare class EmbeddingError extends RAGError {
  * Get error message with optional stack trace (based on environment)
  */
 export declare function getErrorMessage(error: Error): string;
-/**
- * Check if an error is a RAGError instance
- * @internal - available for internal use but may be useful for consumers
- */
-export declare function isRAGError(error: unknown): error is RAGError;
 //# sourceMappingURL=index.d.ts.map

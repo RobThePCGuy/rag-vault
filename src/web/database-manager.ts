@@ -47,7 +47,7 @@ function readUserAllowedRoots(): string[] {
     return []
   }
   try {
-    const content = JSON.parse(require('fs').readFileSync(ALLOWED_ROOTS_FILE, 'utf-8'))
+    const content = JSON.parse(require('node:fs').readFileSync(ALLOWED_ROOTS_FILE, 'utf-8'))
     if (Array.isArray(content.roots)) {
       return content.roots.map((p: string) => path.resolve(p))
     }
@@ -63,9 +63,9 @@ function readUserAllowedRoots(): string[] {
 function writeUserAllowedRoots(roots: string[]): void {
   const dir = path.dirname(ALLOWED_ROOTS_FILE)
   if (!existsSync(dir)) {
-    require('fs').mkdirSync(dir, { recursive: true })
+    require('node:fs').mkdirSync(dir, { recursive: true })
   }
-  require('fs').writeFileSync(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8')
+  require('node:fs').writeFileSync(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8')
 }
 
 /**
@@ -727,6 +727,28 @@ export class DatabaseManager {
     }
 
     writeUserAllowedRoots(validRoots)
+  }
+
+  /**
+   * Get the current hybrid search weight
+   * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+   */
+  getHybridWeight(): number {
+    if (!this.currentServer) {
+      return 0.6 // Default value
+    }
+    return this.currentServer.getHybridWeight()
+  }
+
+  /**
+   * Set the hybrid search weight at runtime
+   * @param weight - Value between 0.0 (vector-only) and 1.0 (max keyword boost)
+   */
+  setHybridWeight(weight: number): void {
+    if (!this.currentServer) {
+      throw new Error('DatabaseManager not initialized. Call initialize() first.')
+    }
+    this.currentServer.setHybridWeight(weight)
   }
 
   /**

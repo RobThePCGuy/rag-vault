@@ -35,6 +35,13 @@ interface ImportConfigRequest {
 }
 
 /**
+ * Set hybrid weight request body
+ */
+interface SetHybridWeightRequest {
+  weight: number
+}
+
+/**
  * Scan databases request body
  */
 interface ScanDatabasesRequest {

@@ -24,11 +24,4 @@ export declare function cosineSimilarity(vec1: number[], vec2: number[]): number
  * @returns Dot product value, or 0 if vectors have different lengths
  */
 export declare function dotProduct(vec1: number[], vec2: number[]): number;
-/**
- * Calculate the Euclidean norm (L2 norm) of a vector.
- *
- * @param vec - Input vector
- * @returns Euclidean norm (magnitude) of the vector
- */
-export declare function euclideanNorm(vec: number[]): number;
 //# sourceMappingURL=math.d.ts.map

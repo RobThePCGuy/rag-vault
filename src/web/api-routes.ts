@@ -184,5 +184,101 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
     })
   })
 
+  // ============================================
+  // Reader Feature Endpoints
+  // ============================================
+
+  // GET /api/v1/documents/chunks - Get all chunks for a document
+  router.get(
+    '/documents/chunks',
+    asyncHandler(async (req: Request, res: Response) => {
+      const filePath = req.query['filePath'] as string | undefined
+
+      if (!filePath || typeof filePath !== 'string') {
+        throw new ValidationError('filePath query parameter is required')
+      }
+
+      const server = getServer()
+      const result = await server.handleGetDocumentChunks(filePath)
+      const data = JSON.parse(extractResultText(result))
+      res.json({ chunks: data })
+    })
+  )
+
+  // GET /api/v1/chunks/related - Get related chunks for a specific chunk
+  router.get(
+    '/chunks/related',
+    asyncHandler(async (req: Request, res: Response) => {
+      const filePath = req.query['filePath'] as string | undefined
+      const chunkIndexStr = req.query['chunkIndex'] as string | undefined
+      const limitStr = req.query['limit'] as string | undefined
+      const excludeSameDocStr = req.query['excludeSameDoc'] as string | undefined
+
+      if (!filePath || typeof filePath !== 'string') {
+        throw new ValidationError('filePath query parameter is required')
+      }
+
+      if (!chunkIndexStr) {
+        throw new ValidationError('chunkIndex query parameter is required')
+      }
+
+      const chunkIndex = Number.parseInt(chunkIndexStr, 10)
+      if (Number.isNaN(chunkIndex) || chunkIndex < 0) {
+        throw new ValidationError('chunkIndex must be a non-negative integer')
+      }
+
+      const limit = limitStr ? Number.parseInt(limitStr, 10) : undefined
+      if (limit !== undefined && (Number.isNaN(limit) || limit < 1 || limit > 20)) {
+        throw new ValidationError('limit must be between 1 and 20')
+      }
+
+      const excludeSameDocument = excludeSameDocStr !== 'false'
+
+      const server = getServer()
+      const result = await server.handleFindRelatedChunks(
+        filePath,
+        chunkIndex,
+        limit,
+        excludeSameDocument
+      )
+      const data = JSON.parse(extractResultText(result))
+      res.json({ related: data })
+    })
+  )
+
+  // POST /api/v1/chunks/batch-related - Batch get related chunks
+  router.post(
+    '/chunks/batch-related',
+    asyncHandler(async (req: Request, res: Response) => {
+      const { chunks, limit } = req.body as {
+        chunks?: Array<{ filePath: string; chunkIndex: number }>
+        limit?: number
+      }
+
+      if (!chunks || !Array.isArray(chunks) || chunks.length === 0) {
+        throw new ValidationError('chunks array is required and must not be empty')
+      }
+
+      // Validate each chunk
+      for (const chunk of chunks) {
+        if (!chunk.filePath || typeof chunk.filePath !== 'string') {
+          throw new ValidationError('Each chunk must have a filePath string')
+        }
+        if (typeof chunk.chunkIndex !== 'number' || chunk.chunkIndex < 0) {
+          throw new ValidationError('Each chunk must have a non-negative chunkIndex')
+        }
+      }
+
+      if (limit !== undefined && (typeof limit !== 'number' || limit < 1 || limit > 20)) {
+        throw new ValidationError('limit must be between 1 and 20')
+      }
+
+      const server = getServer()
+      const result = await server.handleBatchFindRelatedChunks(chunks, limit)
+      const data = JSON.parse(extractResultText(result))
+      res.json({ results: data })
+    })
+  )
+
   return router
 }

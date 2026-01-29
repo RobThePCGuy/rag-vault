@@ -177,3 +177,136 @@ export async function deleteFile(options: { filePath?: string; source?: string }
 export async function getStatus(): Promise<SystemStatus> {
   return fetchApi<SystemStatus>('/status')
 }
+
+// ============================================
+// Reader Feature Types and Functions
+// ============================================
+
+/**
+ * Document metadata
+ */
+export interface DocumentMetadata {
+  fileName: string
+  fileSize: number
+  fileType: string
+}
+
+/**
+ * Document chunk with full data
+ */
+export interface DocumentChunk {
+  filePath: string
+  chunkIndex: number
+  text: string
+  score: number
+  metadata: DocumentMetadata
+  source?: string
+}
+
+/**
+ * Related chunk with connection information
+ */
+export interface RelatedChunk extends DocumentChunk {
+  connectionReason?: string
+}
+
+/**
+ * Chunk key for identification
+ */
+export interface ChunkKey {
+  filePath: string
+  chunkIndex: number
+}
+
+/**
+ * Options for getting related chunks
+ */
+export interface RelatedChunksOptions {
+  limit?: number
+  excludeSameDocument?: boolean
+}
+
+/**
+ * Get all chunks for a document, ordered by chunkIndex
+ */
+export async function getDocumentChunks(filePath: string): Promise<DocumentChunk[]> {
+  const encodedPath = encodeURIComponent(filePath)
+  const data = await fetchApi<{ chunks: DocumentChunk[] }>(
+    `/documents/chunks?filePath=${encodedPath}`
+  )
+  return data.chunks
+}
+
+/**
+ * Get related chunks for a specific chunk
+ */
+export async function getRelatedChunks(
+  filePath: string,
+  chunkIndex: number,
+  options?: RelatedChunksOptions
+): Promise<RelatedChunk[]> {
+  const params = new URLSearchParams({
+    filePath,
+    chunkIndex: String(chunkIndex),
+  })
+
+  if (options?.limit !== undefined) {
+    params.set('limit', String(options.limit))
+  }
+
+  if (options?.excludeSameDocument !== undefined) {
+    params.set('excludeSameDoc', String(options.excludeSameDocument))
+  }
+
+  const data = await fetchApi<{ related: RelatedChunk[] }>(`/chunks/related?${params.toString()}`)
+
+  // Add connection reasons based on score
+  return data.related.map((chunk) => ({
+    ...chunk,
+    connectionReason: getConnectionReason(chunk.score, chunk.filePath === filePath),
+  }))
+}
+
+/**
+ * Batch get related chunks for multiple source chunks
+ */
+export async function getBatchRelatedChunks(
+  chunks: ChunkKey[],
+  limit?: number
+): Promise<Record<string, RelatedChunk[]>> {
+  const data = await fetchApi<{ results: Record<string, DocumentChunk[]> }>(
+    '/chunks/batch-related',
+    {
+      method: 'POST',
+      body: JSON.stringify({ chunks, limit }),
+    }
+  )
+
+  // Add connection reasons to all results
+  const results: Record<string, RelatedChunk[]> = {}
+  for (const [key, relatedChunks] of Object.entries(data.results)) {
+    const [sourceFilePath] = key.split(':')
+    results[key] = relatedChunks.map((chunk) => ({
+      ...chunk,
+      connectionReason: getConnectionReason(chunk.score, chunk.filePath === sourceFilePath),
+    }))
+  }
+
+  return results
+}
+
+/**
+ * Get human-readable connection reason based on score
+ */
+function getConnectionReason(score: number, isSameDocument: boolean): string {
+  if (isSameDocument) {
+    return 'Same document'
+  }
+  if (score < 0.3) {
+    return 'Very similar'
+  }
+  if (score < 0.5) {
+    return 'Related topic'
+  }
+  return 'Loosely related'
+}

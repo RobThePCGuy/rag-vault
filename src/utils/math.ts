@@ -60,16 +60,3 @@ export function dotProduct(vec1: number[], vec2: number[]): number {
   return result
 }
 
-/**
- * Calculate the Euclidean norm (L2 norm) of a vector.
- *
- * @param vec - Input vector
- * @returns Euclidean norm (magnitude) of the vector
- */
-export function euclideanNorm(vec: number[]): number {
-  let sum = 0
-  for (const v of vec) {
-    sum += v * v
-  }
-  return Math.sqrt(sum)
-}

@@ -122,6 +122,69 @@ function createApiRouter(serverOrAccessor) {
             timestamp: new Date().toISOString(),
         });
     });
+    // ============================================
+    // Reader Feature Endpoints
+    // ============================================
+    // GET /api/v1/documents/chunks - Get all chunks for a document
+    router.get('/documents/chunks', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const filePath = req.query['filePath'];
+        if (!filePath || typeof filePath !== 'string') {
+            throw new index_js_1.ValidationError('filePath query parameter is required');
+        }
+        const server = getServer();
+        const result = await server.handleGetDocumentChunks(filePath);
+        const data = JSON.parse(extractResultText(result));
+        res.json({ chunks: data });
+    }));
+    // GET /api/v1/chunks/related - Get related chunks for a specific chunk
+    router.get('/chunks/related', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const filePath = req.query['filePath'];
+        const chunkIndexStr = req.query['chunkIndex'];
+        const limitStr = req.query['limit'];
+        const excludeSameDocStr = req.query['excludeSameDoc'];
+        if (!filePath || typeof filePath !== 'string') {
+            throw new index_js_1.ValidationError('filePath query parameter is required');
+        }
+        if (!chunkIndexStr) {
+            throw new index_js_1.ValidationError('chunkIndex query parameter is required');
+        }
+        const chunkIndex = Number.parseInt(chunkIndexStr, 10);
+        if (Number.isNaN(chunkIndex) || chunkIndex < 0) {
+            throw new index_js_1.ValidationError('chunkIndex must be a non-negative integer');
+        }
+        const limit = limitStr ? Number.parseInt(limitStr, 10) : undefined;
+        if (limit !== undefined && (Number.isNaN(limit) || limit < 1 || limit > 20)) {
+            throw new index_js_1.ValidationError('limit must be between 1 and 20');
+        }
+        const excludeSameDocument = excludeSameDocStr !== 'false';
+        const server = getServer();
+        const result = await server.handleFindRelatedChunks(filePath, chunkIndex, limit, excludeSameDocument);
+        const data = JSON.parse(extractResultText(result));
+        res.json({ related: data });
+    }));
+    // POST /api/v1/chunks/batch-related - Batch get related chunks
+    router.post('/chunks/batch-related', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const { chunks, limit } = req.body;
+        if (!chunks || !Array.isArray(chunks) || chunks.length === 0) {
+            throw new index_js_1.ValidationError('chunks array is required and must not be empty');
+        }
+        // Validate each chunk
+        for (const chunk of chunks) {
+            if (!chunk.filePath || typeof chunk.filePath !== 'string') {
+                throw new index_js_1.ValidationError('Each chunk must have a filePath string');
+            }
+            if (typeof chunk.chunkIndex !== 'number' || chunk.chunkIndex < 0) {
+                throw new index_js_1.ValidationError('Each chunk must have a non-negative chunkIndex');
+            }
+        }
+        if (limit !== undefined && (typeof limit !== 'number' || limit < 1 || limit > 20)) {
+            throw new index_js_1.ValidationError('limit must be between 1 and 20');
+        }
+        const server = getServer();
+        const result = await server.handleBatchFindRelatedChunks(chunks, limit);
+        const data = JSON.parse(extractResultText(result));
+        res.json({ results: data });
+    }));
     return router;
 }
 //# sourceMappingURL=api-routes.js.map

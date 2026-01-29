@@ -199,10 +199,3 @@ export function getErrorMessage(error: Error): string {
   return error.stack || error.message
 }
 
-/**
- * Check if an error is a RAGError instance
- * @internal - available for internal use but may be useful for consumers
- */
-export function isRAGError(error: unknown): error is RAGError {
-  return error instanceof RAGError
-}

@@ -211,7 +211,7 @@ describe('Raw Data Utils', () => {
     })
 
     it('should create directory if it does not exist', async () => {
-      const newDbPath = join(TEST_DIR, 'new-db-' + Date.now())
+      const newDbPath = join(TEST_DIR, `new-db-${Date.now()}`)
       const content = 'Test content'
       const source = 'test://new-db-test'
 

@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cosineSimilarity = cosineSimilarity;
 exports.dotProduct = dotProduct;
-exports.euclideanNorm = euclideanNorm;
 /**
  * Calculate cosine similarity between two vectors.
  *
@@ -56,18 +55,5 @@ function dotProduct(vec1, vec2) {
         result += (vec1[i] ?? 0) * (vec2[i] ?? 0);
     }
     return result;
-}
-/**
- * Calculate the Euclidean norm (L2 norm) of a vector.
- *
- * @param vec - Input vector
- * @returns Euclidean norm (magnitude) of the vector
- */
-function euclideanNorm(vec) {
-    let sum = 0;
-    for (const v of vec) {
-        sum += v * v;
-    }
-    return Math.sqrt(sum);
 }
 //# sourceMappingURL=math.js.map

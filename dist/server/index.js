@@ -506,6 +506,105 @@ class RAGServer {
         }
     }
     /**
+     * Get all chunks for a document (for Reader feature)
+     */
+    async handleGetDocumentChunks(filePath) {
+        try {
+            const chunks = await this.vectorStore.getDocumentChunks(filePath);
+            // Enrich with source information for raw-data files
+            const enrichedChunks = chunks.map((chunk) => {
+                if ((0, raw_data_utils_js_1.isRawDataPath)(chunk.filePath)) {
+                    const source = (0, raw_data_utils_js_1.extractSourceFromPath)(chunk.filePath);
+                    if (source) {
+                        return { ...chunk, source };
+                    }
+                }
+                return chunk;
+            });
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: JSON.stringify(enrichedChunks, null, 2),
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            console.error('Failed to get document chunks:', errorMessage);
+            throw new Error(`Failed to get document chunks: ${errorMessage}`);
+        }
+    }
+    /**
+     * Find related chunks for a given chunk (for Reader margin suggestions)
+     */
+    async handleFindRelatedChunks(filePath, chunkIndex, limit, excludeSameDocument) {
+        try {
+            const relatedChunks = await this.vectorStore.findRelatedChunks(filePath, chunkIndex, limit ?? 5, excludeSameDocument ?? true);
+            // Enrich with source information for raw-data files
+            const enrichedChunks = relatedChunks.map((chunk) => {
+                if ((0, raw_data_utils_js_1.isRawDataPath)(chunk.filePath)) {
+                    const source = (0, raw_data_utils_js_1.extractSourceFromPath)(chunk.filePath);
+                    if (source) {
+                        return { ...chunk, source };
+                    }
+                }
+                return chunk;
+            });
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: JSON.stringify(enrichedChunks, null, 2),
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            console.error('Failed to find related chunks:', errorMessage);
+            throw new Error(`Failed to find related chunks: ${errorMessage}`);
+        }
+    }
+    /**
+     * Batch find related chunks for multiple source chunks
+     */
+    async handleBatchFindRelatedChunks(chunks, limit) {
+        try {
+            const results = {};
+            // Process each chunk in parallel
+            await Promise.all(chunks.map(async (chunk) => {
+                const key = `${chunk.filePath}:${chunk.chunkIndex}`;
+                const relatedChunks = await this.vectorStore.findRelatedChunks(chunk.filePath, chunk.chunkIndex, limit ?? 5, true // Always exclude same document for batch
+                );
+                // Enrich with source information
+                results[key] = relatedChunks.map((related) => {
+                    if ((0, raw_data_utils_js_1.isRawDataPath)(related.filePath)) {
+                        const source = (0, raw_data_utils_js_1.extractSourceFromPath)(related.filePath);
+                        if (source) {
+                            return { ...related, source };
+                        }
+                    }
+                    return related;
+                });
+            }));
+            return {
+                content: [
+                    {
+                        type: 'text',
+                        text: JSON.stringify(results, null, 2),
+                    },
+                ],
+            };
+        }
+        catch (error) {
+            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            console.error('Failed to batch find related chunks:', errorMessage);
+            throw new Error(`Failed to batch find related chunks: ${errorMessage}`);
+        }
+    }
+    /**
      * Start the server
      */
     async run() {

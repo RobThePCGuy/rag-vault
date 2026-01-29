@@ -45,9 +45,9 @@ async function main(): Promise<void> {
     const packageDir = path.resolve(__dirname, '../..')
 
     const possiblePaths = [
-      path.resolve(cwd, 'web-ui/dist'),           // Dev: running from repo root
-      path.resolve(packageDir, 'web-ui/dist'),    // npx/global: relative to package
-      path.resolve(cwd, 'dist/web-ui'),           // Legacy prod path
+      path.resolve(cwd, 'web-ui/dist'), // Dev: running from repo root
+      path.resolve(packageDir, 'web-ui/dist'), // npx/global: relative to package
+      path.resolve(cwd, 'dist/web-ui'), // Legacy prod path
     ]
 
     // Find first existing path

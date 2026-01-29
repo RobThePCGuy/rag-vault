@@ -3,7 +3,14 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { AnnotationsProvider } from './contexts/AnnotationsContext'
+import { CollectionsProvider } from './contexts/CollectionsContext'
+import { GraphStateProvider } from './contexts/GraphStateContext'
+import { LinksProvider } from './contexts/LinksContext'
 import { PreferencesProvider } from './contexts/PreferencesContext'
+import { ReadingModeProvider } from './contexts/ReadingModeContext'
+import { ReadingStatsProvider } from './contexts/ReadingStatsContext'
+import { TagsProvider } from './contexts/TagsContext'
 import { ToastProvider } from './contexts/ToastContext'
 import './index.css'
 
@@ -27,7 +34,21 @@ createRoot(rootElement).render(
       <BrowserRouter>
         <PreferencesProvider>
           <ToastProvider>
-            <App />
+            <LinksProvider>
+              <AnnotationsProvider>
+                <TagsProvider>
+                  <CollectionsProvider>
+                    <GraphStateProvider>
+                      <ReadingModeProvider>
+                        <ReadingStatsProvider>
+                          <App />
+                        </ReadingStatsProvider>
+                      </ReadingModeProvider>
+                    </GraphStateProvider>
+                  </CollectionsProvider>
+                </TagsProvider>
+              </AnnotationsProvider>
+            </LinksProvider>
           </ToastProvider>
         </PreferencesProvider>
       </BrowserRouter>

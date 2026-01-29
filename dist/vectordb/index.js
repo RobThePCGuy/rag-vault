@@ -3,6 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VectorStore = exports.DatabaseError = void 0;
 exports.isValidFilePath = isValidFilePath;
+exports.generateChunkFingerprint = generateChunkFingerprint;
+const node_crypto_1 = require("node:crypto");
 const lancedb_1 = require("@lancedb/lancedb");
 const index_js_1 = require("../errors/index.js");
 // Re-export error class for backwards compatibility
@@ -71,6 +73,29 @@ function isValidFilePath(filePath) {
     return SAFE_PATH_REGEX.test(filePath);
 }
 // ============================================
+// Chunk Fingerprinting (Resilient Linking v0)
+// ============================================
+/**
+ * Normalize text for fingerprinting.
+ * - Converts to lowercase
+ * - Collapses whitespace
+ * - Trims leading/trailing whitespace
+ */
+function normalizeTextForFingerprint(text) {
+    return text.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+/**
+ * Generate a content-based fingerprint for a chunk.
+ * Uses SHA-256 hash of normalized text (first 16 hex chars for compactness).
+ * This enables stable chunk identification across re-indexing.
+ */
+function generateChunkFingerprint(text) {
+    const normalized = normalizeTextForFingerprint(text);
+    const hash = (0, node_crypto_1.createHash)('sha256').update(normalized, 'utf8').digest('hex');
+    // Use first 16 characters (64 bits) - sufficient for practical uniqueness
+    return hash.slice(0, 16);
+}
+// ============================================
 // Type Guards
 // ============================================
 /**
@@ -104,13 +129,22 @@ function toSearchResult(raw) {
     if (!isLanceDBRawResult(raw)) {
         throw new index_js_1.DatabaseError('Invalid search result format from LanceDB');
     }
-    return {
+    const result = {
         filePath: raw.filePath,
         chunkIndex: raw.chunkIndex,
         text: raw.text,
         score: raw._distance ?? raw._score ?? 0,
         metadata: raw.metadata,
     };
+    // Include fingerprint if present, otherwise generate on-the-fly for backwards compatibility
+    if (raw.fingerprint) {
+        result.fingerprint = raw.fingerprint;
+    }
+    else {
+        // Generate fingerprint from text for legacy data without stored fingerprints
+        result.fingerprint = generateChunkFingerprint(raw.text);
+    }
+    return result;
 }
 // ============================================
 // VectorStore Class
@@ -289,13 +323,18 @@ class VectorStore {
             return;
         }
         try {
+            // Ensure all chunks have fingerprints (Resilient Linking v0)
+            const chunksWithFingerprints = chunks.map((chunk) => ({
+                ...chunk,
+                fingerprint: chunk.fingerprint || generateChunkFingerprint(chunk.text),
+            }));
             if (!this.table) {
                 // Create table on first insertion
                 if (!this.db) {
                     throw new index_js_1.DatabaseError('VectorStore is not initialized. Call initialize() first.');
                 }
                 // LanceDB's createTable API accepts data as Record<string, unknown>[]
-                const records = chunks.map((chunk) => chunk);
+                const records = chunksWithFingerprints.map((chunk) => chunk);
                 this.table = await this.db.createTable(this.config.tableName, records);
                 console.error(`VectorStore: Created table "${this.config.tableName}"`);
                 // Create FTS index for hybrid search
@@ -303,7 +342,7 @@ class VectorStore {
             }
             else {
                 // Add data to existing table
-                const records = chunks.map((chunk) => chunk);
+                const records = chunksWithFingerprints.map((chunk) => chunk);
                 await this.table.add(records);
                 // Rebuild FTS index after adding new data
                 await this.rebuildFtsIndex();
@@ -611,13 +650,18 @@ class VectorStore {
                 .where(`\`filePath\` = '${escapedFilePath}'`)
                 .toArray();
             // Convert to SearchResult format and sort by chunkIndex
-            const chunks = results.map((record) => ({
-                filePath: record.filePath,
-                chunkIndex: record.chunkIndex,
-                text: record.text,
-                score: 0, // No distance score for direct retrieval
-                metadata: record.metadata,
-            }));
+            const chunks = results.map((record) => {
+                const text = record.text;
+                return {
+                    filePath: record.filePath,
+                    chunkIndex: record.chunkIndex,
+                    text,
+                    score: 0, // No distance score for direct retrieval
+                    metadata: record.metadata,
+                    // Include fingerprint - generate if not stored (backwards compatibility)
+                    fingerprint: record.fingerprint || generateChunkFingerprint(text),
+                };
+            });
             return chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
         }
         catch (error) {
@@ -654,7 +698,10 @@ class VectorStore {
             const sourceChunk = sourceResults[0];
             const sourceVector = sourceChunk?.vector;
             if (!sourceVector || !Array.isArray(sourceVector)) {
-                throw new index_js_1.DatabaseError('Source chunk does not have a valid vector');
+                // Chunk exists but has no embedding (e.g., upload timed out mid-process)
+                // Return empty results instead of throwing - allows batch operations to continue
+                console.warn(`Chunk ${filePath}:${chunkIndex} has no valid vector (possibly corrupted)`);
+                return [];
             }
             // Search for similar chunks using the source vector
             // Request more candidates to allow for filtering
@@ -676,7 +723,8 @@ class VectorStore {
             return results.slice(0, limit);
         }
         catch (error) {
-            throw new index_js_1.DatabaseError(`Failed to find related chunks for: ${filePath}:${chunkIndex}`, error);
+            const cause = error instanceof Error ? error.message : String(error);
+            throw new index_js_1.DatabaseError(`Failed to find related chunks for: ${filePath}:${chunkIndex}: ${cause}`, error);
         }
     }
     /**

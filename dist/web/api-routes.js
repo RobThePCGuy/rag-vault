@@ -8,7 +8,9 @@ exports.createApiRouter = createApiRouter;
 const node_path_1 = __importDefault(require("node:path"));
 const express_1 = require("express");
 const index_js_1 = require("../errors/index.js");
-const index_js_2 = require("./middleware/index.js");
+const index_js_2 = require("../explainability/index.js");
+const index_js_3 = require("../flywheel/index.js");
+const index_js_4 = require("./middleware/index.js");
 /**
  * Extract text from a RAG server response with proper bounds checking
  * @throws RAGError if the response format is invalid
@@ -41,7 +43,7 @@ function createApiRouter(serverOrAccessor) {
         return serverOrAccessor;
     };
     // POST /api/v1/search - Search documents
-    router.post('/search', (0, index_js_2.asyncHandler)(async (req, res) => {
+    router.post('/search', (0, index_js_4.asyncHandler)(async (req, res) => {
         const { query, limit } = req.body;
         if (!query || typeof query !== 'string') {
             throw new index_js_1.ValidationError('Query is required and must be a string');
@@ -56,7 +58,7 @@ function createApiRouter(serverOrAccessor) {
         res.json({ results: data });
     }));
     // POST /api/v1/files/upload - Upload files (multipart)
-    router.post('/files/upload', (0, index_js_2.asyncHandler)(async (req, res) => {
+    router.post('/files/upload', (0, index_js_4.asyncHandler)(async (req, res) => {
         // File is attached by multer middleware
         const file = req.file;
         if (!file) {
@@ -70,7 +72,7 @@ function createApiRouter(serverOrAccessor) {
         res.json(data);
     }));
     // POST /api/v1/data - Ingest content strings
-    router.post('/data', (0, index_js_2.asyncHandler)(async (req, res) => {
+    router.post('/data', (0, index_js_4.asyncHandler)(async (req, res) => {
         const { content, metadata } = req.body;
         if (!content || typeof content !== 'string') {
             throw new index_js_1.ValidationError('Content is required and must be a string');
@@ -84,14 +86,14 @@ function createApiRouter(serverOrAccessor) {
         res.json(data);
     }));
     // GET /api/v1/files - List ingested files
-    router.get('/files', (0, index_js_2.asyncHandler)(async (_req, res) => {
+    router.get('/files', (0, index_js_4.asyncHandler)(async (_req, res) => {
         const server = getServer();
         const result = await server.handleListFiles();
         const data = JSON.parse(extractResultText(result));
         res.json({ files: data });
     }));
     // DELETE /api/v1/files - Delete file/source
-    router.delete('/files', (0, index_js_2.asyncHandler)(async (req, res) => {
+    router.delete('/files', (0, index_js_4.asyncHandler)(async (req, res) => {
         const { filePath, source } = req.body;
         if (!filePath && !source) {
             throw new index_js_1.ValidationError('Either filePath or source is required');
@@ -109,7 +111,7 @@ function createApiRouter(serverOrAccessor) {
         res.json(data);
     }));
     // GET /api/v1/status - System status
-    router.get('/status', (0, index_js_2.asyncHandler)(async (_req, res) => {
+    router.get('/status', (0, index_js_4.asyncHandler)(async (_req, res) => {
         const server = getServer();
         const result = await server.handleStatus();
         const data = JSON.parse(extractResultText(result));
@@ -126,7 +128,7 @@ function createApiRouter(serverOrAccessor) {
     // Reader Feature Endpoints
     // ============================================
     // GET /api/v1/documents/chunks - Get all chunks for a document
-    router.get('/documents/chunks', (0, index_js_2.asyncHandler)(async (req, res) => {
+    router.get('/documents/chunks', (0, index_js_4.asyncHandler)(async (req, res) => {
         const filePath = req.query['filePath'];
         if (!filePath || typeof filePath !== 'string') {
             throw new index_js_1.ValidationError('filePath query parameter is required');
@@ -137,11 +139,12 @@ function createApiRouter(serverOrAccessor) {
         res.json({ chunks: data });
     }));
     // GET /api/v1/chunks/related - Get related chunks for a specific chunk
-    router.get('/chunks/related', (0, index_js_2.asyncHandler)(async (req, res) => {
+    router.get('/chunks/related', (0, index_js_4.asyncHandler)(async (req, res) => {
         const filePath = req.query['filePath'];
         const chunkIndexStr = req.query['chunkIndex'];
         const limitStr = req.query['limit'];
         const excludeSameDocStr = req.query['excludeSameDoc'];
+        const includeExplanationStr = req.query['includeExplanation'];
         if (!filePath || typeof filePath !== 'string') {
             throw new index_js_1.ValidationError('filePath query parameter is required');
         }
@@ -157,13 +160,29 @@ function createApiRouter(serverOrAccessor) {
             throw new index_js_1.ValidationError('limit must be between 1 and 20');
         }
         const excludeSameDocument = excludeSameDocStr !== 'false';
+        const includeExplanation = includeExplanationStr === 'true';
         const server = getServer();
         const result = await server.handleFindRelatedChunks(filePath, chunkIndex, limit, excludeSameDocument);
         const data = JSON.parse(extractResultText(result));
-        res.json({ related: data });
+        // Add explanations if requested (Explainability feature)
+        if (includeExplanation) {
+            // Get source chunk text for comparison
+            const sourceChunkResult = await server.handleGetDocumentChunks(filePath);
+            const sourceChunks = JSON.parse(extractResultText(sourceChunkResult));
+            const sourceChunk = sourceChunks.find((c) => c.chunkIndex === chunkIndex);
+            const sourceText = sourceChunk?.text || '';
+            const dataWithExplanation = data.map((chunk) => ({
+                ...chunk,
+                explanation: (0, index_js_2.explainChunkSimilarity)(sourceText, chunk.text, chunk.filePath === filePath, chunk.score),
+            }));
+            res.json({ related: dataWithExplanation });
+        }
+        else {
+            res.json({ related: data });
+        }
     }));
     // POST /api/v1/chunks/batch-related - Batch get related chunks
-    router.post('/chunks/batch-related', (0, index_js_2.asyncHandler)(async (req, res) => {
+    router.post('/chunks/batch-related', (0, index_js_4.asyncHandler)(async (req, res) => {
         const { chunks, limit } = req.body;
         if (!chunks || !Array.isArray(chunks) || chunks.length === 0) {
             throw new index_js_1.ValidationError('chunks array is required and must not be empty');
@@ -185,6 +204,37 @@ function createApiRouter(serverOrAccessor) {
         const data = JSON.parse(extractResultText(result));
         res.json({ results: data });
     }));
+    // POST /api/v1/feedback - Record a feedback event
+    router.post('/feedback', (0, index_js_4.asyncHandler)(async (req, res) => {
+        const { type, source, target } = req.body;
+        // Validate event type
+        const validTypes = ['pin', 'unpin', 'dismiss_inferred', 'click_related'];
+        if (!type || !validTypes.includes(type)) {
+            throw new index_js_1.ValidationError(`type must be one of: ${validTypes.join(', ')}`);
+        }
+        // Validate source
+        if (!source || typeof source.filePath !== 'string' || typeof source.chunkIndex !== 'number') {
+            throw new index_js_1.ValidationError('source must have filePath (string) and chunkIndex (number)');
+        }
+        // Validate target
+        if (!target || typeof target.filePath !== 'string' || typeof target.chunkIndex !== 'number') {
+            throw new index_js_1.ValidationError('target must have filePath (string) and chunkIndex (number)');
+        }
+        const feedbackStore = (0, index_js_3.getFeedbackStore)();
+        feedbackStore.recordEvent({
+            type,
+            source,
+            target,
+            timestamp: new Date(),
+        });
+        res.json({ success: true });
+    }));
+    // GET /api/v1/feedback/stats - Get feedback statistics
+    router.get('/feedback/stats', (_req, res) => {
+        const feedbackStore = (0, index_js_3.getFeedbackStore)();
+        const stats = feedbackStore.getStats();
+        res.json(stats);
+    });
     return router;
 }
 //# sourceMappingURL=api-routes.js.map

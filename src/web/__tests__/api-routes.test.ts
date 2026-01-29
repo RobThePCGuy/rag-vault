@@ -62,7 +62,7 @@ type RouterLayer = {
   route?: {
     path?: string
     methods?: Record<string, boolean>
-    stack?: Array<{ handle: Function }>
+    stack?: Array<{ handle: (...args: never) => unknown }>
   }
 }
 
@@ -249,9 +249,7 @@ describe('API Routes', () => {
         .filter((layer) => layer.route)
         .map((layer) => ({
           path: layer.route!.path,
-          methods: Object.keys(layer.route!.methods ?? {}).filter(
-            (m) => layer.route!.methods![m]
-          ),
+          methods: Object.keys(layer.route!.methods ?? {}).filter((m) => layer.route!.methods![m]),
         }))
 
       expect(routes).toContainEqual({ path: '/search', methods: ['post'] })

@@ -11,6 +11,12 @@ export { DatabaseError } from '../errors/index.js';
  */
 export declare function isValidFilePath(filePath: string): boolean;
 /**
+ * Generate a content-based fingerprint for a chunk.
+ * Uses SHA-256 hash of normalized text (first 16 hex chars for compactness).
+ * This enables stable chunk identification across re-indexing.
+ */
+export declare function generateChunkFingerprint(text: string): string;
+/**
  * Grouping mode for quality filtering
  * - 'similar': Only return the most similar group (stops at first distance jump)
  * - 'related': Include related groups (stops at second distance jump)
@@ -64,6 +70,8 @@ export interface VectorChunk {
     metadata: DocumentMetadata;
     /** Ingestion timestamp (ISO 8601 format) */
     timestamp: string;
+    /** Content-based fingerprint for resilient linking (SHA-256 prefix) */
+    fingerprint?: string;
 }
 /**
  * Search result
@@ -83,6 +91,8 @@ export interface SearchResult {
     score: number;
     /** Metadata */
     metadata: DocumentMetadata;
+    /** Content-based fingerprint for resilient linking */
+    fingerprint?: string;
 }
 /**
  * Vector storage class using LanceDB

@@ -69,6 +69,8 @@ const DEFAULT_CORS_ORIGINS = [
 const FILE_SIZE_LIMIT_BYTES = 100 * 1024 * 1024;
 /** Default request timeout (30 seconds) */
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+/** Upload/ingest timeout (5 minutes - embedding models can be slow) */
+const UPLOAD_TIMEOUT_MS = 300000;
 /** Minimum allowed request timeout (1 second) */
 const MIN_REQUEST_TIMEOUT_MS = 1000;
 /**
@@ -138,12 +140,19 @@ async function validateFileContent(filePath) {
         return false;
     }
 }
+/** Routes that need longer timeout (upload/ingest with slow embedding models) */
+const LONG_TIMEOUT_ROUTES = ['/v1/files/upload', '/v1/data'];
 /**
  * Request timeout middleware
  * Aborts requests that take longer than the specified timeout
+ * Uses longer timeout for upload/ingest routes (embedding can be slow)
  */
-function requestTimeout(timeoutMs) {
-    return (_req, res, next) => {
+function requestTimeout(defaultTimeoutMs) {
+    return (req, res, next) => {
+        // Use longer timeout for upload/ingest routes (req.path is relative to mount point)
+        const timeoutMs = LONG_TIMEOUT_ROUTES.some((route) => req.path.startsWith(route))
+            ? UPLOAD_TIMEOUT_MS
+            : defaultTimeoutMs;
         const timeoutId = setTimeout(() => {
             if (!res.headersSent) {
                 res.status(503).json({
@@ -189,6 +198,7 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
     // Response compression
     app.use((0, compression_1.default)());
     // Request timeout for API routes (configurable via REQUEST_TIMEOUT_MS env var)
+    // Upload/ingest routes automatically get longer timeout (5 min) for slow embedding models
     app.use('/api', requestTimeout(getRequestTimeoutMs()));
     // CORS configuration
     // CORS_ORIGINS env var: comma-separated list of allowed origins, or "*" for all

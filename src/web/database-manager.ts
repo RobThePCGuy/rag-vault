@@ -1,7 +1,7 @@
 // DatabaseManager - Manages RAG database lifecycle and configuration
 
 import { existsSync, realpathSync } from 'node:fs'
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import type { RAGServer, RAGServerConfig } from '../server/index.js'
@@ -196,6 +196,24 @@ export const AVAILABLE_MODELS: AvailableModel[] = [
     description: 'Optimized for retrieval (384 dimensions)',
     isDefault: false,
   },
+  {
+    id: 'onnx-community/embeddinggemma-300m-ONNX',
+    name: 'embeddinggemma-300M',
+    description: 'High-quality multilingual (300M params, 100+ languages)',
+    isDefault: false,
+  },
+  {
+    id: 'sentence-transformers/allenai-specter',
+    name: 'allenai-specter',
+    description: 'Optimized for scientific papers and citations',
+    isDefault: false,
+  },
+  {
+    id: 'jinaai/jina-embeddings-v2-base-code',
+    name: 'jina-code-v2',
+    description: 'Optimized for code and technical documentation',
+    isDefault: false,
+  },
 ]
 
 /**
@@ -280,17 +298,23 @@ export class DatabaseManager {
   async initialize(dbPath: string): Promise<void> {
     await this.ensureConfigDir()
 
+    // Look up stored model name from recent databases
+    const recentDbs = await this.getRecentDatabases()
+    const storedEntry = recentDbs.find((db) => db.path === dbPath)
+    const effectiveModelName = storedEntry?.modelName || this.baseConfig.modelName
+
     const config: RAGServerConfig = {
       ...this.baseConfig,
       dbPath,
+      modelName: effectiveModelName,
     }
 
     this.currentServer = this.serverFactory(config)
     this.currentConfig = config
     await this.currentServer.initialize()
 
-    // Add to recent databases
-    await this.addToRecent(dbPath, this.baseConfig.modelName)
+    // Add to recent databases with the model name
+    await this.addToRecent(dbPath, effectiveModelName)
   }
 
   /**
@@ -361,8 +385,13 @@ export class DatabaseManager {
       throw new Error(`Invalid database: ${resolvedPath} (missing LanceDB data)`)
     }
 
+    // Look up stored model name from recent databases
+    const recentDbs = await this.getRecentDatabases()
+    const storedEntry = recentDbs.find((db) => db.path === resolvedPath)
+    const modelName = storedEntry?.modelName
+
     // Set promise atomically before any async operations
-    this.switchPromise = this.performSwitch(resolvedPath).finally(() => {
+    this.switchPromise = this.performSwitch(resolvedPath, modelName).finally(() => {
       this.switchPromise = null
     })
 
@@ -372,26 +401,30 @@ export class DatabaseManager {
   /**
    * Internal method to perform the actual database switch
    */
-  private async performSwitch(resolvedPath: string): Promise<void> {
+  private async performSwitch(resolvedPath: string, modelName?: string): Promise<void> {
     // Close current server
     if (this.currentServer) {
       await this.currentServer.close()
     }
 
-    // Create new server with new path
+    // Use stored model name if available, otherwise fall back to baseConfig
+    const effectiveModelName = modelName || this.baseConfig.modelName
+
+    // Create new server with new path and correct model
     const config: RAGServerConfig = {
       ...this.baseConfig,
       dbPath: resolvedPath,
+      modelName: effectiveModelName,
     }
 
     this.currentServer = this.serverFactory(config)
     this.currentConfig = config
     await this.currentServer.initialize()
 
-    // Update recent databases
-    await this.addToRecent(resolvedPath, this.baseConfig.modelName)
+    // Update recent databases with the model name
+    await this.addToRecent(resolvedPath, effectiveModelName)
 
-    console.log(`Switched to database: ${resolvedPath}`)
+    console.log(`Switched to database: ${resolvedPath} (model: ${effectiveModelName})`)
   }
 
   /**
@@ -414,7 +447,7 @@ export class DatabaseManager {
 
     // Switch to the new database (it will be empty initially)
     // The VectorStore will create the table on first data insertion
-    await this.switchToNewDatabase(resolvedPath)
+    await this.switchToNewDatabase(resolvedPath, options.modelName)
   }
 
   /**
@@ -422,13 +455,13 @@ export class DatabaseManager {
    *
    * Uses promise-based mutex to prevent race conditions from concurrent switch attempts.
    */
-  private async switchToNewDatabase(newDbPath: string): Promise<void> {
+  private async switchToNewDatabase(newDbPath: string, modelName?: string): Promise<void> {
     if (this.switchPromise) {
       throw new Error('Database switch already in progress')
     }
 
     // Set promise atomically before any async operations
-    this.switchPromise = this.performSwitchToNew(newDbPath).finally(() => {
+    this.switchPromise = this.performSwitchToNew(newDbPath, modelName).finally(() => {
       this.switchPromise = null
     })
 
@@ -438,23 +471,27 @@ export class DatabaseManager {
   /**
    * Internal method to perform the actual switch to a new database
    */
-  private async performSwitchToNew(newDbPath: string): Promise<void> {
+  private async performSwitchToNew(newDbPath: string, modelName?: string): Promise<void> {
     if (this.currentServer) {
       await this.currentServer.close()
     }
 
+    // Use provided modelName or fall back to baseConfig
+    const effectiveModelName = modelName || this.baseConfig.modelName
+
     const config: RAGServerConfig = {
       ...this.baseConfig,
       dbPath: newDbPath,
+      modelName: effectiveModelName,
     }
 
     this.currentServer = this.serverFactory(config)
     this.currentConfig = config
     await this.currentServer.initialize()
 
-    await this.addToRecent(newDbPath, this.baseConfig.modelName)
+    await this.addToRecent(newDbPath, effectiveModelName)
 
-    console.log(`Created and switched to database: ${newDbPath}`)
+    console.log(`Created and switched to database: ${newDbPath} (model: ${effectiveModelName})`)
   }
 
   /**
@@ -776,6 +813,50 @@ export class DatabaseManager {
     }
 
     await writeFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2), 'utf-8')
+  }
+
+  /**
+   * Remove a database from the recent list
+   */
+  private async removeFromRecent(dbPath: string): Promise<void> {
+    const databases = await this.getRecentDatabases()
+    const filtered = databases.filter((db) => db.path !== dbPath)
+
+    const fileContent: RecentDatabasesFile = {
+      version: 1,
+      databases: filtered,
+    }
+
+    await writeFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2), 'utf-8')
+  }
+
+  /**
+   * Delete a database (removes from recent list and optionally deletes files)
+   *
+   * @param dbPath - Path to the database to delete
+   * @param deleteFiles - If true, also delete the database files from disk
+   */
+  async deleteDatabase(dbPath: string, deleteFiles = false): Promise<void> {
+    const resolvedPath = expandTilde(dbPath)
+
+    // Cannot delete the currently active database
+    if (this.currentConfig && this.currentConfig.dbPath === resolvedPath) {
+      throw new Error('Cannot delete the currently active database. Switch to another database first.')
+    }
+
+    // Remove from recent databases list
+    await this.removeFromRecent(resolvedPath)
+
+    // Optionally delete files from disk
+    if (deleteFiles) {
+      const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME)
+      if (existsSync(lanceDbPath)) {
+        await rm(lanceDbPath, { recursive: true, force: true })
+        console.log(`Deleted database files: ${lanceDbPath}`)
+      }
+    }
+
+    console.log(`Removed database from recent list: ${resolvedPath}`)
   }
 
   /**

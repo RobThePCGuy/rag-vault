@@ -92,3 +92,99 @@ body {
     opacity: 1;
   }
 }
+
+/* ============================================
+   Zettelkasten Theme - Paper Slip Styling
+   ============================================ */
+
+/* Paper texture backgrounds */
+.zettel-paper {
+  background: linear-gradient(to bottom, #fffdf0, #fcfaeb);
+}
+
+.dark .zettel-paper {
+  background: linear-gradient(to bottom, #292524, #1c1917);
+}
+
+/* Zettel margin container */
+.zettel-margin {
+  background: linear-gradient(to bottom, #fefdfb, #faf8f3);
+}
+
+.dark .zettel-margin {
+  background: linear-gradient(to bottom, #1c1917, #171412);
+}
+
+/* Paper slip card styling */
+.zettel-slip {
+  @apply rounded-lg p-3;
+  background: linear-gradient(to bottom, #fffdf0, #fcfaeb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.05);
+  transform: rotate(-0.3deg);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dark .zettel-slip {
+  background: linear-gradient(to bottom, #292524, #1c1917);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.zettel-slip:hover {
+  transform: rotate(0) translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.dark .zettel-slip:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Type indicator borders */
+.zettel-backlink {
+  border-left: 3px solid #3b82f6;
+}
+
+.zettel-forward {
+  border-left: 3px solid #10b981;
+}
+
+.zettel-semantic {
+  border-left: 3px solid #8b5cf6;
+}
+
+/* Connection header styling */
+.zettel-header {
+  @apply px-4 py-3 border-b;
+  border-color: rgba(120, 113, 108, 0.2);
+  background: linear-gradient(to right, #faf8f3, #fefdfb);
+}
+
+.dark .zettel-header {
+  border-color: rgba(87, 83, 78, 0.3);
+  background: linear-gradient(to right, #1c1917, #292524);
+}
+
+/* Selection indicator pill */
+.zettel-selection-pill {
+  @apply px-2 py-1 rounded-full text-xs;
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.dark .zettel-selection-pill {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* Searching indicator */
+.zettel-searching {
+  @apply flex items-center gap-2 px-3 py-2 rounded-lg;
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px dashed rgba(139, 92, 246, 0.3);
+}
+
+.dark .zettel-searching {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.4);
+}

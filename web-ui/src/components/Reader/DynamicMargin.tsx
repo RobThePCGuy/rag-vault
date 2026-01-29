@@ -1,11 +1,16 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import type { RelatedChunk, SearchResult } from '../../api/client'
 import type { Annotation, Highlight, HighlightColor } from '../../contexts/AnnotationsContext'
 import type { PinnedLink } from '../../contexts/LinksContext'
 import { Spinner } from '../ui'
 import { AnnotationNote } from './AnnotationNote'
-import { MarginNote } from './MarginNote'
 import type { SelectionAction } from './SelectionPopover'
+import {
+  ZettelSlip,
+  ZettelEmptyState,
+  ZettelSectionHeader,
+  ZettelLoadingSlip,
+} from './ZettelSlip'
 
 /**
  * X-Ray Vision: Selection search result with context
@@ -40,15 +45,19 @@ interface DynamicMarginProps {
   // Links props (Phase 6)
   backlinks?: PinnedLink[]
   outgoingLinks?: PinnedLink[]
-  // X-Ray Vision: Selection search results
+  // X-Ray Vision: Selection search results (legacy)
   selectionSearchResults?: SelectionSearchResultDisplay | null
   isSelectionSearchLoading?: boolean
   onClearSelectionSearch?: () => void
+  // Auto-selection search (new Zettelkasten style)
+  autoSelectionResults?: SearchResult[]
+  isAutoSearching?: boolean
+  selectionText?: string | null
 }
 
 /**
- * Container for margin notes showing related chunk suggestions and annotation notes
- * Updates dynamically based on active/visible chunks
+ * Zettelkasten-style margin for showing connections
+ * Paper slips with warm colors, subtle shadows, and bidirectional breadcrumbs
  */
 export function DynamicMargin({
   relatedChunks,
@@ -56,7 +65,6 @@ export function DynamicMargin({
   activeChunkIndex,
   currentFilePath,
   onNavigateToChunk,
-  onOpenSplit,
   pinnedChunkKeys,
   onTogglePin,
   highlights = [],
@@ -70,68 +78,66 @@ export function DynamicMargin({
   selectionSearchResults,
   isSelectionSearchLoading = false,
   onClearSelectionSearch,
+  autoSelectionResults = [],
+  isAutoSearching = false,
+  selectionText = null,
 }: DynamicMarginProps) {
   // Filter out low-relevance suggestions (score >= 0.7)
   const visibleChunks = relatedChunks.filter((chunk) => chunk.score < 0.7)
 
   const hasNotes = highlights.length > 0
-  const hasLinks = backlinks.length > 0 || outgoingLinks.length > 0
+  const hasBacklinks = backlinks.length > 0
+  const hasForwardLinks = outgoingLinks.length > 0
+  const hasAutoResults = autoSelectionResults.length > 0 || isAutoSearching
+  const hasLegacyResults = selectionSearchResults || isSelectionSearchLoading
 
   // Sort links: same document first, labeled before unlabeled, most recent as tie-breaker
   const sortedBacklinks = [...backlinks].sort((a, b) => {
-    // Same document first
     const aIsSameDoc = a.sourceKey.filePath === currentFilePath
     const bIsSameDoc = b.sourceKey.filePath === currentFilePath
     if (aIsSameDoc !== bIsSameDoc) return aIsSameDoc ? -1 : 1
-    // Labeled before unlabeled
     const aHasLabel = !!a.label
     const bHasLabel = !!b.label
     if (aHasLabel !== bHasLabel) return aHasLabel ? -1 : 1
-    // Most recent first
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 
   const sortedOutgoing = [...outgoingLinks].sort((a, b) => {
-    // Same document first
     const aIsSameDoc = a.targetKey.filePath === currentFilePath
     const bIsSameDoc = b.targetKey.filePath === currentFilePath
     if (aIsSameDoc !== bIsSameDoc) return aIsSameDoc ? -1 : 1
-    // Labeled before unlabeled
     const aHasLabel = !!a.label
     const bHasLabel = !!b.label
     if (aHasLabel !== bHasLabel) return aHasLabel ? -1 : 1
-    // Most recent first
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   })
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col zettel-margin">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Margin
+      <div className="zettel-header flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-stone-700 dark:text-stone-300 font-serif">
+          Connections
           {activeChunkIndex !== null && (
-            <span className="ml-2 text-gray-500 dark:text-gray-400">
-              (#{activeChunkIndex})
+            <span className="ml-2 text-stone-400 dark:text-stone-500 font-mono text-xs">
+              #{activeChunkIndex}
             </span>
           )}
         </h3>
-        {isLoading && <Spinner className="w-4 h-4 text-gray-400" />}
+        {isLoading && <Spinner className="w-4 h-4 text-stone-400" />}
       </div>
 
-      {/* Content - two sections */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Notes Section */}
+      {/* Content - Zettelkasten card stacks */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        {/* Notes Section - Keep existing style for now */}
         {hasNotes && (
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800/50">
-              <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-2">
-                <NoteIcon className="w-3.5 h-3.5" />
-                Notes
-                <span className="text-gray-400 dark:text-gray-500">({highlights.length})</span>
-              </h4>
-            </div>
-            <div className="p-3 space-y-3">
+          <div className="border-b border-stone-200/50 dark:border-stone-700/50 pb-4">
+            <ZettelSectionHeader
+              title="Notes"
+              count={highlights.length}
+              icon={<NoteIcon className="w-3.5 h-3.5" />}
+            />
+            <div className="space-y-3 mt-2">
               <AnimatePresence mode="popLayout">
                 {highlights.map((highlight) => (
                   <AnnotationNote
@@ -154,57 +160,48 @@ export function DynamicMargin({
           </div>
         )}
 
-        {/* X-Ray Vision: Selection Results Section */}
-        {(selectionSearchResults || isSelectionSearchLoading) && (
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <div className="px-4 py-2 bg-purple-50 dark:bg-purple-900/20">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide flex items-center gap-2">
-                  <SearchIcon className="w-3.5 h-3.5" />
-                  {selectionSearchResults && getActionLabel(selectionSearchResults.action)}
-                  {isSelectionSearchLoading && 'Searching...'}
-                  {selectionSearchResults && (
-                    <span className="text-purple-500 dark:text-purple-400">
-                      ({selectionSearchResults.results.length})
-                    </span>
-                  )}
-                </h4>
-                {onClearSelectionSearch && (
-                  <button
-                    type="button"
-                    onClick={onClearSelectionSearch}
-                    className="text-purple-400 hover:text-purple-600 dark:hover:text-purple-200 transition-colors"
-                    title="Close"
-                  >
-                    <CloseIcon className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              {selectionSearchResults && (
-                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 truncate">
-                  "{selectionSearchResults.selectionContext.text.slice(0, 50)}..."
-                </p>
+        {/* Auto-Selection Results - Zettelkasten style */}
+        {hasAutoResults && (
+          <div className="border-b border-stone-200/50 dark:border-stone-700/50 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <ZettelSectionHeader
+                title="From Selection"
+                count={autoSelectionResults.length}
+                icon={<SelectionIcon className="w-3.5 h-3.5" />}
+              />
+              {selectionText && (
+                <span className="zettel-selection-pill truncate max-w-[150px]" title={selectionText}>
+                  "{selectionText.slice(0, 30)}{selectionText.length > 30 ? '...' : ''}"
+                </span>
               )}
             </div>
-            <div className="p-3 space-y-2">
-              {isSelectionSearchLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Spinner className="w-5 h-5 text-purple-500" />
+
+            <div className="space-y-2 mt-2">
+              {isAutoSearching ? (
+                <div className="zettel-searching">
+                  <Spinner className="w-4 h-4 text-violet-500" />
+                  <span className="text-xs text-violet-600 dark:text-violet-400 font-serif italic">
+                    Finding connections...
+                  </span>
                 </div>
-              ) : selectionSearchResults?.results.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                  No results found
+              ) : autoSelectionResults.length === 0 ? (
+                <p className="text-xs text-stone-500 dark:text-stone-400 italic font-serif py-2">
+                  No related content found
                 </p>
               ) : (
                 <AnimatePresence mode="popLayout">
-                  {selectionSearchResults?.results.map((result, idx) => (
-                    <SelectionResultItem
+                  {autoSelectionResults.map((result, idx) => (
+                    <ZettelSlip
                       key={`${result.filePath}:${result.chunkIndex}`}
-                      result={result}
-                      rank={idx + 1}
+                      filePath={result.filePath}
+                      chunkIndex={result.chunkIndex}
+                      previewText={result.text}
+                      type="semantic"
+                      score={result.score}
                       onNavigate={() => onNavigateToChunk(result.filePath, result.chunkIndex)}
+                      onPin={onTogglePin ? () => onTogglePin(result.filePath, result.chunkIndex) : undefined}
                       isPinned={pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false}
-                      onTogglePin={onTogglePin ? () => onTogglePin(result.filePath, result.chunkIndex) : undefined}
+                      animationIndex={idx}
                     />
                   ))}
                 </AnimatePresence>
@@ -213,115 +210,152 @@ export function DynamicMargin({
           </div>
         )}
 
-        {/* Links Section (Phase 6) */}
-        {hasLinks && (
-          <div className="border-b border-gray-200 dark:border-gray-700">
-            <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800/50">
-              <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-2">
-                <LinkIcon className="w-3.5 h-3.5" />
-                Links
-                <span className="text-gray-400 dark:text-gray-500">
-                  ({backlinks.length + outgoingLinks.length})
-                </span>
-              </h4>
-            </div>
-            <div className="p-3 space-y-3">
-              {/* Backlinks - Links to here */}
-              {sortedBacklinks.length > 0 && (
-                <div>
-                  <h5 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
-                    <IncomingIcon className="w-3 h-3" />
-                    To here ({sortedBacklinks.length})
-                  </h5>
-                  <div className="space-y-2">
-                    {sortedBacklinks.map((link) => (
-                      <LinkItem
-                        key={link.id}
-                        link={link}
-                        direction="incoming"
-                        onNavigate={() =>
-                          onNavigateToChunk(link.sourceKey.filePath, link.sourceKey.chunkIndex)
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
+        {/* Legacy X-Ray Vision Results (keep for backwards compatibility) */}
+        {hasLegacyResults && !hasAutoResults && (
+          <div className="border-b border-stone-200/50 dark:border-stone-700/50 pb-4">
+            <div className="flex items-center justify-between mb-2">
+              <ZettelSectionHeader
+                title={selectionSearchResults ? getActionLabel(selectionSearchResults.action) : 'Searching...'}
+                count={selectionSearchResults?.results.length}
+                icon={<SearchIcon className="w-3.5 h-3.5" />}
+              />
+              {onClearSelectionSearch && (
+                <button
+                  type="button"
+                  onClick={onClearSelectionSearch}
+                  className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
+                  title="Close"
+                >
+                  <CloseIcon className="w-4 h-4" />
+                </button>
               )}
+            </div>
 
-              {/* Outgoing links - Links from here */}
-              {sortedOutgoing.length > 0 && (
-                <div>
-                  <h5 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-1">
-                    <OutgoingIcon className="w-3 h-3" />
-                    From here ({sortedOutgoing.length})
-                  </h5>
-                  <div className="space-y-2">
-                    {sortedOutgoing.map((link) => (
-                      <LinkItem
-                        key={link.id}
-                        link={link}
-                        direction="outgoing"
-                        onNavigate={() =>
-                          onNavigateToChunk(link.targetKey.filePath, link.targetKey.chunkIndex)
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
+            <div className="space-y-2 mt-2">
+              {isSelectionSearchLoading ? (
+                <ZettelLoadingSlip />
+              ) : selectionSearchResults?.results.length === 0 ? (
+                <ZettelEmptyState message="No results found" />
+              ) : (
+                <AnimatePresence mode="popLayout">
+                  {selectionSearchResults?.results.map((result, idx) => (
+                    <ZettelSlip
+                      key={`${result.filePath}:${result.chunkIndex}`}
+                      filePath={result.filePath}
+                      chunkIndex={result.chunkIndex}
+                      previewText={result.text}
+                      type="semantic"
+                      score={result.score}
+                      onNavigate={() => onNavigateToChunk(result.filePath, result.chunkIndex)}
+                      onPin={onTogglePin ? () => onTogglePin(result.filePath, result.chunkIndex) : undefined}
+                      isPinned={pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false}
+                      animationIndex={idx}
+                    />
+                  ))}
+                </AnimatePresence>
               )}
             </div>
           </div>
         )}
 
-        {/* Connections Section */}
-        <div>
-          <div className="px-4 py-2 bg-gray-100 dark:bg-gray-800/50">
-            <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide flex items-center gap-2">
-              <ConnectionIcon className="w-3.5 h-3.5" />
-              Related Content
-              {visibleChunks.length > 0 && (
-                <span className="text-gray-400 dark:text-gray-500">({visibleChunks.length})</span>
-              )}
-            </h4>
+        {/* Backlinks Section - "Links Here" */}
+        {hasBacklinks && (
+          <div className="border-b border-stone-200/50 dark:border-stone-700/50 pb-4">
+            <ZettelSectionHeader
+              title="Links Here"
+              count={sortedBacklinks.length}
+              icon={<IncomingIcon className="w-3.5 h-3.5" />}
+            />
+            <div className="space-y-2 mt-2">
+              <AnimatePresence mode="popLayout">
+                {sortedBacklinks.map((link, idx) => (
+                  <ZettelSlip
+                    key={link.id}
+                    filePath={link.sourceKey.filePath}
+                    chunkIndex={link.sourceKey.chunkIndex}
+                    previewText={link.sourceText || 'No preview available'}
+                    type="backlink"
+                    sharedKeywords={link.label ? [link.label] : undefined}
+                    onNavigate={() =>
+                      onNavigateToChunk(link.sourceKey.filePath, link.sourceKey.chunkIndex)
+                    }
+                    animationIndex={idx}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
           </div>
-          <div className="p-3 space-y-3">
+        )}
+
+        {/* Forward Links Section - "Links From" */}
+        {hasForwardLinks && (
+          <div className="border-b border-stone-200/50 dark:border-stone-700/50 pb-4">
+            <ZettelSectionHeader
+              title="Links From"
+              count={sortedOutgoing.length}
+              icon={<OutgoingIcon className="w-3.5 h-3.5" />}
+            />
+            <div className="space-y-2 mt-2">
+              <AnimatePresence mode="popLayout">
+                {sortedOutgoing.map((link, idx) => (
+                  <ZettelSlip
+                    key={link.id}
+                    filePath={link.targetKey.filePath}
+                    chunkIndex={link.targetKey.chunkIndex}
+                    previewText={link.targetText || 'No preview available'}
+                    type="forward"
+                    sharedKeywords={link.label ? [link.label] : undefined}
+                    onNavigate={() =>
+                      onNavigateToChunk(link.targetKey.filePath, link.targetKey.chunkIndex)
+                    }
+                    animationIndex={idx}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* Suggested Connections Section */}
+        <div>
+          <ZettelSectionHeader
+            title="Suggested"
+            count={visibleChunks.length}
+            icon={<ConnectionIcon className="w-3.5 h-3.5" />}
+          />
+          <div className="space-y-2 mt-2">
             <AnimatePresence mode="popLayout">
               {visibleChunks.length === 0 && !isLoading ? (
-                <motion.div
-                  key="empty"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="text-center py-6 text-gray-500 dark:text-gray-400"
-                >
-                  <EmptyMarginIcon />
-                  <p className="mt-2 text-sm">
-                    {activeChunkIndex !== null
+                <ZettelEmptyState
+                  message={
+                    activeChunkIndex !== null
                       ? 'No related content found'
-                      : 'Scroll to see related content'}
-                  </p>
-                </motion.div>
+                      : 'Scroll to see related content'
+                  }
+                />
+              ) : isLoading && visibleChunks.length === 0 ? (
+                <>
+                  <ZettelLoadingSlip />
+                  <ZettelLoadingSlip />
+                </>
               ) : (
-                visibleChunks.map((chunk) => {
+                visibleChunks.map((chunk, idx) => {
                   const chunkKey = `${chunk.filePath}:${chunk.chunkIndex}`
                   const isPinned = pinnedChunkKeys?.has(chunkKey) ?? false
 
                   return (
-                    <MarginNote
+                    <ZettelSlip
                       key={chunkKey}
-                      chunk={chunk}
-                      isPinned={isPinned}
+                      filePath={chunk.filePath}
+                      chunkIndex={chunk.chunkIndex}
+                      previewText={chunk.text}
+                      type="semantic"
+                      score={chunk.score}
+                      sharedKeywords={chunk.explanation?.sharedKeywords}
                       onNavigate={() => onNavigateToChunk(chunk.filePath, chunk.chunkIndex)}
-                      onOpenSplit={
-                        onOpenSplit
-                          ? () => onOpenSplit(chunk.filePath, chunk.chunkIndex)
-                          : undefined
-                      }
-                      onTogglePin={
-                        onTogglePin
-                          ? () => onTogglePin(chunk.filePath, chunk.chunkIndex)
-                          : undefined
-                      }
+                      onPin={onTogglePin ? () => onTogglePin(chunk.filePath, chunk.chunkIndex) : undefined}
+                      isPinned={isPinned}
+                      animationIndex={idx}
                     />
                   )
                 })
@@ -334,23 +368,9 @@ export function DynamicMargin({
   )
 }
 
-function EmptyMarginIcon() {
-  return (
-    <svg
-      className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-      />
-    </svg>
-  )
-}
+// ============================================
+// Icons
+// ============================================
 
 function NoteIcon({ className }: { className?: string }) {
   return (
@@ -366,19 +386,6 @@ function NoteIcon({ className }: { className?: string }) {
 }
 
 function ConnectionIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-      />
-    </svg>
-  )
-}
-
-function LinkIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
@@ -417,61 +424,6 @@ function OutgoingIcon({ className }: { className?: string }) {
   )
 }
 
-interface LinkItemProps {
-  link: PinnedLink
-  direction: 'incoming' | 'outgoing'
-  onNavigate: () => void
-}
-
-function LinkItem({ link, direction, onNavigate }: LinkItemProps) {
-  const displayFilePath = direction === 'incoming'
-    ? formatPath(link.sourceKey.filePath)
-    : formatPath(link.targetKey.filePath)
-  const chunkIndex = direction === 'incoming'
-    ? link.sourceKey.chunkIndex
-    : link.targetKey.chunkIndex
-  const preview = direction === 'incoming'
-    ? link.sourceText
-    : link.targetText
-
-  return (
-    <motion.button
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -5 }}
-      type="button"
-      onClick={onNavigate}
-      className="w-full text-left p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-    >
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs font-medium text-gray-600 dark:text-gray-400 truncate">
-          {displayFilePath}
-        </span>
-        <span className="text-xs text-gray-400 dark:text-gray-500">
-          #{chunkIndex}
-        </span>
-        {link.label && (
-          <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded">
-            {link.label}
-          </span>
-        )}
-      </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
-        {preview.slice(0, 100) || 'No preview available'}
-      </p>
-    </motion.button>
-  )
-}
-
-function formatPath(path: string): string {
-  const parts = path.split(/[/\\]/)
-  return parts[parts.length - 1] || path
-}
-
-// ============================================
-// X-Ray Vision: Selection Search Components
-// ============================================
-
 function SearchIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -480,6 +432,19 @@ function SearchIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
         strokeWidth={2}
         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      />
+    </svg>
+  )
+}
+
+function SelectionIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M8 9l4-4 4 4m0 6l-4 4-4-4"
       />
     </svg>
   )
@@ -508,75 +473,4 @@ function getActionLabel(action: SelectionAction): string {
     default:
       return 'Results'
   }
-}
-
-interface SelectionResultItemProps {
-  result: SearchResult
-  rank: number
-  onNavigate: () => void
-  isPinned: boolean
-  onTogglePin?: () => void
-}
-
-function SelectionResultItem({ result, rank, onNavigate, isPinned, onTogglePin }: SelectionResultItemProps) {
-  const displayFilePath = formatPath(result.filePath)
-  const scorePercent = Math.round((1 - result.score) * 100)
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -5 }}
-      className="relative"
-    >
-      <button
-        type="button"
-        onClick={onNavigate}
-        className="w-full text-left p-2 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-      >
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold text-purple-600 dark:text-purple-400 w-4">
-            {rank}.
-          </span>
-          <span className="text-xs font-medium text-gray-600 dark:text-gray-400 truncate flex-1">
-            {displayFilePath}
-          </span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            #{result.chunkIndex}
-          </span>
-          <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded">
-            {scorePercent}%
-          </span>
-        </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 pl-6">
-          {result.text.slice(0, 150) || 'No preview available'}
-        </p>
-      </button>
-      {onTogglePin && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onTogglePin()
-          }}
-          className={`absolute top-2 right-2 p-1 rounded transition-colors ${
-            isPinned
-              ? 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/50'
-              : 'text-gray-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30'
-          }`}
-          title={isPinned ? 'Unpin' : 'Pin'}
-        >
-          <PinIcon className="w-3.5 h-3.5" />
-        </button>
-      )}
-    </motion.div>
-  )
-}
-
-function PinIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 20 20">
-      <path d="M5 5a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 19V5z" />
-    </svg>
-  )
 }

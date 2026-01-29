@@ -226,6 +226,17 @@ export declare class DatabaseManager {
      */
     private addToRecent;
     /**
+     * Remove a database from the recent list
+     */
+    private removeFromRecent;
+    /**
+     * Delete a database (removes from recent list and optionally deletes files)
+     *
+     * @param dbPath - Path to the database to delete
+     * @param deleteFiles - If true, also delete the database files from disk
+     */
+    deleteDatabase(dbPath: string, deleteFiles?: boolean): Promise<void>;
+    /**
      * Derive a human-readable name from a path
      */
     private getNameFromPath;

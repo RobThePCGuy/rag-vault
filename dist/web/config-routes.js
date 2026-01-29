@@ -49,6 +49,16 @@ function createConfigRouter(dbManager) {
         const databases = await dbManager.scanForDatabases(scanPath);
         res.json({ databases });
     }));
+    // DELETE /api/v1/config/databases - Delete a database
+    router.delete('/databases', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const { dbPath, deleteFiles } = req.body;
+        if (!dbPath || typeof dbPath !== 'string') {
+            throw new index_js_1.ValidationError('dbPath is required and must be a string');
+        }
+        await dbManager.deleteDatabase(dbPath, deleteFiles ?? false);
+        const databases = await dbManager.getRecentDatabases();
+        res.json({ success: true, databases });
+    }));
     // GET /api/v1/config/allowed-roots - List all effective allowed roots
     router.get('/allowed-roots', (0, index_js_2.asyncHandler)(async (_req, res) => {
         const info = dbManager.getAllowedRootsInfo();

@@ -13,6 +13,7 @@ import {
   useKeyboardNav,
 } from '../../hooks'
 import { useAnnotationsForChunk } from '../../hooks/useAnnotations'
+import { useAutoSelectionSearch } from '../../hooks/useAutoSelectionSearch'
 import { useDocumentSearch } from '../../hooks/useDocumentSearch'
 import { Spinner } from '../ui'
 import { Breadcrumbs, type BreadcrumbItem } from './Breadcrumbs'
@@ -65,6 +66,7 @@ export function ReaderLayout({
   const [controlsOpen, setControlsOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [graphOpen, setGraphOpen] = useState(false)
+  const [currentSelectionText, setCurrentSelectionText] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Reader settings context
@@ -86,6 +88,49 @@ export function ReaderLayout({
     300,
     5
   )
+
+  // Auto-selection search for Zettelkasten margin
+  const {
+    results: autoSelectionResults,
+    isSearching: isAutoSearching,
+    searchedText: autoSearchedText,
+  } = useAutoSelectionSearch({
+    selectionText: currentSelectionText,
+    filePath,
+    chunkIndex: activeChunkIndex ?? 0,
+    enabled: !splitView, // Disable when split view is open
+  })
+
+  // Track text selection globally
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection()
+      if (!selection || selection.isCollapsed || !selection.rangeCount) {
+        setCurrentSelectionText(null)
+        return
+      }
+
+      const text = selection.toString().trim()
+      if (text.length >= 10) {
+        setCurrentSelectionText(text)
+      } else {
+        setCurrentSelectionText(null)
+      }
+    }
+
+    // Debounce the selection change handler
+    let timeoutId: ReturnType<typeof setTimeout>
+    const debouncedHandler = () => {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(handleSelectionChange, 150)
+    }
+
+    document.addEventListener('selectionchange', debouncedHandler)
+    return () => {
+      document.removeEventListener('selectionchange', debouncedHandler)
+      clearTimeout(timeoutId)
+    }
+  }, [])
 
   // Table of Contents
   const { entries: tocEntries, isFallback: tocIsFallback } = useTableOfContents({ chunks })
@@ -469,6 +514,10 @@ export function ReaderLayout({
                 // Links (Phase 6)
                 backlinks={activeBacklinks}
                 outgoingLinks={activeOutgoingLinks}
+                // Auto-selection search (Zettelkasten)
+                autoSelectionResults={autoSelectionResults}
+                isAutoSearching={isAutoSearching}
+                selectionText={autoSearchedText}
               />
             </div>
           )}

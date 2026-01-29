@@ -1,4 +1,4 @@
-import type { OutlineItem, SynthesisDraft } from '../hooks/useSynthesis'
+import type { SynthesisDraft } from '../hooks/useSynthesis'
 
 /**
  * Export a synthesis draft to markdown with citations

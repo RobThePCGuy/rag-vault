@@ -186,6 +186,25 @@ export async function scanForDatabases(scanPath: string): Promise<ScannedDatabas
 }
 
 /**
+ * Delete a database
+ * @param dbPath - Path to the database to delete
+ * @param deleteFiles - If true, also delete the database files from disk
+ */
+export async function deleteDatabase(
+  dbPath: string,
+  deleteFiles = false
+): Promise<DatabaseEntry[]> {
+  const data = await fetchConfigApi<{ success: boolean; databases: DatabaseEntry[] }>(
+    '/databases',
+    {
+      method: 'DELETE',
+      body: JSON.stringify({ dbPath, deleteFiles }),
+    }
+  )
+  return data.databases
+}
+
+/**
  * Get allowed roots
  */
 export async function getAllowedRoots(): Promise<AllowedRootsResponse> {

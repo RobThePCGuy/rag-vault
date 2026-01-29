@@ -1,10 +1,19 @@
 import { motion } from 'framer-motion'
 import type { HighlightColor } from '../../contexts/AnnotationsContext'
 
+/**
+ * X-Ray Vision action types for selection-based discovery
+ */
+export type SelectionAction = 'related' | 'support' | 'contradict' | 'compare' | 'pin'
+
 interface SelectionPopoverProps {
   rect: DOMRect
   onSelectColor: (color: HighlightColor) => void
   onClose: () => void
+  /** X-Ray Vision: Handler for discovery actions */
+  onSelectionAction?: (action: SelectionAction) => void
+  /** Whether actions are currently loading */
+  isActionLoading?: boolean
 }
 
 const COLORS: { color: HighlightColor; bg: string; ring: string }[] = [
@@ -15,13 +24,29 @@ const COLORS: { color: HighlightColor; bg: string; ring: string }[] = [
   { color: 'purple', bg: 'bg-purple-300', ring: 'ring-purple-400' },
 ]
 
+const ACTIONS: { action: SelectionAction; icon: string; label: string; title: string }[] = [
+  { action: 'related', icon: '🔍', label: 'Related', title: 'Find related content in vault' },
+  { action: 'support', icon: '✓', label: 'Support', title: 'Find supporting evidence' },
+  { action: 'contradict', icon: '✗', label: 'Contradict', title: 'Find contradicting content' },
+  { action: 'compare', icon: '⚖️', label: 'Compare', title: 'Compare with other chunks' },
+  { action: 'pin', icon: '📌', label: 'Pin', title: 'Pin selection as note' },
+]
+
 /**
  * Color picker popover that appears above text selection
+ * Enhanced with X-Ray Vision actions for selection-based discovery
  */
-export function SelectionPopover({ rect, onSelectColor, onClose }: SelectionPopoverProps) {
+export function SelectionPopover({
+  rect,
+  onSelectColor,
+  onClose,
+  onSelectionAction,
+  isActionLoading = false,
+}: SelectionPopoverProps) {
   // Calculate position - center above selection
-  const popoverWidth = 160
-  const popoverHeight = 44
+  const hasActions = !!onSelectionAction
+  const popoverWidth = hasActions ? 220 : 160
+  const popoverHeight = hasActions ? 80 : 44
   const gap = 8
 
   // Position above the selection, centered
@@ -43,22 +68,50 @@ export function SelectionPopover({ rect, onSelectColor, onClose }: SelectionPopo
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 4 }}
         transition={{ duration: 0.1 }}
-        className="fixed z-50 flex items-center gap-1 px-2 py-1.5 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700"
+        className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2"
         style={{
           left: adjustedLeft,
           top: adjustedTop,
-          width: popoverWidth,
+          minWidth: popoverWidth,
         }}
       >
-        {COLORS.map(({ color, bg, ring }) => (
-          <button
-            key={color}
-            type="button"
-            onClick={() => onSelectColor(color)}
-            className={`w-7 h-7 rounded-full ${bg} hover:ring-2 ${ring} transition-all`}
-            title={`Highlight ${color}`}
-          />
-        ))}
+        {/* Row 1: Highlight colors */}
+        <div className="flex items-center justify-center gap-1 mb-1.5">
+          {COLORS.map(({ color, bg, ring }) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => onSelectColor(color)}
+              className={`w-7 h-7 rounded-full ${bg} hover:ring-2 ${ring} transition-all`}
+              title={`Highlight ${color}`}
+            />
+          ))}
+        </div>
+
+        {/* Row 2: X-Ray Vision actions */}
+        {hasActions && (
+          <div className="flex items-center justify-center gap-1 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+            {ACTIONS.map(({ action, icon, title }) => (
+              <button
+                key={action}
+                type="button"
+                onClick={() => onSelectionAction(action)}
+                disabled={isActionLoading}
+                className={`
+                  flex items-center justify-center w-8 h-8 rounded-md text-sm
+                  transition-all
+                  ${isActionLoading
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }
+                `}
+                title={title}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+        )}
       </motion.div>
     </>
   )

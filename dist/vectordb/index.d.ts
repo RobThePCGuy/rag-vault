@@ -1,5 +1,16 @@
 export { DatabaseError } from '../errors/index.js';
 /**
+ * Validate file path to prevent SQL injection and path traversal attacks.
+ * @param filePath - The file path to validate
+ * @returns true if path is safe for use in queries
+ */
+/**
+ * Validate file path to prevent SQL injection and path traversal attacks.
+ * @param filePath - The file path to validate
+ * @returns true if path is safe for use in queries
+ */
+export declare function isValidFilePath(filePath: string): boolean;
+/**
  * Grouping mode for quality filtering
  * - 'similar': Only return the most similar group (stops at first distance jump)
  * - 'related': Include related groups (stops at second distance jump)

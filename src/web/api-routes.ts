@@ -4,6 +4,12 @@ import path from 'node:path'
 import type { Request, Response, Router } from 'express'
 import { Router as createRouter } from 'express'
 import { RAGError, ValidationError } from '../errors/index.js'
+import { explainChunkSimilarity, type ChunkExplanation } from '../explainability/index.js'
+import {
+  getFeedbackStore,
+  type FeedbackEventType,
+  type ChunkRef,
+} from '../flywheel/index.js'
 import type { RAGServer } from '../server/index.js'
 import { asyncHandler } from './middleware/index.js'
 import type { ServerAccessor } from './types.js'
@@ -213,6 +219,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       const chunkIndexStr = req.query['chunkIndex'] as string | undefined
       const limitStr = req.query['limit'] as string | undefined
       const excludeSameDocStr = req.query['excludeSameDoc'] as string | undefined
+      const includeExplanationStr = req.query['includeExplanation'] as string | undefined
 
       if (!filePath || typeof filePath !== 'string') {
         throw new ValidationError('filePath query parameter is required')
@@ -233,6 +240,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       }
 
       const excludeSameDocument = excludeSameDocStr !== 'false'
+      const includeExplanation = includeExplanationStr === 'true'
 
       const server = getServer()
       const result = await server.handleFindRelatedChunks(
@@ -241,8 +249,38 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
         limit,
         excludeSameDocument
       )
-      const data = JSON.parse(extractResultText(result))
-      res.json({ related: data })
+      const data = JSON.parse(extractResultText(result)) as Array<{
+        filePath: string
+        chunkIndex: number
+        text: string
+        score: number
+        fingerprint?: string
+      }>
+
+      // Add explanations if requested (Explainability feature)
+      if (includeExplanation) {
+        // Get source chunk text for comparison
+        const sourceChunkResult = await server.handleGetDocumentChunks(filePath)
+        const sourceChunks = JSON.parse(extractResultText(sourceChunkResult)) as Array<{
+          chunkIndex: number
+          text: string
+        }>
+        const sourceChunk = sourceChunks.find((c) => c.chunkIndex === chunkIndex)
+        const sourceText = sourceChunk?.text || ''
+
+        const dataWithExplanation = data.map((chunk) => ({
+          ...chunk,
+          explanation: explainChunkSimilarity(
+            sourceText,
+            chunk.text,
+            chunk.filePath === filePath,
+            chunk.score
+          ),
+        }))
+        res.json({ related: dataWithExplanation })
+      } else {
+        res.json({ related: data })
+      }
     })
   )
 
@@ -279,6 +317,60 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       res.json({ results: data })
     })
   )
+
+  // ============================================
+  // Curatorial Flywheel Endpoints (Gap 4)
+  // ============================================
+
+  /**
+   * Feedback event request body
+   */
+  interface FeedbackRequest {
+    type: FeedbackEventType
+    source: ChunkRef
+    target: ChunkRef
+  }
+
+  // POST /api/v1/feedback - Record a feedback event
+  router.post(
+    '/feedback',
+    asyncHandler(async (req: Request, res: Response) => {
+      const { type, source, target } = req.body as FeedbackRequest
+
+      // Validate event type
+      const validTypes: FeedbackEventType[] = ['pin', 'unpin', 'dismiss_inferred', 'click_related']
+      if (!type || !validTypes.includes(type)) {
+        throw new ValidationError(`type must be one of: ${validTypes.join(', ')}`)
+      }
+
+      // Validate source
+      if (!source || typeof source.filePath !== 'string' || typeof source.chunkIndex !== 'number') {
+        throw new ValidationError('source must have filePath (string) and chunkIndex (number)')
+      }
+
+      // Validate target
+      if (!target || typeof target.filePath !== 'string' || typeof target.chunkIndex !== 'number') {
+        throw new ValidationError('target must have filePath (string) and chunkIndex (number)')
+      }
+
+      const feedbackStore = getFeedbackStore()
+      feedbackStore.recordEvent({
+        type,
+        source,
+        target,
+        timestamp: new Date(),
+      })
+
+      res.json({ success: true })
+    })
+  )
+
+  // GET /api/v1/feedback/stats - Get feedback statistics
+  router.get('/feedback/stats', (_req: Request, res: Response) => {
+    const feedbackStore = getFeedbackStore()
+    const stats = feedbackStore.getStats()
+    res.json(stats)
+  })
 
   return router
 }

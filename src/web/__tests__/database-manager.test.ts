@@ -3,7 +3,7 @@
 import { mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { DatabaseManager } from '../database-manager.js'
 
 // Mock RAGServer for testing
@@ -30,6 +30,14 @@ function createMockServer() {
   }
 }
 
+// Shared test config with all required properties
+const testConfig = {
+  modelName: 'test-model',
+  cacheDir: './tmp/models',
+  baseDir: './tmp/test-data',
+  maxFileSize: 100 * 1024 * 1024,
+}
+
 describe('DatabaseManager', () => {
   const testDir = path.join(tmpdir(), 'rag-vault-test-db-manager')
   const testDbPath = path.join(testDir, 'test-db')
@@ -54,12 +62,12 @@ describe('DatabaseManager', () => {
   describe('initialization', () => {
     it('should create server with factory function', async () => {
       const mockServerFactory = vi.fn().mockReturnValue(createMockServer())
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
 
       expect(mockServerFactory).toHaveBeenCalledWith({
-        modelName: 'test-model',
+        ...testConfig,
         dbPath: testDbPath,
       })
     })
@@ -67,7 +75,7 @@ describe('DatabaseManager', () => {
     it('should initialize the server', async () => {
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
 
@@ -78,7 +86,7 @@ describe('DatabaseManager', () => {
   describe('getServer', () => {
     it('should throw if not initialized', () => {
       const mockServerFactory = vi.fn().mockReturnValue(createMockServer())
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       expect(() => dbManager.getServer()).toThrow('DatabaseManager not initialized')
     })
@@ -86,7 +94,7 @@ describe('DatabaseManager', () => {
     it('should return server after initialization', async () => {
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
 
@@ -97,7 +105,7 @@ describe('DatabaseManager', () => {
   describe('getCurrentConfig', () => {
     it('should return null if not initialized', async () => {
       const mockServerFactory = vi.fn().mockReturnValue(createMockServer())
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       const config = await dbManager.getCurrentConfig()
 
@@ -107,7 +115,7 @@ describe('DatabaseManager', () => {
     it('should return config with stats after initialization', async () => {
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
       const config = await dbManager.getCurrentConfig()
@@ -123,7 +131,7 @@ describe('DatabaseManager', () => {
     it('should reject non-existent path', async () => {
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
 
@@ -138,7 +146,7 @@ describe('DatabaseManager', () => {
 
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
 
@@ -158,7 +166,7 @@ describe('DatabaseManager', () => {
       // Make close take some time
       mockServer.close.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)))
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
 
@@ -191,7 +199,7 @@ describe('DatabaseManager', () => {
 
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
       await dbManager.switchDatabase(testDb2Path)
@@ -217,7 +225,7 @@ describe('DatabaseManager', () => {
 
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
       const results = await dbManager.scanForDatabases(scanDir)
@@ -240,7 +248,7 @@ describe('DatabaseManager', () => {
 
       const mockServer = createMockServer()
       const mockServerFactory = vi.fn().mockReturnValue(mockServer)
-      const dbManager = new DatabaseManager(mockServerFactory, { modelName: 'test-model' })
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
 
       await dbManager.initialize(testDbPath)
 

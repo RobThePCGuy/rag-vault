@@ -93,18 +93,19 @@ function createMockRes(): {
 
 interface RouteLayer {
   route?: {
-    path: string
-    methods: Record<string, boolean>
+    path?: string
+    methods?: Record<string, boolean>
     stack?: { handle: (req: Request, res: Response, next: NextFunction) => Promise<void> }[]
   }
 }
 
 function getRouteHandler(
-  router: { stack: RouteLayer[] },
+  router: unknown,
   path: string,
   method: 'get' | 'post' | 'delete' | 'put'
 ): ((req: Request, res: Response, next: NextFunction) => Promise<void>) | undefined {
-  const layer = router.stack.find((l) => l.route?.path === path && l.route?.methods?.[method])
+  const typedRouter = router as { stack: RouteLayer[] }
+  const layer = typedRouter.stack.find((l) => l.route?.path === path && l.route?.methods?.[method])
   return layer?.route?.stack?.[0]?.handle
 }
 
@@ -206,7 +207,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'dbPath is required and must be a string'
         )
       }
@@ -250,7 +251,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'dbPath is required and must be a string'
         )
       }
@@ -292,7 +293,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'scanPath is required and must be a string'
         )
       }
@@ -360,7 +361,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'path is required and must be a string'
         )
       }
@@ -404,7 +405,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'path is required and must be a string'
         )
       }
@@ -461,7 +462,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'path query parameter is required'
         )
       }
@@ -554,7 +555,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'config is required and must be an object'
         )
       }
@@ -610,7 +611,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'weight is required and must be a number'
         )
       }
@@ -628,7 +629,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'weight must be between 0.0 and 1.0'
         )
       }
@@ -646,7 +647,7 @@ describe('Config Routes', () => {
         await handler(req as Request, res as Response, next)
 
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'weight must be between 0.0 and 1.0'
         )
       }
@@ -657,11 +658,11 @@ describe('Config Routes', () => {
     it('should have all 13 expected routes', () => {
       const router = createConfigRouter(mockDbManager as DatabaseManager)
 
-      const routes = router.stack
-        .filter((layer: RouteLayer) => layer.route)
-        .map((layer: RouteLayer) => ({
+      const routes = (router.stack as unknown as RouteLayer[])
+        .filter((layer) => layer.route)
+        .map((layer) => ({
           path: layer.route!.path,
-          methods: Object.keys(layer.route!.methods).filter((m) => layer.route!.methods[m]),
+          methods: Object.keys(layer.route!.methods ?? {}).filter((m) => layer.route!.methods![m]),
         }))
 
       expect(routes).toContainEqual({ path: '/current', methods: ['get'] })

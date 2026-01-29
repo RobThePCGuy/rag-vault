@@ -115,7 +115,7 @@ describe('Error Handler Middleware', () => {
         error: 'Validation failed',
         code: 'VALIDATION_ERROR',
       })
-      expect((mock.jsonData as Record<string, unknown>).details).toBeUndefined()
+      expect((mock.jsonData as Record<string, unknown>)['details']).toBeUndefined()
     })
 
     it('should handle generic errors with 500 status', () => {

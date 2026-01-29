@@ -9,10 +9,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { RAGServer } from '../index.js'
 
 // ============================================
-// MVP Phase 1: Core Functionality Integration Test
+// Core Functionality Integration Test
 // ============================================
 
-describe('RAG MCP Server Integration Test - Phase 1', () => {
+describe('RAG MCP Server Integration Test', () => {
   let ragServer: RAGServer
   const testDbPath = resolve('./tmp/test-lancedb')
   const testDataDir = resolve('./tmp/test-data')
@@ -413,19 +413,11 @@ describe('RAG MCP Server Integration Test - Phase 1', () => {
 })
 
 // ============================================
-// MVP Phase 2: Complete Functionality Integration Test
+// Complete Functionality Integration Test
 // ============================================
 
-describe('RAG MCP Server Integration Test - Phase 2', () => {
-  beforeAll(async () => {
-    // Setup: LanceDB initialization, Transformers.js model load
-  })
-
-  afterAll(async () => {
-    // Cleanup: Delete test data, close DB connection
-  })
-
-  describe('AC-006: Additional Format Support (Phase 2)', () => {
+describe('RAG MCP Server Integration Test - Extended', () => {
+  describe('AC-006: Additional Format Support', () => {
     let localRagServer: RAGServer
     const localTestDbPath = resolve('./tmp/test-lancedb-ac006')
     const localTestDataDir = resolve('./tmp/test-data-ac006')
@@ -467,7 +459,6 @@ describe('RAG MCP Server Integration Test - Phase 2', () => {
       // Create simple DOCX file (binary format actually required)
       // Here, instead of creating minimal DOCX that mammoth can process,
       // verify error handling with invalid file as error handling test
-      const _testDocxFile = resolve(localTestDataDir, 'test-sample.docx')
 
       // Creating actual DOCX file is complex,
       // so verify parseDocx method is properly defined

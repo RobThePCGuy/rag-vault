@@ -1,10 +1,25 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import type { RelatedChunk } from '../../api/client'
+import type { RelatedChunk, SearchResult } from '../../api/client'
 import type { Annotation, Highlight, HighlightColor } from '../../contexts/AnnotationsContext'
 import type { PinnedLink } from '../../contexts/LinksContext'
 import { Spinner } from '../ui'
 import { AnnotationNote } from './AnnotationNote'
 import { MarginNote } from './MarginNote'
+import type { SelectionAction } from './SelectionPopover'
+
+/**
+ * X-Ray Vision: Selection search result with context
+ */
+export interface SelectionSearchResultDisplay {
+  action: SelectionAction
+  query: string
+  results: SearchResult[]
+  selectionContext: {
+    text: string
+    filePath: string
+    chunkIndex: number
+  }
+}
 
 interface DynamicMarginProps {
   relatedChunks: RelatedChunk[]
@@ -25,6 +40,10 @@ interface DynamicMarginProps {
   // Links props (Phase 6)
   backlinks?: PinnedLink[]
   outgoingLinks?: PinnedLink[]
+  // X-Ray Vision: Selection search results
+  selectionSearchResults?: SelectionSearchResultDisplay | null
+  isSelectionSearchLoading?: boolean
+  onClearSelectionSearch?: () => void
 }
 
 /**
@@ -48,6 +67,9 @@ export function DynamicMargin({
   onChangeHighlightColor,
   backlinks = [],
   outgoingLinks = [],
+  selectionSearchResults,
+  isSelectionSearchLoading = false,
+  onClearSelectionSearch,
 }: DynamicMarginProps) {
   // Filter out low-relevance suggestions (score >= 0.7)
   const visibleChunks = relatedChunks.filter((chunk) => chunk.score < 0.7)
@@ -128,6 +150,65 @@ export function DynamicMargin({
                   />
                 ))}
               </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* X-Ray Vision: Selection Results Section */}
+        {(selectionSearchResults || isSelectionSearchLoading) && (
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-2 bg-purple-50 dark:bg-purple-900/20">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide flex items-center gap-2">
+                  <SearchIcon className="w-3.5 h-3.5" />
+                  {selectionSearchResults && getActionLabel(selectionSearchResults.action)}
+                  {isSelectionSearchLoading && 'Searching...'}
+                  {selectionSearchResults && (
+                    <span className="text-purple-500 dark:text-purple-400">
+                      ({selectionSearchResults.results.length})
+                    </span>
+                  )}
+                </h4>
+                {onClearSelectionSearch && (
+                  <button
+                    type="button"
+                    onClick={onClearSelectionSearch}
+                    className="text-purple-400 hover:text-purple-600 dark:hover:text-purple-200 transition-colors"
+                    title="Close"
+                  >
+                    <CloseIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              {selectionSearchResults && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 truncate">
+                  "{selectionSearchResults.selectionContext.text.slice(0, 50)}..."
+                </p>
+              )}
+            </div>
+            <div className="p-3 space-y-2">
+              {isSelectionSearchLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Spinner className="w-5 h-5 text-purple-500" />
+                </div>
+              ) : selectionSearchResults?.results.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                  No results found
+                </p>
+              ) : (
+                <AnimatePresence mode="popLayout">
+                  {selectionSearchResults?.results.map((result, idx) => (
+                    <SelectionResultItem
+                      key={`${result.filePath}:${result.chunkIndex}`}
+                      result={result}
+                      rank={idx + 1}
+                      onNavigate={() => onNavigateToChunk(result.filePath, result.chunkIndex)}
+                      isPinned={pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false}
+                      onTogglePin={onTogglePin ? () => onTogglePin(result.filePath, result.chunkIndex) : undefined}
+                    />
+                  ))}
+                </AnimatePresence>
+              )}
             </div>
           </div>
         )}
@@ -385,4 +466,117 @@ function LinkItem({ link, direction, onNavigate }: LinkItemProps) {
 function formatPath(path: string): string {
   const parts = path.split(/[/\\]/)
   return parts[parts.length - 1] || path
+}
+
+// ============================================
+// X-Ray Vision: Selection Search Components
+// ============================================
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      />
+    </svg>
+  )
+}
+
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+function getActionLabel(action: SelectionAction): string {
+  switch (action) {
+    case 'related':
+      return 'Related'
+    case 'support':
+      return 'Supporting'
+    case 'contradict':
+      return 'Contradicting'
+    case 'compare':
+      return 'Compare'
+    case 'pin':
+      return 'Pinned'
+    default:
+      return 'Results'
+  }
+}
+
+interface SelectionResultItemProps {
+  result: SearchResult
+  rank: number
+  onNavigate: () => void
+  isPinned: boolean
+  onTogglePin?: () => void
+}
+
+function SelectionResultItem({ result, rank, onNavigate, isPinned, onTogglePin }: SelectionResultItemProps) {
+  const displayFilePath = formatPath(result.filePath)
+  const scorePercent = Math.round((1 - result.score) * 100)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -5 }}
+      className="relative"
+    >
+      <button
+        type="button"
+        onClick={onNavigate}
+        className="w-full text-left p-2 rounded-lg bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-bold text-purple-600 dark:text-purple-400 w-4">
+            {rank}.
+          </span>
+          <span className="text-xs font-medium text-gray-600 dark:text-gray-400 truncate flex-1">
+            {displayFilePath}
+          </span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            #{result.chunkIndex}
+          </span>
+          <span className="text-xs px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded">
+            {scorePercent}%
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 pl-6">
+          {result.text.slice(0, 150) || 'No preview available'}
+        </p>
+      </button>
+      {onTogglePin && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onTogglePin()
+          }}
+          className={`absolute top-2 right-2 p-1 rounded transition-colors ${
+            isPinned
+              ? 'text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/50'
+              : 'text-gray-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30'
+          }`}
+          title={isPinned ? 'Unpin' : 'Pin'}
+        >
+          <PinIcon className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </motion.div>
+  )
+}
+
+function PinIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 20 20">
+      <path d="M5 5a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 19V5z" />
+    </svg>
+  )
 }

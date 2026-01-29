@@ -4,8 +4,7 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2022"],
-    "types": ["node"],
-    "baseUrl": ".",  // Use project root as reference
+        "baseUrl": ".",  // Use project root as reference
     "paths": {
       "src/*": ["src/*"]
     },
@@ -50,5 +49,5 @@
     "noUncheckedSideEffectImports": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/__tests__/**", "src/__tests__/**"]
+  "exclude": ["node_modules", "dist"]
 }

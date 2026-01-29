@@ -17,6 +17,8 @@ export interface SearchResult {
   text: string
   score: number
   source?: string
+  /** Content-based fingerprint for resilient linking */
+  fingerprint?: string
 }
 
 /**
@@ -201,6 +203,17 @@ export interface DocumentChunk {
   score: number
   metadata: DocumentMetadata
   source?: string
+  /** Content-based fingerprint for resilient linking */
+  fingerprint?: string
+}
+
+/**
+ * Explanation for why chunks are related (Explainability feature)
+ */
+export interface ChunkExplanation {
+  sharedKeywords: string[]
+  sharedPhrases: string[]
+  reasonLabel: 'same_doc' | 'very_similar' | 'related_topic' | 'loosely_related'
 }
 
 /**
@@ -208,6 +221,8 @@ export interface DocumentChunk {
  */
 export interface RelatedChunk extends DocumentChunk {
   connectionReason?: string
+  /** Explanation for the relationship (when includeExplanation=true) */
+  explanation?: ChunkExplanation
 }
 
 /**
@@ -224,6 +239,8 @@ export interface ChunkKey {
 export interface RelatedChunksOptions {
   limit?: number
   excludeSameDocument?: boolean
+  /** Include keyword/phrase explanations for why chunks are related */
+  includeExplanation?: boolean
 }
 
 /**
@@ -258,13 +275,37 @@ export async function getRelatedChunks(
     params.set('excludeSameDoc', String(options.excludeSameDocument))
   }
 
+  if (options?.includeExplanation) {
+    params.set('includeExplanation', 'true')
+  }
+
   const data = await fetchApi<{ related: RelatedChunk[] }>(`/chunks/related?${params.toString()}`)
 
-  // Add connection reasons based on score
+  // Add connection reasons based on score (or use explanation if available)
   return data.related.map((chunk) => ({
     ...chunk,
-    connectionReason: getConnectionReason(chunk.score, chunk.filePath === filePath),
+    connectionReason: chunk.explanation
+      ? getExplanationReason(chunk.explanation)
+      : getConnectionReason(chunk.score, chunk.filePath === filePath),
   }))
+}
+
+/**
+ * Get human-readable connection reason from explanation
+ */
+function getExplanationReason(explanation: ChunkExplanation): string {
+  switch (explanation.reasonLabel) {
+    case 'same_doc':
+      return 'Same document'
+    case 'very_similar':
+      return 'Very similar'
+    case 'related_topic':
+      return 'Related topic'
+    case 'loosely_related':
+      return 'Loosely related'
+    default:
+      return 'Related'
+  }
 }
 
 /**
@@ -309,4 +350,47 @@ function getConnectionReason(score: number, isSameDocument: boolean): string {
     return 'Related topic'
   }
   return 'Loosely related'
+}
+
+// ============================================
+// Curatorial Flywheel API (Gap 4)
+// ============================================
+
+/**
+ * Feedback event types
+ */
+export type FeedbackEventType = 'pin' | 'unpin' | 'dismiss_inferred' | 'click_related'
+
+/**
+ * Chunk reference for feedback
+ */
+export interface FeedbackChunkRef {
+  filePath: string
+  chunkIndex: number
+  fingerprint?: string
+}
+
+/**
+ * Record a feedback event (pin, unpin, dismiss, click)
+ */
+export async function recordFeedback(
+  type: FeedbackEventType,
+  source: FeedbackChunkRef,
+  target: FeedbackChunkRef
+): Promise<void> {
+  await fetchApi('/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ type, source, target }),
+  })
+}
+
+/**
+ * Get feedback statistics
+ */
+export async function getFeedbackStats(): Promise<{
+  eventCount: number
+  pinnedPairs: number
+  dismissedPairs: number
+}> {
+  return fetchApi('/feedback/stats')
 }

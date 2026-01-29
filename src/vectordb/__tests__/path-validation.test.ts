@@ -1,23 +1,9 @@
 // Tests for VectorStore path validation
 
 import { describe, expect, it } from 'vitest'
-
-// We need to test the isValidFilePath function. Since it's not exported,
-// we test it indirectly through VectorStore behavior or extract and test.
-// For now, let's test the patterns that should be blocked or allowed.
+import { isValidFilePath } from '../index.js'
 
 describe('Path Validation Patterns', () => {
-  // Regex matching the validation in vectordb/index.ts
-  const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/
-
-  function isValidFilePath(filePath: string): boolean {
-    if (!filePath || typeof filePath !== 'string') return false
-    if (filePath.includes('..')) return false
-    if (filePath.includes("'") || filePath.includes('"')) return false
-    if (filePath.includes(';')) return false
-    if (filePath.includes('--')) return false
-    return SAFE_PATH_REGEX.test(filePath)
-  }
 
   describe('Valid paths', () => {
     it('should accept simple file paths', () => {

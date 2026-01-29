@@ -54,7 +54,7 @@ describe('VectorStore', () => {
     return vector.map((x) => x / norm)
   }
 
-  describe('Phase 1: FTS Index Creation and Migration', () => {
+  describe('FTS Index Creation and Migration', () => {
     describe('FTS index auto-creation', () => {
       it('should create FTS index on initialize when table exists', async () => {
         const store = new VectorStore({
@@ -141,7 +141,7 @@ describe('VectorStore', () => {
     })
   })
 
-  describe('Phase 2: Hybrid Search', () => {
+  describe('Hybrid Search', () => {
     describe('Search with query text', () => {
       it('should accept query text parameter for hybrid search', async () => {
         const store = new VectorStore({

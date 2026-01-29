@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 
 interface DropZoneProps {
-  onFileSelect: (file: File) => void
+  onFilesSelect: (files: File[]) => void
   isUploading: boolean
 }
 
@@ -15,21 +15,20 @@ const ACCEPTED_TYPES = {
   'application/json': ['.json'],
 }
 
-export function DropZone({ onFileSelect, isUploading }: DropZoneProps) {
+export function DropZone({ onFilesSelect, isUploading }: DropZoneProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0]
-      if (file) {
-        onFileSelect(file)
+      if (acceptedFiles.length > 0) {
+        onFilesSelect(acceptedFiles)
       }
     },
-    [onFileSelect]
+    [onFilesSelect]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPTED_TYPES,
-    maxFiles: 1,
+    multiple: true,
     disabled: isUploading,
     maxSize: 100 * 1024 * 1024, // 100MB
   })
@@ -39,21 +38,21 @@ export function DropZone({ onFileSelect, isUploading }: DropZoneProps) {
       {...getRootProps()}
       className={`
         border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-        ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
+        ${isDragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}
         ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
       `}
     >
       <input {...getInputProps()} />
-      <UploadIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+      <UploadIcon className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
       {isDragActive ? (
-        <p className="text-blue-600 font-medium">Drop the file here...</p>
+        <p className="text-blue-600 dark:text-blue-400 font-medium">Drop files here...</p>
       ) : (
         <>
-          <p className="text-gray-600 font-medium mb-1">
-            Drag and drop a file here, or click to select
+          <p className="text-gray-600 dark:text-gray-300 font-medium mb-1">
+            Drag and drop files here, or click to select
           </p>
-          <p className="text-sm text-gray-400">
-            Supports PDF, DOCX, TXT, MD, HTML, JSON (max 100MB)
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            Supports PDF, DOCX, TXT, MD, HTML, JSON (max 100MB each)
           </p>
         </>
       )}

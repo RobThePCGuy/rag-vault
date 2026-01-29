@@ -2,6 +2,7 @@
 // VectorStore implementation with LanceDB integration
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VectorStore = exports.DatabaseError = void 0;
+exports.isValidFilePath = isValidFilePath;
 const lancedb_1 = require("@lancedb/lancedb");
 const index_js_1 = require("../errors/index.js");
 // Re-export error class for backwards compatibility
@@ -46,6 +47,11 @@ const DELETE_IGNORABLE_PATTERNS = [
  * Rejects paths with SQL injection attempts or path traversal.
  */
 const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/;
+/**
+ * Validate file path to prevent SQL injection and path traversal attacks.
+ * @param filePath - The file path to validate
+ * @returns true if path is safe for use in queries
+ */
 /**
  * Validate file path to prevent SQL injection and path traversal attacks.
  * @param filePath - The file path to validate

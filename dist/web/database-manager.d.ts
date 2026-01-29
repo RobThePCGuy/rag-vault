@@ -35,6 +35,34 @@ export interface CreateDatabaseOptions {
     dbPath: string;
     /** Optional custom name */
     name?: string | undefined;
+    /** Optional model name to use */
+    modelName?: string | undefined;
+}
+/**
+ * Available embedding model
+ */
+export interface AvailableModel {
+    /** Model ID */
+    id: string;
+    /** Human-readable name */
+    name: string;
+    /** Model description */
+    description: string;
+    /** Whether this is the default model */
+    isDefault: boolean;
+}
+/**
+ * Preset embedding models
+ */
+export declare const AVAILABLE_MODELS: AvailableModel[];
+/**
+ * Export/import configuration structure
+ */
+export interface ExportedConfig {
+    version: number;
+    exportedAt: string;
+    allowedRoots: string[];
+    preferences?: Record<string, unknown>;
 }
 /**
  * Scan result for a discovered database
@@ -46,6 +74,30 @@ export interface ScannedDatabase {
     name: string;
     /** Whether this database is already in recent list */
     isKnown: boolean;
+}
+/**
+ * Directory entry for folder browser
+ */
+export interface DirectoryEntry {
+    /** Entry name */
+    name: string;
+    /** Full path */
+    path: string;
+    /** Whether this is a directory */
+    isDirectory: boolean;
+}
+/**
+ * Allowed roots response
+ */
+export interface AllowedRootsResponse {
+    /** All effective allowed roots */
+    roots: string[];
+    /** Current base directory */
+    baseDir: string;
+    /** Environment-based roots */
+    envRoots: string[];
+    /** User-added roots (can be removed) */
+    userRoots: string[];
 }
 /**
  * DatabaseManager handles RAG database lifecycle management
@@ -108,12 +160,57 @@ export declare class DatabaseManager {
      */
     getRecentDatabases(): Promise<DatabaseEntry[]>;
     /**
+     * Get the base directory (dbPath directory)
+     */
+    getBaseDir(): string;
+    /**
+     * Get all effective allowed roots (env + baseDir + user-added)
+     */
+    getEffectiveAllowedRoots(): string[];
+    /**
+     * Check if a path is within allowed roots
+     */
+    isPathAllowed(targetPath: string): boolean;
+    /**
+     * Get allowed roots info for API response
+     */
+    getAllowedRootsInfo(): AllowedRootsResponse;
+    /**
+     * Add a user-allowed root
+     */
+    addUserAllowedRoot(rootPath: string): void;
+    /**
+     * Remove a user-allowed root
+     */
+    removeUserAllowedRoot(rootPath: string): void;
+    /**
+     * List directory contents for folder browser
+     * @param dirPath - The directory path to list
+     * @param showHidden - Whether to include hidden files (starting with .)
+     */
+    listDirectory(dirPath: string, showHidden?: boolean): Promise<DirectoryEntry[]>;
+    /**
      * Scan a directory for LanceDB databases
      *
      * Security: Only scans within allowed roots (ALLOWED_SCAN_ROOTS env var or home directory)
      * to prevent path traversal attacks.
+     *
+     * @param scanPath - The path to scan
+     * @param maxDepth - Maximum depth to scan (default 2)
      */
-    scanForDatabases(scanPath: string): Promise<ScannedDatabase[]>;
+    scanForDatabases(scanPath: string, maxDepth?: number): Promise<ScannedDatabase[]>;
+    /**
+     * Get available embedding models
+     */
+    getAvailableModels(): AvailableModel[];
+    /**
+     * Export configuration (allowed roots)
+     */
+    exportConfig(): ExportedConfig;
+    /**
+     * Import configuration (allowed roots)
+     */
+    importConfig(config: ExportedConfig): void;
     /**
      * Add a database to recent list
      */

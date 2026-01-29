@@ -62,7 +62,7 @@
     "type-check": "tsc --noEmit",
     "audit": "pnpm audit --audit-level=moderate",
     "audit:fix": "pnpm audit --fix",
-    "setup:web": "pnpm install && pnpm web:build && pnpm --prefix web-ui install && pnpm ui:build && pnpm web:dev",
+    "setup:web": "pnpm install && pnpm web:build && pnpm --prefix web-ui install && pnpm ui:build && pnpm web:start",
     "ui:build": "pnpm --prefix web-ui build",
     "ui:dev": "cd web-ui && pnpm dev",
     "web:build": "pnpm build",

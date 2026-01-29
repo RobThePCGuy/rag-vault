@@ -38,6 +38,7 @@ lancedb/
 *.tmp
 *.temp
 tmp/
+FEATURE/
 
 # MCP Registry publisher files
 .mcpregistry_*

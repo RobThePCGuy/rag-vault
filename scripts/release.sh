@@ -38,9 +38,21 @@ echo -e "${GREEN}Running tests...${NC}"
 pnpm test
 
 echo -e "${GREEN}Bumping version ($VERSION_TYPE)...${NC}"
-npm version $VERSION_TYPE -m "chore: release v%s"
+# Bump version without git commit (we'll commit both package.json files together)
+npm version $VERSION_TYPE --no-git-tag-version
 
 NEW_VERSION=$(node -p "require('./package.json').version")
+
+# Update web-ui/package.json to match
+echo -e "${GREEN}Syncing web-ui version to v$NEW_VERSION...${NC}"
+cd web-ui
+npm version $NEW_VERSION --no-git-tag-version --allow-same-version
+cd ..
+
+# Commit both version changes and create tag
+git add package.json web-ui/package.json
+git commit -m "chore: release v$NEW_VERSION"
+git tag -a "v$NEW_VERSION" -m "v$NEW_VERSION"
 echo -e "${GREEN}New version: v$NEW_VERSION${NC}"
 
 echo -e "${GREEN}Publishing to npm...${NC}"

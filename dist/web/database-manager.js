@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseManager = void 0;
+exports.DatabaseManager = exports.AVAILABLE_MODELS = void 0;
 const node_fs_1 = require("node:fs");
 const promises_1 = require("node:fs/promises");
 const node_os_1 = require("node:os");
@@ -17,6 +17,8 @@ const schemas_js_1 = require("../server/schemas.js");
 const CONFIG_DIR = node_path_1.default.join((0, node_os_1.homedir)(), '.rag-vault');
 /** Recent databases file path */
 const RECENT_DBS_FILE = node_path_1.default.join(CONFIG_DIR, 'recent-dbs.json');
+/** User-added allowed roots file path */
+const ALLOWED_ROOTS_FILE = node_path_1.default.join(CONFIG_DIR, 'allowed-roots.json');
 /** LanceDB directory name (indicator of a valid database) */
 const LANCEDB_DIR_NAME = 'chunks.lance';
 /** Maximum number of recent databases to track */
@@ -25,7 +27,7 @@ const MAX_RECENT_DATABASES = 10;
  * Get allowed scan roots from environment variable or default to home directory
  * ALLOWED_SCAN_ROOTS: comma-separated list of absolute paths
  */
-function getAllowedScanRoots() {
+function getEnvAllowedScanRoots() {
     const envRoots = process.env['ALLOWED_SCAN_ROOTS'];
     if (envRoots) {
         return envRoots.split(',').map((p) => node_path_1.default.resolve(p.trim()));
@@ -34,12 +36,37 @@ function getAllowedScanRoots() {
     return [(0, node_os_1.homedir)()];
 }
 /**
- * Validate that a path is within allowed scan roots (prevents path traversal)
- * @param targetPath - Path to validate (will be resolved and normalized)
- * @returns true if path is within allowed roots
+ * Read user-added allowed roots from config file
  */
-function isPathWithinAllowedRoots(targetPath) {
-    const allowedRoots = getAllowedScanRoots();
+function readUserAllowedRoots() {
+    if (!(0, node_fs_1.existsSync)(ALLOWED_ROOTS_FILE)) {
+        return [];
+    }
+    try {
+        const content = JSON.parse(require('fs').readFileSync(ALLOWED_ROOTS_FILE, 'utf-8'));
+        if (Array.isArray(content.roots)) {
+            return content.roots.map((p) => node_path_1.default.resolve(p));
+        }
+        return [];
+    }
+    catch {
+        return [];
+    }
+}
+/**
+ * Write user-added allowed roots to config file
+ */
+function writeUserAllowedRoots(roots) {
+    const dir = node_path_1.default.dirname(ALLOWED_ROOTS_FILE);
+    if (!(0, node_fs_1.existsSync)(dir)) {
+        require('fs').mkdirSync(dir, { recursive: true });
+    }
+    require('fs').writeFileSync(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8');
+}
+/**
+ * Check if a path is within a set of allowed roots
+ */
+function isPathWithinRoots(targetPath, allowedRoots) {
     let resolvedPath;
     try {
         // Resolve to absolute path and resolve symlinks
@@ -69,6 +96,29 @@ function expandTilde(filePath) {
     }
     return filePath;
 }
+/**
+ * Preset embedding models
+ */
+exports.AVAILABLE_MODELS = [
+    {
+        id: 'Xenova/all-MiniLM-L6-v2',
+        name: 'all-MiniLM-L6-v2',
+        description: 'Fast, general-purpose model (384 dimensions)',
+        isDefault: true,
+    },
+    {
+        id: 'Xenova/all-mpnet-base-v2',
+        name: 'all-mpnet-base-v2',
+        description: 'Higher quality, slower (768 dimensions)',
+        isDefault: false,
+    },
+    {
+        id: 'Xenova/bge-small-en-v1.5',
+        name: 'bge-small-en-v1.5',
+        description: 'Optimized for retrieval (384 dimensions)',
+        isDefault: false,
+    },
+];
 // ============================================
 // DatabaseManager Class
 // ============================================
@@ -279,20 +329,119 @@ class DatabaseManager {
         }
     }
     /**
+     * Get the base directory (dbPath directory)
+     */
+    getBaseDir() {
+        return this.currentConfig ? node_path_1.default.dirname(this.currentConfig.dbPath) : (0, node_os_1.homedir)();
+    }
+    /**
+     * Get all effective allowed roots (env + baseDir + user-added)
+     */
+    getEffectiveAllowedRoots() {
+        const envRoots = getEnvAllowedScanRoots();
+        const userRoots = readUserAllowedRoots();
+        const baseDir = this.getBaseDir();
+        // Combine all sources and deduplicate
+        const allRoots = new Set([...envRoots, baseDir, ...userRoots]);
+        return Array.from(allRoots);
+    }
+    /**
+     * Check if a path is within allowed roots
+     */
+    isPathAllowed(targetPath) {
+        const allowedRoots = this.getEffectiveAllowedRoots();
+        return isPathWithinRoots(targetPath, allowedRoots);
+    }
+    /**
+     * Get allowed roots info for API response
+     */
+    getAllowedRootsInfo() {
+        return {
+            roots: this.getEffectiveAllowedRoots(),
+            baseDir: this.getBaseDir(),
+            envRoots: getEnvAllowedScanRoots(),
+            userRoots: readUserAllowedRoots(),
+        };
+    }
+    /**
+     * Add a user-allowed root
+     */
+    addUserAllowedRoot(rootPath) {
+        const resolved = node_path_1.default.resolve(expandTilde(rootPath));
+        if (!(0, node_fs_1.existsSync)(resolved)) {
+            throw new Error(`Path does not exist: ${resolved}`);
+        }
+        const roots = readUserAllowedRoots();
+        if (!roots.includes(resolved)) {
+            roots.push(resolved);
+            writeUserAllowedRoots(roots);
+        }
+    }
+    /**
+     * Remove a user-allowed root
+     */
+    removeUserAllowedRoot(rootPath) {
+        const resolved = node_path_1.default.resolve(expandTilde(rootPath));
+        const roots = readUserAllowedRoots();
+        const filtered = roots.filter((r) => r !== resolved);
+        writeUserAllowedRoots(filtered);
+    }
+    /**
+     * List directory contents for folder browser
+     * @param dirPath - The directory path to list
+     * @param showHidden - Whether to include hidden files (starting with .)
+     */
+    async listDirectory(dirPath, showHidden = false) {
+        const resolved = node_path_1.default.resolve(expandTilde(dirPath));
+        // Allow browsing root directories and paths within allowed roots
+        // For security, we still allow browsing but the user can only add paths as allowed roots
+        if (!(0, node_fs_1.existsSync)(resolved)) {
+            throw new Error(`Directory does not exist: ${resolved}`);
+        }
+        const dirStat = await (0, promises_1.stat)(resolved);
+        if (!dirStat.isDirectory()) {
+            throw new Error(`Path is not a directory: ${resolved}`);
+        }
+        const entries = await (0, promises_1.readdir)(resolved, { withFileTypes: true });
+        const results = [];
+        for (const entry of entries) {
+            // Skip hidden files/directories unless showHidden is true
+            if (!showHidden && entry.name.startsWith('.'))
+                continue;
+            results.push({
+                name: entry.name,
+                path: node_path_1.default.join(resolved, entry.name),
+                isDirectory: entry.isDirectory(),
+            });
+        }
+        // Sort: directories first, then alphabetically
+        results.sort((a, b) => {
+            if (a.isDirectory && !b.isDirectory)
+                return -1;
+            if (!a.isDirectory && b.isDirectory)
+                return 1;
+            return a.name.localeCompare(b.name);
+        });
+        return results;
+    }
+    /**
      * Scan a directory for LanceDB databases
      *
      * Security: Only scans within allowed roots (ALLOWED_SCAN_ROOTS env var or home directory)
      * to prevent path traversal attacks.
+     *
+     * @param scanPath - The path to scan
+     * @param maxDepth - Maximum depth to scan (default 2)
      */
-    async scanForDatabases(scanPath) {
+    async scanForDatabases(scanPath, maxDepth = 2) {
         // Expand tilde to home directory
         const resolvedPath = expandTilde(scanPath);
         // Security: Validate path is within allowed roots
-        if (!isPathWithinAllowedRoots(resolvedPath)) {
-            const allowedRoots = getAllowedScanRoots();
+        if (!this.isPathAllowed(resolvedPath)) {
+            const allowedRoots = this.getEffectiveAllowedRoots();
             throw new Error(`Scan path "${resolvedPath}" is outside allowed roots. ` +
                 `Allowed: ${allowedRoots.join(', ')}. ` +
-                `Set ALLOWED_SCAN_ROOTS environment variable to allow additional paths.`);
+                `Add this path to allowed roots or set ALLOWED_SCAN_ROOTS environment variable.`);
         }
         const results = [];
         const recentDbs = await this.getRecentDatabases();
@@ -304,36 +453,80 @@ class DatabaseManager {
         if (!scanStat.isDirectory()) {
             throw new Error(`Scan path is not a directory: ${resolvedPath}`);
         }
-        // Check if resolvedPath itself is a database
-        const lanceDbPath = node_path_1.default.join(resolvedPath, LANCEDB_DIR_NAME);
-        if ((0, node_fs_1.existsSync)(lanceDbPath)) {
-            results.push({
-                path: resolvedPath,
-                name: this.getNameFromPath(resolvedPath),
-                isKnown: knownPaths.has(resolvedPath),
-            });
-        }
-        // Scan subdirectories (one level deep)
-        try {
-            const entries = await (0, promises_1.readdir)(resolvedPath, { withFileTypes: true });
-            for (const entry of entries) {
-                if (!entry.isDirectory())
-                    continue;
-                const subPath = node_path_1.default.join(resolvedPath, entry.name);
-                const subLanceDbPath = node_path_1.default.join(subPath, LANCEDB_DIR_NAME);
-                if ((0, node_fs_1.existsSync)(subLanceDbPath)) {
-                    results.push({
-                        path: subPath,
-                        name: this.getNameFromPath(subPath),
-                        isKnown: knownPaths.has(subPath),
-                    });
+        // Recursive scan function with depth tracking
+        const scanDirectory = async (dirPath, currentDepth) => {
+            // Check if this directory is a database
+            const lanceDbPath = node_path_1.default.join(dirPath, LANCEDB_DIR_NAME);
+            if ((0, node_fs_1.existsSync)(lanceDbPath)) {
+                results.push({
+                    path: dirPath,
+                    name: this.getNameFromPath(dirPath),
+                    isKnown: knownPaths.has(dirPath),
+                });
+                // Don't scan subdirectories of a database
+                return;
+            }
+            // Stop if we've reached max depth
+            if (currentDepth >= maxDepth)
+                return;
+            try {
+                const entries = await (0, promises_1.readdir)(dirPath, { withFileTypes: true });
+                for (const entry of entries) {
+                    if (!entry.isDirectory())
+                        continue;
+                    // Skip hidden directories
+                    if (entry.name.startsWith('.'))
+                        continue;
+                    const subPath = node_path_1.default.join(dirPath, entry.name);
+                    await scanDirectory(subPath, currentDepth + 1);
                 }
             }
-        }
-        catch (error) {
-            console.error(`Failed to scan directory ${resolvedPath}:`, error);
-        }
+            catch (error) {
+                // Ignore permission errors on individual directories
+                console.error(`Failed to scan directory ${dirPath}:`, error);
+            }
+        };
+        await scanDirectory(resolvedPath, 0);
         return results;
+    }
+    /**
+     * Get available embedding models
+     */
+    getAvailableModels() {
+        return exports.AVAILABLE_MODELS;
+    }
+    /**
+     * Export configuration (allowed roots)
+     */
+    exportConfig() {
+        return {
+            version: 1,
+            exportedAt: new Date().toISOString(),
+            allowedRoots: readUserAllowedRoots(),
+        };
+    }
+    /**
+     * Import configuration (allowed roots)
+     */
+    importConfig(config) {
+        if (config.version !== 1) {
+            throw new Error(`Unsupported config version: ${config.version}`);
+        }
+        if (!Array.isArray(config.allowedRoots)) {
+            throw new Error('Invalid config: allowedRoots must be an array');
+        }
+        // Validate each path exists before importing
+        const validRoots = [];
+        for (const root of config.allowedRoots) {
+            const resolved = node_path_1.default.resolve(expandTilde(root));
+            if ((0, node_fs_1.existsSync)(resolved)) {
+                validRoots.push(resolved);
+            }
+            else {
+                console.warn(`Skipping non-existent root during import: ${resolved}`);
+            }
+        }
+        writeUserAllowedRoots(validRoots);
     }
     /**
      * Add a database to recent list

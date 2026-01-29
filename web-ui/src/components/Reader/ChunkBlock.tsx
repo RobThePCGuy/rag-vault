@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import type { DocumentChunk } from '../../api/client'
 import type { Highlight, HighlightColor } from '../../contexts/AnnotationsContext'
 import { useTextSelection } from '../../hooks/useTextSelection'
-import { SelectionPopover } from './SelectionPopover'
+import { SelectionPopover, type SelectionAction } from './SelectionPopover'
 import { UnifiedTextRenderer, type SearchMatch } from './UnifiedTextRenderer'
 
 interface ChunkBlockProps {
@@ -27,6 +27,18 @@ interface ChunkBlockProps {
   currentSearchIndex?: number
   // Bookmark support (Phase 7)
   isBookmarked?: boolean
+  // X-Ray Vision: Selection-based discovery
+  onSelectionAction?: (
+    action: SelectionAction,
+    context: {
+      text: string
+      startOffset: number
+      endOffset: number
+      contextBefore: string
+      contextAfter: string
+    }
+  ) => void
+  isSelectionActionLoading?: boolean
 }
 
 /**
@@ -46,6 +58,8 @@ export function ChunkBlock({
   searchMatches = [],
   currentSearchIndex = -1,
   isBookmarked = false,
+  onSelectionAction,
+  isSelectionActionLoading = false,
 }: ChunkBlockProps) {
   const divRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -76,6 +90,26 @@ export function ChunkBlock({
       }
     },
     [selection, onCreateHighlight, clearSelection]
+  )
+
+  // Handle X-Ray Vision selection action
+  const handleSelectionAction = useCallback(
+    (action: SelectionAction) => {
+      if (selection && onSelectionAction) {
+        onSelectionAction(action, {
+          text: selection.text,
+          startOffset: selection.startOffset,
+          endOffset: selection.endOffset,
+          contextBefore: selection.contextBefore,
+          contextAfter: selection.contextAfter,
+        })
+        // Don't clear selection for actions that show results (keep context visible)
+        if (action === 'pin') {
+          clearSelection()
+        }
+      }
+    },
+    [selection, onSelectionAction, clearSelection]
   )
 
   // Register element with viewport observer
@@ -144,6 +178,8 @@ export function ChunkBlock({
             rect={selection.rect}
             onSelectColor={handleColorSelect}
             onClose={clearSelection}
+            onSelectionAction={onSelectionAction ? handleSelectionAction : undefined}
+            isActionLoading={isSelectionActionLoading}
           />
         )}
       </AnimatePresence>

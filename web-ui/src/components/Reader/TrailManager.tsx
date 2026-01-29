@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
-import type { Trail } from '../../contexts/LinksContext'
+import type { Trail, TrailNode } from '../../contexts/LinksContext'
 
 interface TrailManagerProps {
   currentTrail: Trail | null
@@ -12,6 +12,12 @@ interface TrailManagerProps {
   onNavigateToStep: (filePath: string, chunkIndex: number) => void
   isOpen: boolean
   onClose: () => void
+  /** Folgezettel: tree view of trail */
+  trailTree?: TrailNode | null
+  /** Currently active node ID */
+  currentNodeId?: string | null
+  /** Set active node */
+  onSetCurrentNode?: (nodeId: string) => void
 }
 
 /**
@@ -28,6 +34,9 @@ export function TrailManager({
   onNavigateToStep,
   isOpen,
   onClose,
+  trailTree,
+  currentNodeId,
+  onSetCurrentNode,
 }: TrailManagerProps) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [trailName, setTrailName] = useState('')
@@ -120,19 +129,31 @@ export function TrailManager({
               >
                 {currentTrail ? (
                   <div className="space-y-4">
-                    {/* Current trail steps */}
+                    {/* Current trail - tree view if available, otherwise linear */}
                     <div className="space-y-2">
-                      {currentTrail.steps.map((step, index) => (
-                        <TrailStepItem
-                          key={`${step.chunkKey.filePath}-${step.chunkKey.chunkIndex}-${index}`}
-                          step={step}
-                          index={index}
-                          isLast={index === currentTrail.steps.length - 1}
-                          onNavigate={() =>
-                            onNavigateToStep(step.chunkKey.filePath, step.chunkKey.chunkIndex)
+                      {trailTree ? (
+                        <TrailTreeNode
+                          node={trailTree}
+                          depth={0}
+                          currentNodeId={currentNodeId}
+                          onNavigate={(node) =>
+                            onNavigateToStep(node.chunkKey.filePath, node.chunkKey.chunkIndex)
                           }
+                          onSetCurrent={(nodeId) => onSetCurrentNode?.(nodeId)}
                         />
-                      ))}
+                      ) : (
+                        currentTrail.steps.map((step, index) => (
+                          <TrailStepItem
+                            key={`${step.chunkKey.filePath}-${step.chunkKey.chunkIndex}-${index}`}
+                            step={step}
+                            index={index}
+                            isLast={index === currentTrail.steps.length - 1}
+                            onNavigate={() =>
+                              onNavigateToStep(step.chunkKey.filePath, step.chunkKey.chunkIndex)
+                            }
+                          />
+                        ))
+                      )}
                     </div>
 
                     {/* Actions */}
@@ -404,6 +425,126 @@ function BookmarkIcon() {
         strokeLinejoin="round"
         d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
       />
+    </svg>
+  )
+}
+
+// ============================================
+// Folgezettel Tree Components
+// ============================================
+
+interface TrailTreeNodeProps {
+  node: TrailNode
+  depth: number
+  currentNodeId?: string | null
+  onNavigate: (node: TrailNode) => void
+  onSetCurrent: (nodeId: string) => void
+}
+
+function TrailTreeNode({
+  node,
+  depth,
+  currentNodeId,
+  onNavigate,
+  onSetCurrent,
+}: TrailTreeNodeProps) {
+  const [isExpanded, setIsExpanded] = useState(true)
+  const displaySource = formatPath(node.chunkKey.filePath)
+  const isActive = node.id === currentNodeId
+  const hasBranches = node.children.length > 1
+
+  return (
+    <div className="relative">
+      {/* Node item */}
+      <div className="flex items-start gap-2">
+        {/* Expand/collapse for branches */}
+        {hasBranches ? (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-1 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            {isExpanded ? (
+              <ChevronDownIcon className="w-4 h-4" />
+            ) : (
+              <ChevronRightIcon className="w-4 h-4" />
+            )}
+          </button>
+        ) : (
+          <div className="w-5" />
+        )}
+
+        {/* Branch label badge */}
+        <div
+          className={`
+            flex items-center justify-center min-w-[2rem] h-6 px-1.5 rounded text-xs font-medium
+            ${isActive
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+            }
+          `}
+        >
+          {node.branchLabel || (depth + 1)}
+        </div>
+
+        {/* Node content */}
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate(node)
+            onSetCurrent(node.id)
+          }}
+          className={`
+            flex-1 text-left p-2 rounded-lg transition-colors
+            ${isActive
+              ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
+              : 'hover:bg-gray-50 dark:hover:bg-gray-750'
+            }
+          `}
+        >
+          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+            {displaySource}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Chunk #{node.chunkKey.chunkIndex}
+            {node.connectionReason && (
+              <span className="ml-2 italic">via "{node.connectionReason}"</span>
+            )}
+          </div>
+        </button>
+      </div>
+
+      {/* Children (branches) */}
+      {isExpanded && node.children.length > 0 && (
+        <div className="ml-6 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+          {node.children.map((child) => (
+            <TrailTreeNode
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              currentNodeId={currentNodeId}
+              onNavigate={onNavigate}
+              onSetCurrent={onSetCurrent}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  )
+}
+
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
     </svg>
   )
 }

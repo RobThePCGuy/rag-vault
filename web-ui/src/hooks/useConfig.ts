@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback } from 'react'
 import {
   addAllowedRoot,
   browseDirectory,
@@ -273,9 +274,19 @@ export function useBrowseDirectory() {
     },
   })
 
+  const browse = useCallback(
+    (path: string, showHidden = false) => mutation.mutate({ path, showHidden }),
+    [mutation.mutate]
+  )
+
+  const browseAsync = useCallback(
+    (path: string, showHidden = false) => mutation.mutateAsync({ path, showHidden }),
+    [mutation.mutateAsync]
+  )
+
   return {
-    browse: (path: string, showHidden = false) => mutation.mutate({ path, showHidden }),
-    browseAsync: (path: string, showHidden = false) => mutation.mutateAsync({ path, showHidden }),
+    browse,
+    browseAsync,
     isLoading: mutation.isPending,
     error: mutation.error,
     data: mutation.data,

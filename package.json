@@ -41,7 +41,7 @@
     "url": "git+https://github.com/RobThePCGuy/rag-vault.git"
   },
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "check": "pnpm type-check && pnpm lint && pnpm format:check",
     "check:all": "pnpm check && pnpm check:unused && pnpm check:deps && pnpm build && pnpm test",
     "check:deps": "madge --circular --extensions ts src",

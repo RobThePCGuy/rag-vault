@@ -1,9 +1,11 @@
 // Lazy initialization tests for Embedder
-// TDD Red phase: These tests should fail initially
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Embedder, EmbeddingError } from '../index.js'
 import type { EmbedderConfig } from '../index.js'
+
+// Dynamic timeout: longer in CI environments for slower network/disk
+const MODEL_TIMEOUT = process.env['CI'] ? 120000 : 60000
 
 describe('Embedder - Lazy Initialization', () => {
   let testConfig: EmbedderConfig
@@ -31,7 +33,7 @@ describe('Embedder - Lazy Initialization', () => {
     expect(Array.isArray(result)).toBe(true)
     expect(result.length).toBe(384)
     expect(result.every((value) => typeof value === 'number')).toBe(true)
-  }, 180000) // 3 minute timeout for model download
+  }, MODEL_TIMEOUT)
 
   // Test 2: Lazy initialization on first embedBatch() call
   it('should initialize on first embedBatch() call without explicit initialize()', async () => {
@@ -45,7 +47,7 @@ describe('Embedder - Lazy Initialization', () => {
     expect(Array.isArray(results)).toBe(true)
     expect(results.length).toBe(3)
     expect(results.every((embedding) => embedding.length === 384)).toBe(true)
-  }, 180000)
+  }, MODEL_TIMEOUT)
 
   // Test 3: Initialization should happen only once for concurrent calls
   it('should initialize only once for concurrent embed() calls', async () => {
@@ -65,7 +67,7 @@ describe('Embedder - Lazy Initialization', () => {
 
     // Verify initialize was called only once
     expect(initializeSpy).toHaveBeenCalledTimes(1)
-  }, 180000)
+  }, MODEL_TIMEOUT)
 
   // Test 4: Retry should be possible after initialization failure
   it('should allow retry after initialization failure', async () => {
@@ -85,7 +87,7 @@ describe('Embedder - Lazy Initialization', () => {
     const result = await embedderWithValidPath.embed('test after retry')
     expect(result).toBeDefined()
     expect(result.length).toBe(384)
-  }, 180000)
+  }, MODEL_TIMEOUT)
 
   // Test 5: Error message should provide detailed guidance
   it('should provide detailed error message with guidance on initialization failure', async () => {
@@ -122,7 +124,7 @@ describe('Embedder - Lazy Initialization', () => {
 
     expect(result).toBeDefined()
     expect(result.length).toBe(384)
-  }, 180000)
+  }, MODEL_TIMEOUT)
 
   // Test 7: Multiple calls to embed() after lazy initialization should not reinitialize
   it('should not reinitialize on subsequent embed() calls', async () => {
@@ -139,5 +141,5 @@ describe('Embedder - Lazy Initialization', () => {
     await embedder.embed('third call')
 
     expect(initializeSpy).not.toHaveBeenCalled()
-  }, 180000)
+  }, MODEL_TIMEOUT)
 })

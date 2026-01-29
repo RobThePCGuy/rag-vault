@@ -16,7 +16,7 @@ interface ReaderControlsProps {
  * Controls font size, line height, font family, and chunk number visibility
  */
 export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
-  const { settings, setFontSize, setLineHeight, setFontFamily, setShowChunkNumbers, resetSettings } =
+  const { settings, setFontSize, setLineHeight, setFontFamily, setShowChunkNumbers, setShowHeatmap, resetSettings } =
     useReaderSettings()
 
   return (
@@ -125,6 +125,31 @@ export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
                     className={`
                       inline-block h-4 w-4 transform rounded-full bg-white transition-transform
                       ${settings.showChunkNumbers ? 'translate-x-6' : 'translate-x-1'}
+                    `}
+                  />
+                </button>
+              </div>
+
+              {/* Semantic Heatmap Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="text-sm text-gray-700 dark:text-gray-300">Semantic heatmap</label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Highlight connected terms
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHeatmap(!settings.showHeatmap)}
+                  className={`
+                    relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                    ${settings.showHeatmap ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}
+                  `}
+                >
+                  <span
+                    className={`
+                      inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                      ${settings.showHeatmap ? 'translate-x-6' : 'translate-x-1'}
                     `}
                   />
                 </button>

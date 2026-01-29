@@ -1,5 +1,6 @@
 // VectorStore implementation with LanceDB integration
 
+import { createHash } from 'node:crypto'
 import { type Connection, Index, type Table, connect } from '@lancedb/lancedb'
 import { DatabaseError } from '../errors/index.js'
 
@@ -60,13 +61,44 @@ const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/
  * @param filePath - The file path to validate
  * @returns true if path is safe for use in queries
  */
-function isValidFilePath(filePath: string): boolean {
+/**
+ * Validate file path to prevent SQL injection and path traversal attacks.
+ * @param filePath - The file path to validate
+ * @returns true if path is safe for use in queries
+ */
+export function isValidFilePath(filePath: string): boolean {
   if (!filePath || typeof filePath !== 'string') return false
   if (filePath.includes('..')) return false // Path traversal
   if (filePath.includes("'") || filePath.includes('"')) return false // Quote injection
   if (filePath.includes(';')) return false // SQL terminator
   if (filePath.includes('--')) return false // SQL comment
   return SAFE_PATH_REGEX.test(filePath)
+}
+
+// ============================================
+// Chunk Fingerprinting (Resilient Linking v0)
+// ============================================
+
+/**
+ * Normalize text for fingerprinting.
+ * - Converts to lowercase
+ * - Collapses whitespace
+ * - Trims leading/trailing whitespace
+ */
+function normalizeTextForFingerprint(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Generate a content-based fingerprint for a chunk.
+ * Uses SHA-256 hash of normalized text (first 16 hex chars for compactness).
+ * This enables stable chunk identification across re-indexing.
+ */
+export function generateChunkFingerprint(text: string): string {
+  const normalized = normalizeTextForFingerprint(text)
+  const hash = createHash('sha256').update(normalized, 'utf8').digest('hex')
+  // Use first 16 characters (64 bits) - sufficient for practical uniqueness
+  return hash.slice(0, 16)
 }
 
 // ============================================
@@ -130,6 +162,8 @@ export interface VectorChunk {
   metadata: DocumentMetadata
   /** Ingestion timestamp (ISO 8601 format) */
   timestamp: string
+  /** Content-based fingerprint for resilient linking (SHA-256 prefix) */
+  fingerprint?: string
 }
 
 /**
@@ -150,6 +184,8 @@ export interface SearchResult {
   score: number
   /** Metadata */
   metadata: DocumentMetadata
+  /** Content-based fingerprint for resilient linking */
+  fingerprint?: string
 }
 
 /**
@@ -160,6 +196,7 @@ interface LanceDBRawResult {
   chunkIndex: number
   text: string
   metadata: DocumentMetadata
+  fingerprint?: string
   _distance?: number
   _score?: number
 }
@@ -203,13 +240,21 @@ function toSearchResult(raw: unknown): SearchResult {
   if (!isLanceDBRawResult(raw)) {
     throw new DatabaseError('Invalid search result format from LanceDB')
   }
-  return {
+  const result: SearchResult = {
     filePath: raw.filePath,
     chunkIndex: raw.chunkIndex,
     text: raw.text,
     score: raw._distance ?? raw._score ?? 0,
     metadata: raw.metadata,
   }
+  // Include fingerprint if present, otherwise generate on-the-fly for backwards compatibility
+  if (raw.fingerprint) {
+    result.fingerprint = raw.fingerprint
+  } else {
+    // Generate fingerprint from text for legacy data without stored fingerprints
+    result.fingerprint = generateChunkFingerprint(raw.text)
+  }
+  return result
 }
 
 // ============================================
@@ -419,13 +464,19 @@ export class VectorStore {
     }
 
     try {
+      // Ensure all chunks have fingerprints (Resilient Linking v0)
+      const chunksWithFingerprints = chunks.map((chunk) => ({
+        ...chunk,
+        fingerprint: chunk.fingerprint || generateChunkFingerprint(chunk.text),
+      }))
+
       if (!this.table) {
         // Create table on first insertion
         if (!this.db) {
           throw new DatabaseError('VectorStore is not initialized. Call initialize() first.')
         }
         // LanceDB's createTable API accepts data as Record<string, unknown>[]
-        const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
+        const records = chunksWithFingerprints.map((chunk) => chunk as unknown as Record<string, unknown>)
         this.table = await this.db.createTable(this.config.tableName, records)
         console.error(`VectorStore: Created table "${this.config.tableName}"`)
 
@@ -433,7 +484,7 @@ export class VectorStore {
         await this.ensureFtsIndex()
       } else {
         // Add data to existing table
-        const records = chunks.map((chunk) => chunk as unknown as Record<string, unknown>)
+        const records = chunksWithFingerprints.map((chunk) => chunk as unknown as Record<string, unknown>)
         await this.table.add(records)
 
         // Rebuild FTS index after adding new data
@@ -782,13 +833,18 @@ export class VectorStore {
         .toArray()
 
       // Convert to SearchResult format and sort by chunkIndex
-      const chunks: SearchResult[] = results.map((record) => ({
-        filePath: record.filePath as string,
-        chunkIndex: record.chunkIndex as number,
-        text: record.text as string,
-        score: 0, // No distance score for direct retrieval
-        metadata: record.metadata as DocumentMetadata,
-      }))
+      const chunks: SearchResult[] = results.map((record) => {
+        const text = record.text as string
+        return {
+          filePath: record.filePath as string,
+          chunkIndex: record.chunkIndex as number,
+          text,
+          score: 0, // No distance score for direct retrieval
+          metadata: record.metadata as DocumentMetadata,
+          // Include fingerprint - generate if not stored (backwards compatibility)
+          fingerprint: (record.fingerprint as string | undefined) || generateChunkFingerprint(text),
+        }
+      })
 
       return chunks.sort((a, b) => a.chunkIndex - b.chunkIndex)
     } catch (error) {

@@ -57,6 +57,15 @@ function createMockRes(): {
   return { res, json, status }
 }
 
+// Type for router stack layer with optional route
+type RouterLayer = {
+  route?: {
+    path?: string
+    methods?: Record<string, boolean>
+    stack?: Array<{ handle: Function }>
+  }
+}
+
 describe('API Routes', () => {
   let mockServer: Partial<RAGServer>
 
@@ -67,8 +76,8 @@ describe('API Routes', () => {
   describe('POST /search', () => {
     it('should call handleQueryDocuments with query and limit', async () => {
       const router = createApiRouter(mockServer as RAGServer)
-      const searchRoute = router.stack.find(
-        (layer: { route?: { path: string } }) => layer.route?.path === '/search'
+      const searchRoute = (router.stack as unknown as RouterLayer[]).find(
+        (layer) => layer.route?.path === '/search'
       )
 
       expect(searchRoute).toBeDefined()
@@ -78,9 +87,8 @@ describe('API Routes', () => {
       const router = createApiRouter(mockServer as RAGServer)
 
       // Find the search handler
-      const searchLayer = router.stack.find(
-        (layer: { route?: { path: string; methods: { post?: boolean } } }) =>
-          layer.route?.path === '/search' && layer.route?.methods?.post
+      const searchLayer = (router.stack as unknown as RouterLayer[]).find(
+        (layer) => layer.route?.path === '/search' && layer.route?.methods?.['post']
       )
 
       expect(searchLayer).toBeDefined()
@@ -95,7 +103,7 @@ describe('API Routes', () => {
 
         // Error should be passed to next
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'Query is required and must be a string'
         )
       }
@@ -106,9 +114,8 @@ describe('API Routes', () => {
     it('should return 400 if content is missing', async () => {
       const router = createApiRouter(mockServer as RAGServer)
 
-      const dataLayer = router.stack.find(
-        (layer: { route?: { path: string; methods: { post?: boolean } } }) =>
-          layer.route?.path === '/data' && layer.route?.methods?.post
+      const dataLayer = (router.stack as unknown as RouterLayer[]).find(
+        (layer) => layer.route?.path === '/data' && layer.route?.methods?.['post']
       )
 
       expect(dataLayer).toBeDefined()
@@ -123,7 +130,7 @@ describe('API Routes', () => {
 
         // Error should be passed to next
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'Content is required and must be a string'
         )
       }
@@ -132,9 +139,8 @@ describe('API Routes', () => {
     it('should return 400 if metadata is missing', async () => {
       const router = createApiRouter(mockServer as RAGServer)
 
-      const dataLayer = router.stack.find(
-        (layer: { route?: { path: string; methods: { post?: boolean } } }) =>
-          layer.route?.path === '/data' && layer.route?.methods?.post
+      const dataLayer = (router.stack as unknown as RouterLayer[]).find(
+        (layer) => layer.route?.path === '/data' && layer.route?.methods?.['post']
       )
 
       if (dataLayer?.route?.stack?.[0]?.handle) {
@@ -147,7 +153,7 @@ describe('API Routes', () => {
 
         // Error should be passed to next
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'Metadata with source and format is required'
         )
       }
@@ -158,9 +164,8 @@ describe('API Routes', () => {
     it('should call handleListFiles', async () => {
       const router = createApiRouter(mockServer as RAGServer)
 
-      const filesLayer = router.stack.find(
-        (layer: { route?: { path: string; methods: { get?: boolean } } }) =>
-          layer.route?.path === '/files' && layer.route?.methods?.get
+      const filesLayer = (router.stack as unknown as RouterLayer[]).find(
+        (layer) => layer.route?.path === '/files' && layer.route?.methods?.['get']
       )
 
       expect(filesLayer).toBeDefined()
@@ -169,8 +174,9 @@ describe('API Routes', () => {
         const handler = filesLayer.route.stack[0].handle
         const req = createMockReq()
         const { res, json } = createMockRes()
+        const next = vi.fn()
 
-        await handler(req as Request, res as Response)
+        await handler(req as Request, res as Response, next as NextFunction)
 
         expect(mockServer.handleListFiles).toHaveBeenCalled()
         expect(json).toHaveBeenCalledWith({ files: [] })
@@ -182,9 +188,8 @@ describe('API Routes', () => {
     it('should return 400 if neither filePath nor source provided', async () => {
       const router = createApiRouter(mockServer as RAGServer)
 
-      const deleteLayer = router.stack.find(
-        (layer: { route?: { path: string; methods: { delete?: boolean } } }) =>
-          layer.route?.path === '/files' && layer.route?.methods?.delete
+      const deleteLayer = (router.stack as unknown as RouterLayer[]).find(
+        (layer) => layer.route?.path === '/files' && layer.route?.methods?.['delete']
       )
 
       expect(deleteLayer).toBeDefined()
@@ -199,7 +204,7 @@ describe('API Routes', () => {
 
         // Error should be passed to next
         expect(next).toHaveBeenCalledWith(expect.any(ValidationError))
-        expect((next.mock.calls[0][0] as ValidationError).message).toBe(
+        expect((next.mock.calls[0]![0] as ValidationError).message).toBe(
           'Either filePath or source is required'
         )
       }
@@ -210,9 +215,8 @@ describe('API Routes', () => {
     it('should call handleStatus and return status object', async () => {
       const router = createApiRouter(mockServer as RAGServer)
 
-      const statusLayer = router.stack.find(
-        (layer: { route?: { path: string; methods: { get?: boolean } } }) =>
-          layer.route?.path === '/status' && layer.route?.methods?.get
+      const statusLayer = (router.stack as unknown as RouterLayer[]).find(
+        (layer) => layer.route?.path === '/status' && layer.route?.methods?.['get']
       )
 
       expect(statusLayer).toBeDefined()
@@ -221,8 +225,9 @@ describe('API Routes', () => {
         const handler = statusLayer.route.stack[0].handle
         const req = createMockReq()
         const { res, json } = createMockRes()
+        const next = vi.fn()
 
-        await handler(req as Request, res as Response)
+        await handler(req as Request, res as Response, next as NextFunction)
 
         expect(mockServer.handleStatus).toHaveBeenCalled()
         expect(json).toHaveBeenCalledWith({
@@ -240,11 +245,13 @@ describe('API Routes', () => {
     it('should have all 6 expected routes', () => {
       const router = createApiRouter(mockServer as RAGServer)
 
-      const routes = router.stack
-        .filter((layer: { route?: unknown }) => layer.route)
-        .map((layer: { route: { path: string; methods: Record<string, boolean> } }) => ({
-          path: layer.route.path,
-          methods: Object.keys(layer.route.methods).filter((m) => layer.route.methods[m]),
+      const routes = (router.stack as unknown as RouterLayer[])
+        .filter((layer) => layer.route)
+        .map((layer) => ({
+          path: layer.route!.path,
+          methods: Object.keys(layer.route!.methods ?? {}).filter(
+            (m) => layer.route!.methods![m]
+          ),
         }))
 
       expect(routes).toContainEqual({ path: '/search', methods: ['post'] })

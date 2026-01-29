@@ -1,8 +1,3 @@
-// RAG MCP Server E2E Test - Design Doc: rag-mcp-server-design.md (v1.1)
-// Generated: 2025-10-31
-// Test Type: End-to-End Test
-// Implementation Timing: After all implementations complete
-
 import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -17,7 +12,7 @@ describe('RAG MCP Server E2E Test', () => {
 
   // --------------------------------------------
   // --------------------------------------------
-  describe('Complete RAG Flow (Phase 1: PDF/TXT/MD)', () => {
+  describe('Complete RAG Flow - Text Formats', () => {
     // User Scenario: File ingestion from MCP client → search workflow
     // Validation: End-to-end document ingestion → search → result retrieval works correctly
     it('User Journey: Ingest PDF file from MCP client → Search with natural language query → Retrieve related documents', async () => {
@@ -83,7 +78,7 @@ describe('RAG MCP Server E2E Test', () => {
 
   // --------------------------------------------
   // --------------------------------------------
-  describe('Complete RAG Flow (Phase 2: DOCX support, File re-ingestion)', () => {
+  describe('Complete RAG Flow - DOCX and Re-ingestion', () => {
     // User Scenario: Ingest DOCX file → Search
     // Validation: DOCX file can be ingested and searched
     it('User Journey: Ingest DOCX file → Search with natural language query → Retrieve related documents', async () => {

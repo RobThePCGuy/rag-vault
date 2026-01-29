@@ -57,9 +57,32 @@ export function MarginNote({
 
       {/* Connection reason */}
       {chunk.connectionReason && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-2">
+        <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-1">
           {chunk.connectionReason}
         </p>
+      )}
+
+      {/* Explanation: shared keywords/phrases (Explainability feature) */}
+      {chunk.explanation && (
+        <div className="mb-2">
+          {chunk.explanation.sharedKeywords.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-1">
+              {chunk.explanation.sharedKeywords.slice(0, 3).map((keyword) => (
+                <span
+                  key={keyword}
+                  className="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          )}
+          {chunk.explanation.sharedPhrases.length > 0 && (
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              "{chunk.explanation.sharedPhrases[0]}"
+            </p>
+          )}
+        </div>
       )}
 
       {/* Actions */}

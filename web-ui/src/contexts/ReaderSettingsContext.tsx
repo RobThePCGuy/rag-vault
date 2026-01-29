@@ -14,6 +14,8 @@ export interface ReaderSettings {
   lineHeight: LineHeight
   fontFamily: FontFamily
   showChunkNumbers: boolean
+  /** Semantic heatmap: show connected terms (off by default) */
+  showHeatmap: boolean
 }
 
 export interface ReaderSettingsContextValue {
@@ -22,6 +24,7 @@ export interface ReaderSettingsContextValue {
   setLineHeight: (height: LineHeight) => void
   setFontFamily: (family: FontFamily) => void
   setShowChunkNumbers: (show: boolean) => void
+  setShowHeatmap: (show: boolean) => void
   resetSettings: () => void
   cssVariables: Record<string, string>
 }
@@ -35,6 +38,7 @@ const DEFAULT_SETTINGS: ReaderSettings = {
   lineHeight: 'normal',
   fontFamily: 'sans',
   showChunkNumbers: true,
+  showHeatmap: false, // Off by default (cognitive load)
 }
 
 const FONT_SIZE_MAP: Record<FontSize, string> = {
@@ -99,6 +103,13 @@ export function ReaderSettingsProvider({ children, vaultId = 'default' }: Reader
     [setSettings]
   )
 
+  const setShowHeatmap = useCallback(
+    (showHeatmap: boolean) => {
+      setSettings((prev) => ({ ...prev, showHeatmap }))
+    },
+    [setSettings]
+  )
+
   const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS)
   }, [setSettings])
@@ -119,10 +130,11 @@ export function ReaderSettingsProvider({ children, vaultId = 'default' }: Reader
       setLineHeight,
       setFontFamily,
       setShowChunkNumbers,
+      setShowHeatmap,
       resetSettings,
       cssVariables,
     }),
-    [settings, setFontSize, setLineHeight, setFontFamily, setShowChunkNumbers, resetSettings, cssVariables]
+    [settings, setFontSize, setLineHeight, setFontFamily, setShowChunkNumbers, setShowHeatmap, resetSettings, cssVariables]
   )
 
   return <ReaderSettingsContext.Provider value={value}>{children}</ReaderSettingsContext.Provider>

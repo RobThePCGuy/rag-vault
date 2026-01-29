@@ -22,7 +22,7 @@ function createMockReq(overrides: Partial<Request> = {}): Partial<Request> {
         return 'test-agent/1.0'
       }
       return undefined
-    }),
+    }) as unknown as Request['get'],
     ...overrides,
   }
 }
@@ -104,7 +104,7 @@ describe('Request Logger Middleware', () => {
       middleware(req as Request, res as Response, next)
       res.emit('finish')
 
-      const logEntry: RequestLogEntry = customLogger.mock.calls[0][0]
+      const logEntry: RequestLogEntry = customLogger.mock.calls[0]![0]
 
       expect(logEntry.method).toBe('POST')
       expect(logEntry.path).toBe('/api/v1/search')
@@ -125,7 +125,7 @@ describe('Request Logger Middleware', () => {
       middleware(req as Request, res as Response, next)
       res.emit('finish')
 
-      const logEntry: RequestLogEntry = customLogger.mock.calls[0][0]
+      const logEntry: RequestLogEntry = customLogger.mock.calls[0]![0]
       expect(logEntry.contentLength).toBe(1234)
     })
 
@@ -176,7 +176,7 @@ describe('Request Logger Middleware', () => {
 
       res.emit('finish')
 
-      const logEntry: RequestLogEntry = customLogger.mock.calls[0][0]
+      const logEntry: RequestLogEntry = customLogger.mock.calls[0]![0]
       expect(logEntry.responseTime).toBe(150)
     })
 
@@ -193,7 +193,7 @@ describe('Request Logger Middleware', () => {
       middleware(req as Request, res as Response, next)
       res.emit('finish')
 
-      const logEntry: RequestLogEntry = customLogger.mock.calls[0][0]
+      const logEntry: RequestLogEntry = customLogger.mock.calls[0]![0]
       expect(logEntry.clientIp).toBe('unknown')
     })
 
@@ -209,24 +209,26 @@ describe('Request Logger Middleware', () => {
       middleware(req as Request, res as Response, next)
       res.emit('finish')
 
-      const logEntry: RequestLogEntry = customLogger.mock.calls[0][0]
+      const logEntry: RequestLogEntry = customLogger.mock.calls[0]![0]
       expect(logEntry.userAgent).toBe('unknown')
     })
 
     it('should use url when originalUrl is not available', () => {
       const customLogger = vi.fn()
       const middleware = createRequestLogger({ logger: customLogger })
-      const req = createMockReq({
+      const baseReq = createMockReq({
         url: '/fallback-url',
-        originalUrl: undefined,
       })
+      // Remove originalUrl to simulate it not being available
+      delete (baseReq as { originalUrl?: string }).originalUrl
+      const req = baseReq
       const res = createMockRes()
       const next = vi.fn()
 
       middleware(req as Request, res as Response, next)
       res.emit('finish')
 
-      const logEntry: RequestLogEntry = customLogger.mock.calls[0][0]
+      const logEntry: RequestLogEntry = customLogger.mock.calls[0]![0]
       expect(logEntry.path).toBe('/fallback-url')
     })
   })

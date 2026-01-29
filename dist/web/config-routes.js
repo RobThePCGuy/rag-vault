@@ -32,11 +32,11 @@ function createConfigRouter(dbManager) {
     }));
     // POST /api/v1/config/databases/create - Create new database
     router.post('/databases/create', (0, index_js_2.asyncHandler)(async (req, res) => {
-        const { dbPath, name } = req.body;
+        const { dbPath, name, modelName } = req.body;
         if (!dbPath || typeof dbPath !== 'string') {
             throw new index_js_1.ValidationError('dbPath is required and must be a string');
         }
-        await dbManager.createDatabase({ dbPath, name });
+        await dbManager.createDatabase({ dbPath, name, modelName });
         const config = await dbManager.getCurrentConfig();
         res.json({ success: true, config });
     }));
@@ -48,6 +48,61 @@ function createConfigRouter(dbManager) {
         }
         const databases = await dbManager.scanForDatabases(scanPath);
         res.json({ databases });
+    }));
+    // GET /api/v1/config/allowed-roots - List all effective allowed roots
+    router.get('/allowed-roots', (0, index_js_2.asyncHandler)(async (_req, res) => {
+        const info = dbManager.getAllowedRootsInfo();
+        res.json(info);
+    }));
+    // POST /api/v1/config/allowed-roots - Add a new allowed root
+    router.post('/allowed-roots', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const { path: rootPath } = req.body;
+        if (!rootPath || typeof rootPath !== 'string') {
+            throw new index_js_1.ValidationError('path is required and must be a string');
+        }
+        dbManager.addUserAllowedRoot(rootPath);
+        const info = dbManager.getAllowedRootsInfo();
+        res.json({ success: true, ...info });
+    }));
+    // DELETE /api/v1/config/allowed-roots - Remove an allowed root
+    router.delete('/allowed-roots', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const { path: rootPath } = req.body;
+        if (!rootPath || typeof rootPath !== 'string') {
+            throw new index_js_1.ValidationError('path is required and must be a string');
+        }
+        dbManager.removeUserAllowedRoot(rootPath);
+        const info = dbManager.getAllowedRootsInfo();
+        res.json({ success: true, ...info });
+    }));
+    // GET /api/v1/config/browse - List directory contents for folder browser
+    router.get('/browse', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const dirPath = req.query['path'];
+        const showHidden = req.query['showHidden'] === 'true';
+        if (!dirPath || typeof dirPath !== 'string') {
+            throw new index_js_1.ValidationError('path query parameter is required');
+        }
+        const entries = await dbManager.listDirectory(dirPath, showHidden);
+        res.json({ entries, path: dirPath });
+    }));
+    // GET /api/v1/config/models - List available embedding models
+    router.get('/models', (0, index_js_2.asyncHandler)(async (_req, res) => {
+        const models = dbManager.getAvailableModels();
+        res.json({ models });
+    }));
+    // GET /api/v1/config/export - Export configuration as JSON
+    router.get('/export', (0, index_js_2.asyncHandler)(async (_req, res) => {
+        const config = dbManager.exportConfig();
+        res.json(config);
+    }));
+    // POST /api/v1/config/import - Import configuration from JSON
+    router.post('/import', (0, index_js_2.asyncHandler)(async (req, res) => {
+        const { config } = req.body;
+        if (!config || typeof config !== 'object') {
+            throw new index_js_1.ValidationError('config is required and must be an object');
+        }
+        dbManager.importConfig(config);
+        const info = dbManager.getAllowedRootsInfo();
+        res.json({ success: true, ...info });
     }));
     return router;
 }

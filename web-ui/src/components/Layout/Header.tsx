@@ -1,27 +1,28 @@
 import { Link } from 'react-router-dom'
 import { useCurrentConfig } from '../../hooks'
+import { ThemeToggle } from '../Settings/ThemeToggle'
 
 export function Header() {
   const { config } = useCurrentConfig()
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 transition-colors">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900">MCP Local RAG</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">MCP Local RAG</h1>
         <div className="flex items-center gap-4">
           {config && (
             <Link
               to="/settings"
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
               title={config.dbPath}
             >
-              <DatabaseIcon className="w-4 h-4 text-green-500" />
+              <DatabaseIcon className="w-4 h-4 text-green-500 dark:text-green-400" />
               <span className="font-medium">{config.name}</span>
-              <span className="text-gray-400">|</span>
+              <span className="text-gray-400 dark:text-gray-500">|</span>
               <span>{config.documentCount} docs</span>
             </Link>
           )}
-          <span className="text-sm text-gray-500">Local Document Search</span>
+          <ThemeToggle />
         </div>
       </div>
     </header>

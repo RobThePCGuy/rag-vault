@@ -244,7 +244,12 @@ describe('DatabaseManager', () => {
 
       await dbManager.initialize(testDbPath)
 
-      await expect(dbManager.scanForDatabases(testDir)).rejects.toThrow('outside allowed roots')
+      // Use a path that is outside both env roots and baseDir (testDir is the parent of testDbPath)
+      // The baseDir is testDir since testDbPath is testDir/test-db
+      // So we need to scan a path that is not within testDir or /some/restricted/path
+      const outsidePath = '/var/log' // This is definitely outside testDir and /some/restricted/path
+
+      await expect(dbManager.scanForDatabases(outsidePath)).rejects.toThrow('outside allowed roots')
 
       // Cleanup
       process.env['ALLOWED_SCAN_ROOTS'] = originalRoots ?? ''

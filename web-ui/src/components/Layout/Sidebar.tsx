@@ -10,7 +10,7 @@ const navItems = [
 
 export function Sidebar() {
   return (
-    <aside className="w-56 bg-white border-r border-gray-200 p-4">
+    <aside className="w-56 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 transition-colors">
       <nav className="space-y-1">
         {navItems.map((item) => (
           <NavLink
@@ -18,7 +18,9 @@ export function Sidebar() {
             to={item.to}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
+                isActive
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`
             }
           >

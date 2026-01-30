@@ -55,6 +55,9 @@ export function useReadingStats({
   const chunkStartTime = useRef<number | null>(null)
   const lastChunkIndex = useRef<number | null>(null)
   const isWindowFocused = useRef(true)
+  // Store activeChunkIndex in ref to avoid stale closure in blur handler
+  const activeChunkIndexRef = useRef<number | null>(activeChunkIndex)
+  activeChunkIndexRef.current = activeChunkIndex
 
   // Handle window focus/blur for pausing time tracking
   useEffect(() => {
@@ -62,19 +65,20 @@ export function useReadingStats({
 
     const handleFocus = () => {
       isWindowFocused.current = true
-      // Resume timing
-      if (activeChunkIndex !== null && chunkStartTime.current === null) {
+      // Resume timing using ref to get current chunk
+      if (activeChunkIndexRef.current !== null && chunkStartTime.current === null) {
         chunkStartTime.current = Date.now()
       }
     }
 
     const handleBlur = () => {
       isWindowFocused.current = false
-      // Pause timing - record current time
-      if (activeChunkIndex !== null && chunkStartTime.current !== null) {
+      // Pause timing - record current time using ref to get current chunk
+      const currentChunk = activeChunkIndexRef.current
+      if (currentChunk !== null && chunkStartTime.current !== null) {
         const timeSpent = Date.now() - chunkStartTime.current
         if (timeSpent >= minViewTimeMs) {
-          ctx.recordTimeSpent(filePath, activeChunkIndex, timeSpent)
+          ctx.recordTimeSpent(filePath, currentChunk, timeSpent)
         }
         chunkStartTime.current = null
       }
@@ -87,7 +91,7 @@ export function useReadingStats({
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('blur', handleBlur)
     }
-  }, [enabled, filePath, activeChunkIndex, minViewTimeMs, ctx])
+  }, [enabled, filePath, minViewTimeMs, ctx])
 
   // Track chunk changes
   useEffect(() => {

@@ -167,9 +167,15 @@ export function TagsProvider({ children, vaultId = 'default' }: TagsProviderProp
       setStore((prev) => ({
         ...prev,
         updatedAt: new Date().toISOString(),
-        tags: prev.tags.map((t) =>
-          t.id === tagId ? { ...t, ...updates } : t
-        ),
+        tags: prev.tags.map((t) => {
+          if (t.id !== tagId) return t
+          // Normalize name - trim like createTag does
+          const normalizedUpdates: Partial<Pick<Tag, 'name' | 'color'>> = { ...updates }
+          if (normalizedUpdates.name !== undefined) {
+            normalizedUpdates.name = normalizedUpdates.name.trim()
+          }
+          return { ...t, ...normalizedUpdates }
+        }),
       }))
     },
     [setStore]

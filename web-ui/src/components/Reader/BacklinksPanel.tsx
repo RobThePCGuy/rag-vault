@@ -27,7 +27,7 @@ export function BacklinksPanel({
       {/* Header */}
       <button
         type="button"
-        onClick={onToggleExpand}
+        onClick={() => onToggleExpand?.()}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
       >
         <div className="flex items-center gap-2">

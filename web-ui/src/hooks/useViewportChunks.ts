@@ -15,6 +15,8 @@ export function useViewportChunks(rootMargin = '100px'): UseViewportChunksResult
   const [activeChunkIndex, setActiveChunkIndex] = useState<number | null>(null)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const elementsRef = useRef<Map<number, HTMLElement>>(new Map())
+  // Queue for elements registered before observer is ready
+  const pendingObserveRef = useRef<Set<number>>(new Set())
 
   // Initialize intersection observer
   useEffect(() => {
@@ -43,13 +45,23 @@ export function useViewportChunks(rootMargin = '100px'): UseViewportChunksResult
       }
     )
 
+    const observer = observerRef.current
+
     // Observe all registered elements
     for (const [, element] of elementsRef.current) {
-      observerRef.current.observe(element)
+      observer.observe(element)
     }
 
+    // Process pending registrations (elements registered before observer was ready)
+    for (const index of pendingObserveRef.current) {
+      const element = elementsRef.current.get(index)
+      if (element) observer.observe(element)
+    }
+    pendingObserveRef.current.clear()
+
     return () => {
-      observerRef.current?.disconnect()
+      observer.disconnect()
+      observerRef.current = null // Mark as unavailable
     }
   }, [rootMargin])
 
@@ -73,12 +85,21 @@ export function useViewportChunks(rootMargin = '100px'): UseViewportChunksResult
     if (prevElement && observer) {
       observer.unobserve(prevElement)
     }
+    // Remove from pending queue if present
+    pendingObserveRef.current.delete(index)
 
     if (element) {
-      // Store and observe new element
+      // Store new element
       elementsRef.current.set(index, element)
       element.setAttribute('data-chunk-index', String(index))
-      observer?.observe(element)
+
+      if (observer) {
+        // Observer is ready - observe immediately
+        observer.observe(element)
+      } else {
+        // Observer not ready yet - queue for later
+        pendingObserveRef.current.add(index)
+      }
     } else {
       // Remove from map if element is null
       elementsRef.current.delete(index)

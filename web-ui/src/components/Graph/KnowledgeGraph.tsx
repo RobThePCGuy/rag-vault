@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GraphConfig, GraphData, GraphNode } from './types'
 import { DEFAULT_GRAPH_CONFIG } from './types'
 import { useForceSimulation } from './useForceSimulation'
@@ -34,7 +34,10 @@ export function KnowledgeGraph({
   const isPanningRef = useRef(false)
   const lastMousePosRef = useRef({ x: 0, y: 0 })
 
-  const config = { ...DEFAULT_GRAPH_CONFIG, ...configOverrides }
+  const config = useMemo(
+    () => ({ ...DEFAULT_GRAPH_CONFIG, ...configOverrides }),
+    [configOverrides]
+  )
 
   // Force simulation
   const { nodes, isStable } = useForceSimulation({
@@ -199,7 +202,7 @@ export function KnowledgeGraph({
         edge.type === 'pinned'
           ? config.pinnedEdgeColor
           : edge.type === 'backlink'
-            ? config.backlinkedgeColor
+            ? config.backlinkEdgeColor
             : config.semanticEdgeColor
 
       ctx.lineWidth = edge.type === 'pinned' ? config.edgeWidth * 1.5 : config.edgeWidth

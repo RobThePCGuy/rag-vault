@@ -229,8 +229,8 @@ export function LinksProvider({ children, vaultId = 'default' }: LinksProviderPr
       }
 
       // Update fingerprints asynchronously
-      Promise.all([hashText(sourceText), hashText(targetText)]).then(
-        ([sourceFingerprint, targetFingerprint]) => {
+      Promise.all([hashText(sourceText), hashText(targetText)])
+        .then(([sourceFingerprint, targetFingerprint]) => {
           setStore((prev) => ({
             ...prev,
             pins: prev.pins.map((p) =>
@@ -246,8 +246,10 @@ export function LinksProvider({ children, vaultId = 'default' }: LinksProviderPr
           ).catch(() => {
             // Silently ignore feedback errors - non-critical
           })
-        }
-      )
+        })
+        .catch((error) => {
+          console.warn('Failed to hash text for pin fingerprints:', error)
+        })
 
       setStore((prev) => ({
         ...prev,

@@ -85,6 +85,78 @@ export function useKeyboardNav({
 }: UseKeyboardNavOptions): UseKeyboardNavResult {
   const containerRef = useRef<HTMLDivElement>(null)
 
+  // Store state in refs to avoid frequent listener re-registration
+  const stateRef = useRef({
+    totalChunks,
+    activeChunkIndex,
+    isOverlayOpen,
+    isSearchOpen,
+    isGraphOpen,
+    isDiscoveryMode,
+  })
+
+  // Store callbacks in refs
+  const callbacksRef = useRef({
+    onNavigateToChunk,
+    onToggleSplit,
+    onPinTopSuggestion,
+    onOpenSearch,
+    onOpenHelp,
+    onCloseOverlay,
+    onNextSearchMatch,
+    onPreviousSearchMatch,
+    onToggleBookmark,
+    onOpenTagPicker,
+    onToggleAnnotationPanel,
+    onToggleReadingMode,
+    onOpenComparison,
+    onResetGraphLayout,
+    onOpenGraphExport,
+    onTogglePathfinding,
+    onToggleClustering,
+    onToggleInferredLinks,
+    onToggleCrossDocPanel,
+    onToggleStatsPanel,
+    onToggleDiscoveryMode,
+    onDiscoverySelectSuggestion,
+    onDiscoveryGoBack,
+  })
+
+  // Update refs on every render
+  stateRef.current = {
+    totalChunks,
+    activeChunkIndex,
+    isOverlayOpen,
+    isSearchOpen,
+    isGraphOpen,
+    isDiscoveryMode,
+  }
+  callbacksRef.current = {
+    onNavigateToChunk,
+    onToggleSplit,
+    onPinTopSuggestion,
+    onOpenSearch,
+    onOpenHelp,
+    onCloseOverlay,
+    onNextSearchMatch,
+    onPreviousSearchMatch,
+    onToggleBookmark,
+    onOpenTagPicker,
+    onToggleAnnotationPanel,
+    onToggleReadingMode,
+    onOpenComparison,
+    onResetGraphLayout,
+    onOpenGraphExport,
+    onTogglePathfinding,
+    onToggleClustering,
+    onToggleInferredLinks,
+    onToggleCrossDocPanel,
+    onToggleStatsPanel,
+    onToggleDiscoveryMode,
+    onDiscoverySelectSuggestion,
+    onDiscoveryGoBack,
+  }
+
   const shouldIgnoreKeyboard = useCallback((): boolean => {
     // Check if focus is inside input, textarea, or contenteditable
     const activeElement = document.activeElement
@@ -107,30 +179,33 @@ export function useKeyboardNav({
     return false
   }, [])
 
+  // Stable handler that reads from refs to avoid frequent re-registration
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (!enabled) return
       if (shouldIgnoreKeyboard()) return
+
+      const state = stateRef.current
+      const callbacks = callbacksRef.current
 
       // Handle Escape first - always close overlays
       if (event.key === 'Escape') {
-        if (isOverlayOpen) {
+        if (state.isOverlayOpen) {
           event.preventDefault()
-          onCloseOverlay()
+          callbacks.onCloseOverlay()
         }
         return
       }
 
       // If search is open, handle n/N for search navigation
-      if (isSearchOpen) {
+      if (state.isSearchOpen) {
         switch (event.key) {
           case 'n':
             event.preventDefault()
-            onNextSearchMatch?.()
+            callbacks.onNextSearchMatch?.()
             return
           case 'N':
             event.preventDefault()
-            onPreviousSearchMatch?.()
+            callbacks.onPreviousSearchMatch?.()
             return
         }
         // Don't process other shortcuts when search is open
@@ -138,64 +213,64 @@ export function useKeyboardNav({
       }
 
       // If an overlay is open, don't process other shortcuts
-      if (isOverlayOpen) return
+      if (state.isOverlayOpen) return
 
       switch (event.key) {
         case 'j': {
           // Navigate to next chunk
           event.preventDefault()
-          const nextIndex = activeChunkIndex === null ? 0 : Math.min(activeChunkIndex + 1, totalChunks - 1)
-          onNavigateToChunk(nextIndex)
+          const nextIndex = state.activeChunkIndex === null ? 0 : Math.min(state.activeChunkIndex + 1, state.totalChunks - 1)
+          callbacks.onNavigateToChunk(nextIndex)
           break
         }
 
         case 'k': {
           // Navigate to previous chunk
           event.preventDefault()
-          const prevIndex = activeChunkIndex === null ? 0 : Math.max(activeChunkIndex - 1, 0)
-          onNavigateToChunk(prevIndex)
+          const prevIndex = state.activeChunkIndex === null ? 0 : Math.max(state.activeChunkIndex - 1, 0)
+          callbacks.onNavigateToChunk(prevIndex)
           break
         }
 
         case ' ': {
           // Toggle split view (Space)
           event.preventDefault()
-          onToggleSplit()
+          callbacks.onToggleSplit()
           break
         }
 
         case 'p': {
           // Pin top margin suggestion
           event.preventDefault()
-          onPinTopSuggestion()
+          callbacks.onPinTopSuggestion()
           break
         }
 
         case '/': {
           // Open search overlay
           event.preventDefault()
-          onOpenSearch()
+          callbacks.onOpenSearch()
           break
         }
 
         case '?': {
           // Open keyboard shortcuts help
           event.preventDefault()
-          onOpenHelp()
+          callbacks.onOpenHelp()
           break
         }
 
         case 'b': {
           // Toggle bookmark on active chunk
           event.preventDefault()
-          onToggleBookmark?.()
+          callbacks.onToggleBookmark?.()
           break
         }
 
         case 't': {
           // Open tag picker for active chunk
           event.preventDefault()
-          onOpenTagPicker?.()
+          callbacks.onOpenTagPicker?.()
           break
         }
 
@@ -203,53 +278,53 @@ export function useKeyboardNav({
         case 'a': {
           // Toggle annotation summary panel
           event.preventDefault()
-          onToggleAnnotationPanel?.()
+          callbacks.onToggleAnnotationPanel?.()
           break
         }
 
         case 'm': {
           // Toggle reading mode (skim/full)
           event.preventDefault()
-          onToggleReadingMode?.()
+          callbacks.onToggleReadingMode?.()
           break
         }
 
         case 'c': {
           // Open chunk comparison view
           event.preventDefault()
-          onOpenComparison?.()
+          callbacks.onOpenComparison?.()
           break
         }
 
         // Phase 10: Graph controls (only when graph is open)
         case 'r': {
-          if (isGraphOpen) {
+          if (state.isGraphOpen) {
             event.preventDefault()
-            onResetGraphLayout?.()
+            callbacks.onResetGraphLayout?.()
           }
           break
         }
 
         case 'e': {
-          if (isGraphOpen) {
+          if (state.isGraphOpen) {
             event.preventDefault()
-            onOpenGraphExport?.()
+            callbacks.onOpenGraphExport?.()
           }
           break
         }
 
         case 'f': {
-          if (isGraphOpen) {
+          if (state.isGraphOpen) {
             event.preventDefault()
-            onTogglePathfinding?.()
+            callbacks.onTogglePathfinding?.()
           }
           break
         }
 
         case 'g': {
-          if (isGraphOpen) {
+          if (state.isGraphOpen) {
             event.preventDefault()
-            onToggleClustering?.()
+            callbacks.onToggleClustering?.()
           }
           break
         }
@@ -258,32 +333,33 @@ export function useKeyboardNav({
         case 'i': {
           // Toggle inferred backlinks visibility
           event.preventDefault()
-          onToggleInferredLinks?.()
+          callbacks.onToggleInferredLinks?.()
           break
         }
 
         case 'x': {
           // Toggle cross-document panel
           event.preventDefault()
-          onToggleCrossDocPanel?.()
+          callbacks.onToggleCrossDocPanel?.()
           break
         }
 
         case 's': {
           // Toggle reading statistics panel
           event.preventDefault()
-          onToggleStatsPanel?.()
+          callbacks.onToggleStatsPanel?.()
           break
         }
 
         case 'd': {
           // Toggle discovery mode
           event.preventDefault()
-          onToggleDiscoveryMode?.()
+          callbacks.onToggleDiscoveryMode?.()
           break
         }
 
         // Discovery mode number selection (1-9)
+        // Note: Handler is responsible for bounds validation against available suggestions
         case '1':
         case '2':
         case '3':
@@ -293,56 +369,24 @@ export function useKeyboardNav({
         case '7':
         case '8':
         case '9': {
-          if (isDiscoveryMode) {
+          if (state.isDiscoveryMode) {
             event.preventDefault()
             const index = parseInt(event.key) - 1
-            onDiscoverySelectSuggestion?.(index)
+            callbacks.onDiscoverySelectSuggestion?.(index)
           }
           break
         }
 
         case 'Backspace': {
-          if (isDiscoveryMode) {
+          if (state.isDiscoveryMode) {
             event.preventDefault()
-            onDiscoveryGoBack?.()
+            callbacks.onDiscoveryGoBack?.()
           }
           break
         }
       }
     },
-    [
-      enabled,
-      shouldIgnoreKeyboard,
-      isOverlayOpen,
-      isSearchOpen,
-      isGraphOpen,
-      isDiscoveryMode,
-      activeChunkIndex,
-      totalChunks,
-      onNavigateToChunk,
-      onToggleSplit,
-      onPinTopSuggestion,
-      onOpenSearch,
-      onOpenHelp,
-      onCloseOverlay,
-      onNextSearchMatch,
-      onPreviousSearchMatch,
-      onToggleBookmark,
-      onOpenTagPicker,
-      onToggleAnnotationPanel,
-      onToggleReadingMode,
-      onOpenComparison,
-      onResetGraphLayout,
-      onOpenGraphExport,
-      onTogglePathfinding,
-      onToggleClustering,
-      onToggleInferredLinks,
-      onToggleCrossDocPanel,
-      onToggleStatsPanel,
-      onToggleDiscoveryMode,
-      onDiscoverySelectSuggestion,
-      onDiscoveryGoBack,
-    ]
+    [shouldIgnoreKeyboard] // Minimal deps - reads from refs
   )
 
   useEffect(() => {

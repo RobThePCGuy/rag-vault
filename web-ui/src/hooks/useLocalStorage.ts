@@ -23,8 +23,8 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
         const newValue = value instanceof Function ? value(prev) : value
         try {
           window.localStorage.setItem(key, JSON.stringify(newValue))
-        } catch {
-          // Ignore localStorage errors (e.g., quota exceeded)
+        } catch (error) {
+          console.warn(`Failed to persist "${key}" to localStorage:`, error)
         }
         return newValue
       })

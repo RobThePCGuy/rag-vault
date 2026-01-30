@@ -289,38 +289,97 @@ export function useSynthesis(vaultId = 'default'): UseSynthesisResult {
 
   const indentItem = useCallback(
     (itemId: string) => {
-      updateItem(itemId, {
-        indentLevel: Math.min((currentDraft?.items.find((i) => i.id === itemId)?.indentLevel ?? 0) + 1, 3),
+      // Move calculation into setStore callback for atomic operation
+      setStore((prev) => {
+        const draft = prev.drafts.find((d) => d.id === prev.currentDraftId)
+        if (!draft) return prev
+
+        const item = draft.items.find((i) => i.id === itemId)
+        if (!item) return prev
+
+        const newIndentLevel = Math.min(item.indentLevel + 1, 3)
+        if (newIndentLevel === item.indentLevel) return prev
+
+        return {
+          ...prev,
+          drafts: prev.drafts.map((d) =>
+            d.id === prev.currentDraftId
+              ? {
+                  ...d,
+                  items: d.items.map((i) =>
+                    i.id === itemId ? { ...i, indentLevel: newIndentLevel } : i
+                  ),
+                  updatedAt: new Date().toISOString(),
+                }
+              : d
+          ),
+        }
       })
     },
-    [updateItem, currentDraft]
+    [setStore]
   )
 
   const outdentItem = useCallback(
     (itemId: string) => {
-      updateItem(itemId, {
-        indentLevel: Math.max((currentDraft?.items.find((i) => i.id === itemId)?.indentLevel ?? 0) - 1, 0),
+      // Move calculation into setStore callback for atomic operation
+      setStore((prev) => {
+        const draft = prev.drafts.find((d) => d.id === prev.currentDraftId)
+        if (!draft) return prev
+
+        const item = draft.items.find((i) => i.id === itemId)
+        if (!item) return prev
+
+        const newIndentLevel = Math.max(item.indentLevel - 1, 0)
+        if (newIndentLevel === item.indentLevel) return prev
+
+        return {
+          ...prev,
+          drafts: prev.drafts.map((d) =>
+            d.id === prev.currentDraftId
+              ? {
+                  ...d,
+                  items: d.items.map((i) =>
+                    i.id === itemId ? { ...i, indentLevel: newIndentLevel } : i
+                  ),
+                  updatedAt: new Date().toISOString(),
+                }
+              : d
+          ),
+        }
       })
     },
-    [updateItem, currentDraft]
+    [setStore]
   )
 
   const sendToDraft = useCallback(
     (ref: ChunkRef, text: string, type: OutlineItemType = 'chunk-ref') => {
-      // Ensure we have a draft
-      if (!currentDraft) {
-        createDraft()
+      // Ensure we have a draft - use returned draft ID to avoid stale closure
+      let targetDraftId = currentDraft?.id
+      if (!targetDraftId) {
+        const newDraft = createDraft()
+        targetDraftId = newDraft.id
       }
 
-      addItem({
+      // Use setStore directly with the known draft ID to avoid stale state
+      const newItem: OutlineItem = {
+        id: generateId(),
         type,
         content: type === 'chunk-ref' ? '' : text,
         sourceRef: type === 'chunk-ref' ? ref : undefined,
         sourcePreview: type === 'chunk-ref' ? text.slice(0, 200) : undefined,
         indentLevel: 0,
-      })
+      }
+
+      setStore((prev) => ({
+        ...prev,
+        drafts: prev.drafts.map((d) =>
+          d.id === targetDraftId
+            ? { ...d, items: [...d.items, newItem], updatedAt: new Date().toISOString() }
+            : d
+        ),
+      }))
     },
-    [currentDraft, createDraft, addItem]
+    [currentDraft, createDraft, setStore]
   )
 
   const exportToMarkdown = useCallback((): string => {

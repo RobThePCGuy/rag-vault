@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Bookmark } from '../../contexts/LinksContext'
 
 interface BookmarksPanelProps {
@@ -108,6 +108,18 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
   const [isEditing, setIsEditing] = useState(false)
   const [noteValue, setNoteValue] = useState(bookmark.note || '')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+
+  // Track previous bookmark id to reset state when bookmark changes
+  const prevBookmarkIdRef = useRef(bookmark.id)
+  useEffect(() => {
+    if (prevBookmarkIdRef.current !== bookmark.id) {
+      // Bookmark changed - reset editing state
+      setIsEditing(false)
+      setNoteValue(bookmark.note || '')
+      setShowConfirmDelete(false)
+      prevBookmarkIdRef.current = bookmark.id
+    }
+  }, [bookmark.id, bookmark.note])
 
   const handleSaveNote = () => {
     onUpdateNote(noteValue)

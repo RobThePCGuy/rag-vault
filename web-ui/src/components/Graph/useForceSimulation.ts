@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GraphConfig, GraphData, GraphNode } from './types'
 import { DEFAULT_GRAPH_CONFIG } from './types'
 
@@ -27,7 +27,10 @@ export function useForceSimulation({
   height,
   enabled = true,
 }: UseForceSimulationOptions): UseForceSimulationResult {
-  const config = { ...DEFAULT_GRAPH_CONFIG, ...configOverrides }
+  const config = useMemo(
+    () => ({ ...DEFAULT_GRAPH_CONFIG, ...configOverrides }),
+    [configOverrides]
+  )
 
   // Store nodes with positions and velocities
   const [nodes, setNodes] = useState<GraphNode[]>([])

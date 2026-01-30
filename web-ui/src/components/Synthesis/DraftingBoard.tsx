@@ -55,6 +55,7 @@ export function DraftingBoard({
   }
 
   const handleExport = (format: 'markdown' | 'json') => {
+    setExportDropdownOpen(false)
     const content = format === 'markdown' ? onExportMarkdown() : onExportJSON()
     const blob = new Blob([content], {
       type: format === 'markdown' ? 'text/markdown' : 'application/json',
@@ -67,7 +68,6 @@ export function DraftingBoard({
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    setExportDropdownOpen(false)
   }
 
   if (!isOpen) return null

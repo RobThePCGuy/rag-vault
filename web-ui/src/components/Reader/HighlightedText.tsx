@@ -84,11 +84,17 @@ function splitTextByHighlights(text: string, highlights: Highlight[]): TextSegme
 export function HighlightedText({ text, highlights, onHighlightClick }: HighlightedTextProps) {
   const segments = useMemo(() => splitTextByHighlights(text, highlights), [text, highlights])
 
+  // Track character offset for stable keys on non-highlighted segments
+  let charOffset = 0
+
   return (
     <span className="whitespace-pre-wrap">
-      {segments.map((segment, index) => {
+      {segments.map((segment) => {
+        const segmentStart = charOffset
+        charOffset += segment.text.length
+
         if (!segment.highlight) {
-          return <span key={index}>{segment.text}</span>
+          return <span key={`text-${segmentStart}`}>{segment.text}</span>
         }
 
         const colorClass = COLOR_CLASSES[segment.highlight.color]

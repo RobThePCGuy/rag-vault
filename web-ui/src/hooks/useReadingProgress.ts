@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useLocalStorage } from './useLocalStorage'
 
+interface LatestPosition {
+  chunkIndex: number
+  scrollOffset: number
+}
+
 interface ChunkProgress {
   lastChunkIndex: number
   scrollOffsetWithinChunk: number
@@ -63,6 +68,7 @@ export function useReadingProgress({
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentFingerprintRef = useRef<string | null>(null)
   const hasRestoredRef = useRef(false)
+  const latestPositionRef = useRef<LatestPosition>({ chunkIndex: 0, scrollOffset: 0 })
 
   // Generate fingerprint from first chunk
   useEffect(() => {
@@ -94,22 +100,26 @@ export function useReadingProgress({
     (chunkIndex: number, scrollOffset: number) => {
       if (!currentFingerprintRef.current) return
 
+      // Store latest position in ref to avoid stale closure
+      latestPositionRef.current = { chunkIndex, scrollOffset }
+
       // Clear existing timeout
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
       }
 
-      // Debounce save
+      // Debounce save - use ref to get latest position when timeout fires
       saveTimeoutRef.current = setTimeout(() => {
         const fingerprint = currentFingerprintRef.current
         if (!fingerprint) return
 
+        const { chunkIndex: latestChunkIndex, scrollOffset: latestScrollOffset } = latestPositionRef.current
         const key = getProgressKey(fingerprint)
         setProgress((prev) => ({
           ...prev,
           [key]: {
-            lastChunkIndex: chunkIndex,
-            scrollOffsetWithinChunk: scrollOffset,
+            lastChunkIndex: latestChunkIndex,
+            scrollOffsetWithinChunk: latestScrollOffset,
             lastVisited: new Date().toISOString(),
             fileFingerprint: fingerprint,
           },

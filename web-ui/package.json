@@ -14,7 +14,7 @@
     "format:check": "biome format src",
     "check": "pnpm type-check && pnpm lint && pnpm format:check",
     "check:deps": "madge --circular --extensions ts,tsx src",
-    "check:unused": "node scripts/check-unused-exports.js",
+    "check:unused": "node scripts/check-unused-exports.cjs",
     "check:all": "pnpm check && pnpm check:unused && pnpm check:deps"
   },
   "dependencies": {

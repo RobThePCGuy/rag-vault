@@ -111,6 +111,15 @@ export function useSemanticHeatmap(options: UseSemanticHeatmapOptions): UseSeman
   const activeQueriesRef = useRef(0)
   const MAX_CONCURRENT = 2 // Throttle to 2 concurrent queries
 
+  // Refs to avoid stale closures in async processQueue
+  const textRef = useRef(text)
+  const currentFilePathRef = useRef(currentFilePath)
+  const processQueueRef = useRef<() => Promise<void>>()
+
+  // Sync refs on every render
+  textRef.current = text
+  currentFilePathRef.current = currentFilePath
+
   const processQueue = useCallback(async () => {
     while (queryQueueRef.current.length > 0 && activeQueriesRef.current < MAX_CONCURRENT) {
       const phrase = queryQueueRef.current.shift()
@@ -121,15 +130,19 @@ export function useSemanticHeatmap(options: UseSemanticHeatmapOptions): UseSeman
       try {
         const results = await searchDocuments(phrase, 5)
 
+        // Use refs to get current values (avoid stale closures)
+        const currentPath = currentFilePathRef.current
+        const currentText = textRef.current
+
         // Count distinct documents (excluding current)
         const distinctDocs = new Set(
           results
-            .filter((r) => !currentFilePath || r.filePath !== currentFilePath)
+            .filter((r) => !currentPath || r.filePath !== currentPath)
             .map((r) => r.filePath)
         )
 
         // Find positions in text
-        const positions = findWordPositions(text, phrase)
+        const positions = findWordPositions(currentText, phrase)
 
         if (distinctDocs.size > 0 && positions.length > 0) {
           setConnections((prev) => [
@@ -141,15 +154,18 @@ export function useSemanticHeatmap(options: UseSemanticHeatmapOptions): UseSeman
         // Silently ignore individual query failures
       } finally {
         activeQueriesRef.current--
-        // Continue processing queue
+        // Continue processing queue - use ref for latest version
         if (queryQueueRef.current.length > 0) {
-          processQueue()
+          processQueueRef.current?.()
         } else if (activeQueriesRef.current === 0) {
           setIsLoading(false)
         }
       }
     }
-  }, [currentFilePath, text])
+  }, []) // Empty deps - uses refs
+
+  // Store processQueue in ref for recursive calls
+  processQueueRef.current = processQueue
 
   const analyzeText = useCallback(async () => {
     if (!enabled || !text) {

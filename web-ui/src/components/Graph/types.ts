@@ -37,7 +37,7 @@ export interface GraphConfig {
   edgeWidth: number
   pinnedEdgeColor: string
   semanticEdgeColor: string
-  backlinkedgeColor: string
+  backlinkEdgeColor: string
 
   // Simulation parameters
   repulsionStrength: number
@@ -60,7 +60,7 @@ export const DEFAULT_GRAPH_CONFIG: GraphConfig = {
   edgeWidth: 1.5,
   pinnedEdgeColor: '#3b82f6', // blue-500
   semanticEdgeColor: '#d1d5db', // gray-300
-  backlinkedgeColor: '#8b5cf6', // violet-500
+  backlinkEdgeColor: '#8b5cf6', // violet-500
 
   repulsionStrength: 150,
   attractionStrength: 0.3,

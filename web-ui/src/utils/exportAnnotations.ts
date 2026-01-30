@@ -306,18 +306,19 @@ function applyHighlightsToHtml(text: string, highlights: Highlight[]): string {
 
   for (const highlight of sortedHighlights) {
     const { startOffset, endOffset } = highlight.range
+    // Validate bounds - skip invalid offsets
+    if (startOffset < 0 || endOffset < 0) continue
     if (startOffset >= result.length || endOffset > result.length) continue
+    if (startOffset >= endOffset) continue
 
     const before = result.slice(0, startOffset)
     const highlighted = result.slice(startOffset, endOffset)
     const after = result.slice(endOffset)
 
     const colorClass = `mark-${highlight.color}`
-    result = `${escapeHtml(before)}<mark class="${colorClass}">${escapeHtml(highlighted)}</mark>${after}`
+    result = `${escapeHtml(before)}<mark class="${colorClass}">${escapeHtml(highlighted)}</mark>${escapeHtml(after)}`
   }
 
-  // Escape any remaining unprocessed parts
-  // Note: this is simplified - a full implementation would track what's been escaped
   return result
 }
 

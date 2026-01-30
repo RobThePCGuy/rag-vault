@@ -178,17 +178,25 @@ export function ReadingStatsProvider({ children, vaultId = 'default' }: ReadingS
         const docStats = prev.documents[filePath]
         if (!docStats) return prev
 
-        const chunkStat = docStats.chunkStats[chunkIndex]
-        if (!chunkStat) return prev
+        // Auto-create chunk stat if missing (handles case where recordChunkView wasn't called first)
+        const chunkStat = docStats.chunkStats[chunkIndex] || {
+          totalTimeMs: 0,
+          readCount: 0,
+          lastReadAt: new Date().toISOString(),
+        }
 
         const updatedChunkStat: ChunkStat = {
           ...chunkStat,
           totalTimeMs: chunkStat.totalTimeMs + timeMs,
         }
 
+        // If we auto-created the chunk stat, also increment chunksRead
+        const isNewChunk = !docStats.chunkStats[chunkIndex]
+
         const updatedDocStats: DocumentReadingStats = {
           ...docStats,
           totalTimeMs: docStats.totalTimeMs + timeMs,
+          chunksRead: isNewChunk ? docStats.chunksRead + 1 : docStats.chunksRead,
           chunkStats: {
             ...docStats.chunkStats,
             [chunkIndex]: updatedChunkStat,

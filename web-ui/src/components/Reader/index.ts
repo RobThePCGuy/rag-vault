@@ -9,7 +9,6 @@ export { DynamicMargin, type SelectionSearchResultDisplay } from './DynamicMargi
 export { GraphPanel } from './GraphPanel'
 export { HighlightedText } from './HighlightedText'
 export { KeyboardHelp } from './KeyboardHelp'
-export { MarginNote } from './MarginNote'
 export { PinButton } from './PinButton'
 export { ReaderControls, ReaderControlsButton } from './ReaderControls'
 export { SemanticHeatmap, HeatmapStats } from './SemanticHeatmap'

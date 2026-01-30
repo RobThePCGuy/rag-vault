@@ -65,10 +65,12 @@ export function formatUptime(seconds: number): string {
  */
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
+  if (bytes < 0) return '0 B' // Handle negative bytes
 
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   const k = 1024
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  // Clamp i to valid array bounds to prevent undefined unit
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), units.length - 1)
   const value = bytes / k ** i
 
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`

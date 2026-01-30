@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { OutlineItem } from '../../hooks/useSynthesis'
 
 interface OutlineItemComponentProps {
@@ -31,6 +31,23 @@ export function OutlineItemComponent({
 }: OutlineItemComponentProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(item.content)
+
+  // Track previous item.id to detect identity changes
+  const prevItemIdRef = useRef(item.id)
+
+  useEffect(() => {
+    const itemIdChanged = prevItemIdRef.current !== item.id
+    prevItemIdRef.current = item.id
+
+    if (itemIdChanged) {
+      // Different item - reset editing state and sync content
+      setIsEditing(false)
+      setEditContent(item.content)
+    } else if (!isEditing) {
+      // Same item, content may have changed externally - sync if not editing
+      setEditContent(item.content)
+    }
+  }, [item.id, item.content, isEditing])
 
   const handleSave = () => {
     onUpdate({ content: editContent })

@@ -130,13 +130,12 @@ export function useGraphData({
         ])
       )
 
-      nodeArray = nodeArray
-        .filter((n) => n.id === currentNodeId || pinnedNodeIds.has(n.id))
-        .concat(
-          nodeArray
-            .filter((n) => n.id !== currentNodeId && !pinnedNodeIds.has(n.id))
-            .slice(0, maxNodes - nodeArray.length)
-        )
+      const keptNodes = nodeArray.filter((n) => n.id === currentNodeId || pinnedNodeIds.has(n.id))
+      const remainingCapacity = Math.max(0, maxNodes - keptNodes.length)
+      const otherNodes = nodeArray
+        .filter((n) => n.id !== currentNodeId && !pinnedNodeIds.has(n.id))
+        .slice(0, remainingCapacity)
+      nodeArray = keptNodes.concat(otherNodes)
     }
 
     // Filter edges to only include nodes we're showing

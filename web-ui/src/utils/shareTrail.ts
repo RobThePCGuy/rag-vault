@@ -75,6 +75,14 @@ export function decodeTrail(encoded: string): ShareableTrail | null {
       return null
     }
 
+    // Validate each step has required fields with correct types
+    for (const step of data.steps) {
+      if (typeof step.p !== 'string' || typeof step.c !== 'number') {
+        console.error('Invalid step structure: each step must have p (string) and c (number)')
+        return null
+      }
+    }
+
     return data
   } catch (e) {
     console.error('Failed to decode trail:', e)

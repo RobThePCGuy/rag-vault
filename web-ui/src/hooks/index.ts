@@ -73,3 +73,4 @@ export { useDiscoveryMode, getSuggestionReasonText, type DiscoverySuggestion, ty
 
 // Zettelkasten Reader
 export { useAutoSelectionSearch } from './useAutoSelectionSearch'
+export { useSemanticHeatmap, type KeyphraseConnection } from './useSemanticHeatmap'

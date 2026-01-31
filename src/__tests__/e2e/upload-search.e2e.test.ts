@@ -158,7 +158,8 @@ describe('Upload → Search E2E Workflow', () => {
 
       // 4. Delete the document
       const deleteResult = await ragServer.handleDeleteFile({ filePath: file })
-      expect(deleteResult.content[0].text).toContain('success')
+      const deleteResponse = JSON.parse(deleteResult.content[0].text)
+      expect(deleteResponse.deleted).toBe(true)
 
       // 5. Verify document no longer appears in file list
       const listResult = await ragServer.handleListFiles()

@@ -91,7 +91,7 @@ if command -v mcp-publisher >/dev/null 2>&1; then
   mcp-publisher publish
 else
   echo -e "${YELLOW}mcp-publisher not installed. Install with:${NC}"
-  echo "  curl -L \"https://github.com/modelcontextprotocol/registry/releases/download/v1.1.0/mcp-publisher_1.1.0_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz\" | tar xz mcp-publisher"
+  echo "  curl -L \"https://github.com/modelcontextprotocol/registry/releases/download/v1.4.0/mcp-publisher_linux_arm64.tar.gzhttps://github.com/modelcontextprotocol/registry/releases/download/v1.1.0/mcp-publisher_1.1.0_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz\" | tar xz mcp-publisher"
   echo "  sudo mv mcp-publisher /usr/local/bin/"
   echo "Then run: mcp-publisher login github && mcp-publisher publish"
 fi

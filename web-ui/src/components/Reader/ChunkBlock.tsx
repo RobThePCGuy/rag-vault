@@ -142,33 +142,33 @@ export function ChunkBlock({
   // If clickable, use a button wrapper; otherwise use a div
   const content = (
     <>
-      {/* Chunk index badge with bookmark indicator */}
+      {/* Chunk index badge - Book style */}
       {showChunkNumbers && (
-        <div className="absolute -left-2 top-4 flex items-center gap-1">
-          <span className="text-xs font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-            #{chunk.chunkIndex}
+        <div className="absolute -left-1 top-5 flex items-center gap-1.5">
+          <span className="book-chunk-badge">
+            §{chunk.chunkIndex}
           </span>
           {isBookmarked && (
-            <BookmarkIcon className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
+            <BookmarkIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
           )}
         </div>
       )}
 
-      {/* Chunk content - uses CSS variables for styling */}
+      {/* Chunk content - Book text styling */}
       <div
-        className="pl-6 max-w-none text-gray-700 dark:text-gray-300"
+        className="pl-8 pr-4 max-w-none book-text"
         style={{
-          fontSize: 'var(--reader-font-size, 1rem)',
-          lineHeight: 'var(--reader-line-height, 1.6)',
-          fontFamily: 'var(--reader-font-family, inherit)',
+          fontSize: 'var(--reader-font-size, 1.05rem)',
+          lineHeight: 'var(--reader-line-height, 1.85)',
+          fontFamily: "var(--reader-font-family, 'Georgia', 'Palatino Linotype', serif)",
         }}
       >
         {textContent}
       </div>
 
-      {/* Active indicator */}
+      {/* Active indicator - warm amber for book feel */}
       {isActive && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 dark:bg-blue-400 rounded-l-lg" />
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-amber-500/60 dark:bg-amber-600/50" />
       )}
 
       {/* Selection popover */}
@@ -187,8 +187,8 @@ export function ChunkBlock({
   )
 
   const baseClassName = `
-    group relative p-4 rounded-lg transition-all duration-200 text-left w-full
-    ${isActive ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-700' : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750'}
+    book-page group relative py-6 px-8 mb-4 transition-all duration-200 text-left w-full
+    ${isActive ? 'book-chunk-active' : ''}
   `
 
   if (onClick) {

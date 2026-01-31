@@ -19,7 +19,7 @@ export interface RequestLogEntry {
 /**
  * Logger function type
  */
-export type LoggerFn = (entry: RequestLogEntry) => void
+type LoggerFn = (entry: RequestLogEntry) => void
 
 /**
  * Default logger - outputs to stderr in structured format

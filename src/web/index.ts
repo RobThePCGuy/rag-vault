@@ -3,7 +3,7 @@
 
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { buildRAGConfig } from '../utils/config.js'
+import { buildRAGConfig, validateAllowedScanRoots, validateRAGConfig } from '../utils/config.js'
 import {
   onShutdown,
   setupGracefulShutdown,
@@ -58,8 +58,12 @@ async function main(): Promise<void> {
       }
     }
 
-    // Build RAG config from environment
+    // Build and validate RAG config from environment
     const config = buildRAGConfig()
+    validateRAGConfig(config)
+
+    // Validate allowed scan roots (logs warnings for non-existent paths)
+    validateAllowedScanRoots()
 
     console.log('Starting RAG Web Server...')
     console.log('Configuration:', { ...config, port, uploadDir, staticDir })

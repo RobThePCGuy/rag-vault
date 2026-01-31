@@ -2,9 +2,6 @@
 // Explainability utilities for chunk similarity
 // Provides keyword/phrase extraction without LLM dependencies
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.findSharedKeywords = findSharedKeywords;
-exports.findSharedPhrases = findSharedPhrases;
-exports.determineReasonLabel = determineReasonLabel;
 exports.explainChunkSimilarity = explainChunkSimilarity;
 // Common English stopwords to filter out
 const STOPWORDS = new Set([

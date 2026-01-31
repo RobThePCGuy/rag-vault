@@ -39,11 +39,7 @@ export function CurrentDatabaseCard({ config, onRefresh, isFetching }: CurrentDa
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
             title="Refresh stats"
           >
-            {isFetching ? (
-              <Spinner size="sm" />
-            ) : (
-              <RefreshIcon className="w-5 h-5" />
-            )}
+            {isFetching ? <Spinner size="sm" /> : <RefreshIcon className="w-5 h-5" />}
           </button>
         )}
       </div>
@@ -55,13 +51,18 @@ export function CurrentDatabaseCard({ config, onRefresh, isFetching }: CurrentDa
         </div>
         <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
           <span className="text-gray-500 dark:text-gray-400">Path</span>
-          <span className="font-mono text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate" title={config.dbPath}>
+          <span
+            className="font-mono text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate"
+            title={config.dbPath}
+          >
             {config.dbPath}
           </span>
         </div>
         <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
           <span className="text-gray-500 dark:text-gray-400">Model</span>
-          <span className="font-mono text-sm text-gray-900 dark:text-gray-200">{config.modelName}</span>
+          <span className="font-mono text-sm text-gray-900 dark:text-gray-200">
+            {config.modelName}
+          </span>
         </div>
         <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
           <span className="text-gray-500 dark:text-gray-400">Documents</span>

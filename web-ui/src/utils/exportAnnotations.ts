@@ -40,10 +40,7 @@ function escapeHighlightMarkers(text: string): string {
 /**
  * Export document with annotations as Markdown
  */
-export function exportAsMarkdown(
-  data: DocumentExportData,
-  options: ExportOptions
-): string {
+export function exportAsMarkdown(data: DocumentExportData, options: ExportOptions): string {
   const lines: string[] = []
 
   // Title
@@ -115,9 +112,7 @@ export function exportAsMarkdown(
  */
 function applyHighlightsToText(text: string, highlights: Highlight[]): string {
   // Process from end to start to maintain positions
-  const sortedHighlights = [...highlights].sort(
-    (a, b) => b.range.startOffset - a.range.startOffset
-  )
+  const sortedHighlights = [...highlights].sort((a, b) => b.range.startOffset - a.range.startOffset)
 
   let result = text
 
@@ -146,10 +141,7 @@ function applyHighlightsToText(text: string, highlights: Highlight[]): string {
 /**
  * Export document with full metadata as JSON
  */
-export function exportAsJson(
-  data: DocumentExportData,
-  options: ExportOptions
-): string {
+export function exportAsJson(data: DocumentExportData, options: ExportOptions): string {
   const exportData: Record<string, unknown> = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -188,10 +180,7 @@ const HIGHLIGHT_COLORS: Record<string, string> = {
 /**
  * Export document as styled HTML with <mark> highlights
  */
-export function exportAsHtml(
-  data: DocumentExportData,
-  options: ExportOptions
-): string {
+export function exportAsHtml(data: DocumentExportData, options: ExportOptions): string {
   const lines: string[] = []
 
   // HTML header with embedded styles
@@ -238,9 +227,7 @@ export function exportAsHtml(
     lines.push('<div class="chunk">')
 
     // Chunk header
-    const anchor = options.includeProvenance
-      ? ` <a id="chunk-${chunk.chunkIndex}"></a>`
-      : ''
+    const anchor = options.includeProvenance ? ` <a id="chunk-${chunk.chunkIndex}"></a>` : ''
     lines.push(`<div class="chunk-header">Chunk ${chunk.chunkIndex}${anchor}</div>`)
 
     // Get highlights for this chunk
@@ -261,7 +248,9 @@ export function exportAsHtml(
       for (const highlight of chunkHighlights) {
         const annotation = data.annotations.find((a) => a.highlightId === highlight.id)
         if (annotation?.note) {
-          lines.push(`<div class="note"><strong>Note:</strong> ${escapeHtml(annotation.note)}</div>`)
+          lines.push(
+            `<div class="note"><strong>Note:</strong> ${escapeHtml(annotation.note)}</div>`
+          )
         }
       }
     }
@@ -298,9 +287,7 @@ export function exportAsHtml(
  */
 function applyHighlightsToHtml(text: string, highlights: Highlight[]): string {
   // Process from end to start to maintain positions
-  const sortedHighlights = [...highlights].sort(
-    (a, b) => b.range.startOffset - a.range.startOffset
-  )
+  const sortedHighlights = [...highlights].sort((a, b) => b.range.startOffset - a.range.startOffset)
 
   let result = text
 

@@ -166,23 +166,23 @@ export declare class DatabaseManager {
     /**
      * Get all effective allowed roots (env + baseDir + user-added)
      */
-    getEffectiveAllowedRoots(): string[];
+    getEffectiveAllowedRoots(): Promise<string[]>;
     /**
      * Check if a path is within allowed roots
      */
-    isPathAllowed(targetPath: string): boolean;
+    isPathAllowed(targetPath: string): Promise<boolean>;
     /**
      * Get allowed roots info for API response
      */
-    getAllowedRootsInfo(): AllowedRootsResponse;
+    getAllowedRootsInfo(): Promise<AllowedRootsResponse>;
     /**
      * Add a user-allowed root
      */
-    addUserAllowedRoot(rootPath: string): void;
+    addUserAllowedRoot(rootPath: string): Promise<void>;
     /**
      * Remove a user-allowed root
      */
-    removeUserAllowedRoot(rootPath: string): void;
+    removeUserAllowedRoot(rootPath: string): Promise<void>;
     /**
      * List directory contents for folder browser
      * @param dirPath - The directory path to list
@@ -206,11 +206,11 @@ export declare class DatabaseManager {
     /**
      * Export configuration (allowed roots)
      */
-    exportConfig(): ExportedConfig;
+    exportConfig(): Promise<ExportedConfig>;
     /**
      * Import configuration (allowed roots)
      */
-    importConfig(config: ExportedConfig): void;
+    importConfig(config: ExportedConfig): Promise<void>;
     /**
      * Get the current hybrid search weight
      * @returns Value between 0.0 (vector-only) and 1.0 (max keyword boost)

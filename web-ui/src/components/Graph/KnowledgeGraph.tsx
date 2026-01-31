@@ -34,10 +34,7 @@ export function KnowledgeGraph({
   const isPanningRef = useRef(false)
   const lastMousePosRef = useRef({ x: 0, y: 0 })
 
-  const config = useMemo(
-    () => ({ ...DEFAULT_GRAPH_CONFIG, ...configOverrides }),
-    [configOverrides]
-  )
+  const config = useMemo(() => ({ ...DEFAULT_GRAPH_CONFIG, ...configOverrides }), [configOverrides])
 
   // Force simulation
   const { nodes, isStable } = useForceSimulation({
@@ -257,7 +254,17 @@ export function KnowledgeGraph({
     }
 
     ctx.restore()
-  }, [nodes, graphData.edges, dimensions, pan, zoom, currentNodeId, pinnedNodeIds, hoveredNode, config])
+  }, [
+    nodes,
+    graphData.edges,
+    dimensions,
+    pan,
+    zoom,
+    currentNodeId,
+    pinnedNodeIds,
+    hoveredNode,
+    config,
+  ])
 
   // Extract filename from path
   const getFileName = (filePath: string) => {
@@ -266,7 +273,10 @@ export function KnowledgeGraph({
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden">
+    <div
+      ref={containerRef}
+      className="w-full h-full relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden"
+    >
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-grab active:cursor-grabbing"

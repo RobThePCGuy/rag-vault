@@ -61,7 +61,7 @@ function createConfigRouter(dbManager) {
     }));
     // GET /api/v1/config/allowed-roots - List all effective allowed roots
     router.get('/allowed-roots', (0, index_js_2.asyncHandler)(async (_req, res) => {
-        const info = dbManager.getAllowedRootsInfo();
+        const info = await dbManager.getAllowedRootsInfo();
         res.json(info);
     }));
     // POST /api/v1/config/allowed-roots - Add a new allowed root
@@ -70,8 +70,8 @@ function createConfigRouter(dbManager) {
         if (!rootPath || typeof rootPath !== 'string') {
             throw new index_js_1.ValidationError('path is required and must be a string');
         }
-        dbManager.addUserAllowedRoot(rootPath);
-        const info = dbManager.getAllowedRootsInfo();
+        await dbManager.addUserAllowedRoot(rootPath);
+        const info = await dbManager.getAllowedRootsInfo();
         res.json({ success: true, ...info });
     }));
     // DELETE /api/v1/config/allowed-roots - Remove an allowed root
@@ -80,8 +80,8 @@ function createConfigRouter(dbManager) {
         if (!rootPath || typeof rootPath !== 'string') {
             throw new index_js_1.ValidationError('path is required and must be a string');
         }
-        dbManager.removeUserAllowedRoot(rootPath);
-        const info = dbManager.getAllowedRootsInfo();
+        await dbManager.removeUserAllowedRoot(rootPath);
+        const info = await dbManager.getAllowedRootsInfo();
         res.json({ success: true, ...info });
     }));
     // GET /api/v1/config/browse - List directory contents for folder browser
@@ -101,7 +101,7 @@ function createConfigRouter(dbManager) {
     }));
     // GET /api/v1/config/export - Export configuration as JSON
     router.get('/export', (0, index_js_2.asyncHandler)(async (_req, res) => {
-        const config = dbManager.exportConfig();
+        const config = await dbManager.exportConfig();
         res.json(config);
     }));
     // POST /api/v1/config/import - Import configuration from JSON
@@ -110,8 +110,8 @@ function createConfigRouter(dbManager) {
         if (!config || typeof config !== 'object') {
             throw new index_js_1.ValidationError('config is required and must be an object');
         }
-        dbManager.importConfig(config);
-        const info = dbManager.getAllowedRootsInfo();
+        await dbManager.importConfig(config);
+        const info = await dbManager.getAllowedRootsInfo();
         res.json({ success: true, ...info });
     }));
     // GET /api/v1/config/hybrid-weight - Get current hybrid search weight

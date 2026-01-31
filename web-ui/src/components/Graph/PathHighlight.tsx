@@ -103,10 +103,7 @@ export const PATH_HIGHLIGHT_COLORS: PathHighlightColors = {
 /**
  * Get the highlight color for a node based on pathfinding state
  */
-export function getNodePathColor(
-  nodeId: string,
-  pathState: PathHighlightState
-): string | null {
+export function getNodePathColor(nodeId: string, pathState: PathHighlightState): string | null {
   if (!pathState.isActive) return null
 
   if (nodeId === pathState.startNode) {
@@ -117,7 +114,11 @@ export function getNodePathColor(
     return PATH_HIGHLIGHT_COLORS.endNode
   }
 
-  if (pathState.path.includes(nodeId) && nodeId !== pathState.startNode && nodeId !== pathState.endNode) {
+  if (
+    pathState.path.includes(nodeId) &&
+    nodeId !== pathState.startNode &&
+    nodeId !== pathState.endNode
+  ) {
     return PATH_HIGHLIGHT_COLORS.pathNode
   }
 

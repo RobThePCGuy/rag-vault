@@ -2,11 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useState } from 'react'
 import type { Annotation, Highlight } from '../../contexts/AnnotationsContext'
 import type { PinnedLink } from '../../contexts/LinksContext'
-import {
-  downloadFile,
-  exportDocument,
-  type ExportOptions,
-} from '../../utils/exportAnnotations'
+import { downloadFile, exportDocument, type ExportOptions } from '../../utils/exportAnnotations'
 
 interface ExportDialogProps {
   isOpen: boolean
@@ -27,11 +23,7 @@ type ExportFormat = 'markdown' | 'json' | 'html'
 /**
  * Dialog for exporting document with annotations
  */
-export function ExportDialog({
-  isOpen,
-  onClose,
-  documentData,
-}: ExportDialogProps) {
+export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportFormat>('markdown')
   const [includeAnnotations, setIncludeAnnotations] = useState(true)
   const [includePins, setIncludePins] = useState(true)
@@ -103,10 +95,10 @@ export function ExportDialog({
 
             {/* Format Selection */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Export Format
-              </label>
-              <div className="flex gap-2">
+              </span>
+              <div className="flex gap-2" role="group" aria-label="Export format">
                 {(['markdown', 'json', 'html'] as const).map((f) => (
                   <button
                     key={f}
@@ -126,9 +118,9 @@ export function ExportDialog({
 
             {/* Options */}
             <div className="mb-6 space-y-3">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Include
-              </label>
+              </span>
 
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -138,7 +130,9 @@ export function ExportDialog({
                   disabled={!hasAnnotations}
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
-                <span className={`text-sm ${!hasAnnotations ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                <span
+                  className={`text-sm ${!hasAnnotations ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
+                >
                   Highlights & annotations
                   {hasAnnotations && (
                     <span className="text-gray-400 ml-1">({documentData.highlights.length})</span>
@@ -154,7 +148,9 @@ export function ExportDialog({
                   disabled={!hasPins}
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
-                <span className={`text-sm ${!hasPins ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                <span
+                  className={`text-sm ${!hasPins ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
+                >
                   Pins & backlinks
                   {hasPins && (
                     <span className="text-gray-400 ml-1">
@@ -180,15 +176,9 @@ export function ExportDialog({
 
             {/* Format hints */}
             <div className="mb-6 text-xs text-gray-500 dark:text-gray-400">
-              {format === 'markdown' && (
-                <p>Highlights will be marked with ==text== syntax.</p>
-              )}
-              {format === 'json' && (
-                <p>Full structured data with all metadata.</p>
-              )}
-              {format === 'html' && (
-                <p>Styled document with &lt;mark&gt; highlights.</p>
-              )}
+              {format === 'markdown' && <p>Highlights will be marked with ==text== syntax.</p>}
+              {format === 'json' && <p>Full structured data with all metadata.</p>}
+              {format === 'html' && <p>Styled document with &lt;mark&gt; highlights.</p>}
             </div>
 
             {/* Actions */}

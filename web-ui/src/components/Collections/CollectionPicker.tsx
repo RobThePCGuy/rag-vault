@@ -71,9 +71,8 @@ export function CollectionPicker({
     : collections
 
   // Check if we should show "create new collection" option
-  const showCreateOption = searchQuery && !collections.some(
-    (c) => c.name.toLowerCase() === searchQuery.toLowerCase()
-  )
+  const showCreateOption =
+    searchQuery && !collections.some((c) => c.name.toLowerCase() === searchQuery.toLowerCase())
 
   // Handle creating a new collection
   const handleCreate = useCallback(() => {
@@ -112,7 +111,11 @@ export function CollectionPicker({
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
           className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-80"
-          style={position ? { left: position.x, top: position.y } : { left: '50%', top: '30%', transform: 'translateX(-50%)' }}
+          style={
+            position
+              ? { left: position.x, top: position.y }
+              : { left: '50%', top: '30%', transform: 'translateX(-50%)' }
+          }
         >
           {/* Header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -153,33 +156,32 @@ export function CollectionPicker({
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Name
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="mt-1 w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </label>
-                  <input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoFocus
-                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Description (optional)
+                    <input
+                      type="text"
+                      value={newDescription}
+                      onChange={(e) => setNewDescription(e.target.value)}
+                      className="mt-1 w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="What's this collection for?"
+                    />
                   </label>
-                  <input
-                    type="text"
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="What's this collection for?"
-                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Color
-                  </label>
+                  </span>
                   <div className="flex flex-wrap gap-1">
                     {COLLECTION_COLORS.map((color) => (
                       <button
@@ -271,11 +273,13 @@ export function CollectionPicker({
                 )}
 
                 {/* Empty state */}
-                {filteredCollections.length === 0 && !showCreateOption && documentCollections.length === 0 && (
-                  <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
-                    No collections yet. Type to create one.
-                  </div>
-                )}
+                {filteredCollections.length === 0 &&
+                  !showCreateOption &&
+                  documentCollections.length === 0 && (
+                    <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
+                      No collections yet. Type to create one.
+                    </div>
+                  )}
               </div>
             )}
           </div>
@@ -301,15 +305,9 @@ function CollectionItem({ collection, isSelected, onToggle }: CollectionItemProp
       className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
     >
       <div className="flex items-center gap-2 min-w-0">
-        <span
-          className={`w-3 h-3 rounded-full flex-shrink-0 ${colorClasses.bg}`}
-        />
-        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-          {collection.name}
-        </span>
-        <span className="text-xs text-gray-400">
-          {collection.documents.length}
-        </span>
+        <span className={`w-3 h-3 rounded-full flex-shrink-0 ${colorClasses.bg}`} />
+        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{collection.name}</span>
+        <span className="text-xs text-gray-400">{collection.documents.length}</span>
       </div>
       {isSelected ? (
         <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />

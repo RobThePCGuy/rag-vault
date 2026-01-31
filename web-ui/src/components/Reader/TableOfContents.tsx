@@ -29,7 +29,9 @@ export function TableOfContents({
     if (!nextEntry) {
       return entry.chunkIndex <= (activeChunkIndex ?? 0)
     }
-    return entry.chunkIndex <= (activeChunkIndex ?? 0) && nextEntry.chunkIndex > (activeChunkIndex ?? 0)
+    return (
+      entry.chunkIndex <= (activeChunkIndex ?? 0) && nextEntry.chunkIndex > (activeChunkIndex ?? 0)
+    )
   })
 
   const handleEntryClick = useCallback(
@@ -50,10 +52,7 @@ export function TableOfContents({
       >
         <TocIcon className="w-4 h-4" />
         <span className="hidden sm:inline">Contents</span>
-        <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
+        <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
           <ChevronIcon className="w-3 h-3" />
         </motion.span>
       </button>
@@ -122,9 +121,10 @@ function TocEntryItem({ entry, isCurrent, onClick }: TocEntryItemProps) {
       onClick={onClick}
       className={`
         w-full text-left px-4 py-1.5 text-sm transition-colors
-        ${isCurrent
-          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium border-l-2 border-blue-500'
-          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-l-2 border-transparent'
+        ${
+          isCurrent
+            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium border-l-2 border-blue-500'
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-l-2 border-transparent'
         }
       `}
       style={{ paddingLeft }}

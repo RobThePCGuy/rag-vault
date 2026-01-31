@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useCallback, useMemo, type ReactNode } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 
 // ============================================
@@ -56,12 +56,4 @@ export function ReadingModeProvider({ children, vaultId = 'default' }: ReadingMo
   )
 
   return <ReadingModeContext.Provider value={value}>{children}</ReadingModeContext.Provider>
-}
-
-export function useReadingMode(): ReadingModeContextValue {
-  const context = useContext(ReadingModeContext)
-  if (!context) {
-    throw new Error('useReadingMode must be used within a ReadingModeProvider')
-  }
-  return context
 }

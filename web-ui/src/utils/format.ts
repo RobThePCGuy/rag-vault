@@ -1,13 +1,6 @@
 // Formatting utility functions for display
 
 /**
- * Format a number as a score (0.0000 - 1.0000)
- */
-export function formatScore(score: number): string {
-  return score.toFixed(4)
-}
-
-/**
  * Format an ISO date string as a relative time or short date
  */
 export function formatDate(isoString: string): string {
@@ -74,19 +67,4 @@ export function formatBytes(bytes: number): string {
   const value = bytes / k ** i
 
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
-}
-
-/**
- * Format a number with thousands separators
- */
-export function formatNumber(num: number): string {
-  return num.toLocaleString()
-}
-
-/**
- * Truncate text with ellipsis
- */
-export function truncate(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return `${text.slice(0, maxLength - 3)}...`
 }

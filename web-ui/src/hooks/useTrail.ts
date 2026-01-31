@@ -1,5 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useLinks, type ChunkKey, type Trail, type TrailNode, type TrailStep } from '../contexts/LinksContext'
+import {
+  useLinks,
+  type ChunkKey,
+  type Trail,
+  type TrailNode,
+  type TrailStep,
+} from '../contexts/LinksContext'
 
 export interface UseTrailResult {
   currentTrail: Trail | null

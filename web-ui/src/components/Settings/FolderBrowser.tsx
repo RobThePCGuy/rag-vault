@@ -145,11 +145,7 @@ export function FolderBrowser({
 
               {/* Directory entries */}
               {data?.entries.map((entry) => (
-                <DirectoryEntryRow
-                  key={entry.path}
-                  entry={entry}
-                  onNavigate={handleNavigate}
-                />
+                <DirectoryEntryRow key={entry.path} entry={entry} onNavigate={handleNavigate} />
               ))}
 
               {data?.entries.length === 0 && (
@@ -194,7 +190,9 @@ function DirectoryEntryRow({
 
   if (!entry.isDirectory) {
     return (
-      <div className={`flex items-center gap-3 px-3 py-2 ${isHidden ? 'opacity-50' : ''} text-gray-400 dark:text-gray-500`}>
+      <div
+        className={`flex items-center gap-3 px-3 py-2 ${isHidden ? 'opacity-50' : ''} text-gray-400 dark:text-gray-500`}
+      >
         <FileIcon className="w-5 h-5" />
         <span className="truncate">{entry.name}</span>
       </div>

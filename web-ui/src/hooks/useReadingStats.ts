@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { useReadingStatsContext, type DocumentReadingStats, type ReadingSession } from '../contexts/ReadingStatsContext'
+import {
+  useReadingStatsContext,
+  type DocumentReadingStats,
+  type ReadingSession,
+} from '../contexts/ReadingStatsContext'
 
 // ============================================
 // Types

@@ -219,7 +219,10 @@ export function useKeyboardNav({
         case 'j': {
           // Navigate to next chunk
           event.preventDefault()
-          const nextIndex = state.activeChunkIndex === null ? 0 : Math.min(state.activeChunkIndex + 1, state.totalChunks - 1)
+          const nextIndex =
+            state.activeChunkIndex === null
+              ? 0
+              : Math.min(state.activeChunkIndex + 1, state.totalChunks - 1)
           callbacks.onNavigateToChunk(nextIndex)
           break
         }
@@ -227,7 +230,8 @@ export function useKeyboardNav({
         case 'k': {
           // Navigate to previous chunk
           event.preventDefault()
-          const prevIndex = state.activeChunkIndex === null ? 0 : Math.max(state.activeChunkIndex - 1, 0)
+          const prevIndex =
+            state.activeChunkIndex === null ? 0 : Math.max(state.activeChunkIndex - 1, 0)
           callbacks.onNavigateToChunk(prevIndex)
           break
         }
@@ -371,7 +375,7 @@ export function useKeyboardNav({
         case '9': {
           if (state.isDiscoveryMode) {
             event.preventDefault()
-            const index = parseInt(event.key) - 1
+            const index = parseInt(event.key, 10) - 1
             callbacks.onDiscoverySelectSuggestion?.(index)
           }
           break

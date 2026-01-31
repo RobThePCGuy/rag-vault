@@ -95,9 +95,7 @@ function mergeRanges(
     if (start >= end) continue
 
     // Find all ranges that cover this segment
-    const activeRanges = allRanges.filter(
-      (r) => r.startOffset <= start && r.endOffset >= end
-    )
+    const activeRanges = allRanges.filter((r) => r.startOffset <= start && r.endOffset >= end)
 
     segments.push({
       text: text.slice(start, end),
@@ -174,10 +172,7 @@ export function UnifiedTextRenderer({
   onHighlightClick,
 }: UnifiedTextRendererProps) {
   // Convert to TextRange format
-  const annotationRanges = useMemo(
-    () => highlightsToRanges(highlights),
-    [highlights]
-  )
+  const annotationRanges = useMemo(() => highlightsToRanges(highlights), [highlights])
 
   const searchRanges = useMemo(
     () => searchMatchesToRanges(searchMatches, chunkIndex, currentSearchIndex),
@@ -248,8 +243,8 @@ export function UnifiedTextRenderer({
         if (annotationType?.highlightId) {
           const highlight = highlightMap.get(annotationType.highlightId)
           return (
-            <mark
-              key={index}
+            <span
+              key={`highlight-${annotationType.highlightId}-${index}`}
               className={classNames.join(' ')}
               onClick={(e) => {
                 e.stopPropagation()
@@ -257,24 +252,38 @@ export function UnifiedTextRenderer({
                   onHighlightClick(highlight)
                 }
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  if (highlight && onHighlightClick) {
+                    onHighlightClick(highlight)
+                  }
+                }
+              }}
+              role="button"
+              tabIndex={0}
               data-highlight-id={annotationType.highlightId}
             >
               {segment.text}
-            </mark>
+            </span>
           )
         }
 
         // Non-annotation segment (may still have search styling)
         if (searchCurrentType || searchMatchType) {
           return (
-            <span key={index} className={classNames.join(' ')} data-search-match="true">
+            <span
+              key={`search-${index}-${segment.text.length}`}
+              className={classNames.join(' ')}
+              data-search-match="true"
+            >
               {segment.text}
             </span>
           )
         }
 
         // Plain text segment
-        return <span key={index}>{segment.text}</span>
+        return <span key={`text-${index}-${segment.text.length}`}>{segment.text}</span>
       })}
     </span>
   )

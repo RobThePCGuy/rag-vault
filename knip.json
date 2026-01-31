@@ -2,5 +2,10 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "project": ["src/**/*.ts"],
   "ignore": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/test/**"],
-  "ignoreDependencies": ["ts-node"]
+  "ignoreDependencies": ["ts-node"],
+  "ignoreExportsUsedInFile": true,
+  "rules": {
+    "exports": "warn"
+  },
+  "entry": ["src/web/http-server.ts", "src/server/index.ts"]
 }

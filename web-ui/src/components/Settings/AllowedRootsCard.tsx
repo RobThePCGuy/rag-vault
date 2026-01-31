@@ -46,7 +46,8 @@ export function AllowedRootsCard({
   const getRootTypeColor = (root: string): string => {
     if (isBaseDir(root)) return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
     if (isEnvRoot(root)) return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-    if (isUserRoot(root)) return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+    if (isUserRoot(root))
+      return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
     return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
   }
 
@@ -58,8 +59,12 @@ export function AllowedRootsCard({
             <ShieldIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Allowed Scan Roots</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Directories where database scanning is permitted</p>
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+              Allowed Scan Roots
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Directories where database scanning is permitted
+            </p>
           </div>
         </div>
         <button
@@ -96,7 +101,10 @@ export function AllowedRootsCard({
             >
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <FolderIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <span className="font-mono text-sm text-gray-700 dark:text-gray-300 truncate" title={root}>
+                <span
+                  className="font-mono text-sm text-gray-700 dark:text-gray-300 truncate"
+                  title={root}
+                >
                   {root}
                 </span>
                 <span
@@ -124,20 +132,25 @@ export function AllowedRootsCard({
           ))}
 
           {data?.roots.length === 0 && (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4">No allowed roots configured</p>
+            <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+              No allowed roots configured
+            </p>
           )}
         </div>
       )}
 
       <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
         <p>
-          <strong className="text-gray-700 dark:text-gray-300">Base Dir:</strong> Current database directory (always allowed)
+          <strong className="text-gray-700 dark:text-gray-300">Base Dir:</strong> Current database
+          directory (always allowed)
         </p>
         <p>
-          <strong className="text-gray-700 dark:text-gray-300">Env:</strong> Set via ALLOWED_SCAN_ROOTS environment variable
+          <strong className="text-gray-700 dark:text-gray-300">Env:</strong> Set via
+          ALLOWED_SCAN_ROOTS environment variable
         </p>
         <p>
-          <strong className="text-gray-700 dark:text-gray-300">Custom:</strong> User-added roots (can be removed)
+          <strong className="text-gray-700 dark:text-gray-300">Custom:</strong> User-added roots
+          (can be removed)
         </p>
       </div>
 

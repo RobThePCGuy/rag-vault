@@ -37,8 +37,15 @@ export function ReaderPage() {
 
   // Phase 2: Pins and Trail hooks
   const { pinnedChunkKeys, togglePin } = usePins()
-  const { currentTrail, savedTrails, addStep, saveTrail, loadTrail, deleteTrail, clearCurrentTrail } =
-    useTrail()
+  const {
+    currentTrail,
+    savedTrails,
+    addStep,
+    saveTrail,
+    loadTrail,
+    deleteTrail,
+    clearCurrentTrail,
+  } = useTrail()
 
   // Check for trail in URL hash on mount
   useEffect(() => {
@@ -120,7 +127,9 @@ export function ReaderPage() {
         for (const step of trail.steps) {
           addStep(step.chunkKey)
         }
-        navigate(`/read?path=${encodeURIComponent(firstStep.chunkKey.filePath)}&chunk=${firstStep.chunkKey.chunkIndex}`)
+        navigate(
+          `/read?path=${encodeURIComponent(firstStep.chunkKey.filePath)}&chunk=${firstStep.chunkKey.chunkIndex}`
+        )
       }
     }
 
@@ -256,9 +265,7 @@ export function ReaderPage() {
                         <span className="text-gray-700 dark:text-gray-300 truncate">
                           {step.chunkKey.filePath.split('/').pop()}
                         </span>
-                        <span className="text-gray-400 text-xs">
-                          #{step.chunkKey.chunkIndex}
-                        </span>
+                        <span className="text-gray-400 text-xs">#{step.chunkKey.chunkIndex}</span>
                       </div>
                     ))}
                     {pendingTrail.validation.trail.steps.length > 5 && (

@@ -39,10 +39,7 @@ export function encodeTrail(trail: Trail, vaultId: string): string {
 
   const json = JSON.stringify(shareable)
   // Use base64url encoding (URL-safe base64)
-  return btoa(json)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '')
+  return btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
 /**
@@ -51,9 +48,7 @@ export function encodeTrail(trail: Trail, vaultId: string): string {
 export function decodeTrail(encoded: string): ShareableTrail | null {
   try {
     // Restore base64 padding and characters
-    let base64 = encoded
-      .replace(/-/g, '+')
-      .replace(/_/g, '/')
+    let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/')
 
     // Add padding if needed
     const padding = base64.length % 4
@@ -150,7 +145,9 @@ export function validateTrail(
   // Check vault ID match
   const vaultMismatch = shareable.vault !== options.currentVaultId
   if (vaultMismatch) {
-    warnings.push(`This trail was created in a different vault (${shareable.vault}). Some steps may not be available.`)
+    warnings.push(
+      `This trail was created in a different vault (${shareable.vault}). Some steps may not be available.`
+    )
   }
 
   // Check for empty trail
@@ -212,31 +209,6 @@ export function validateTrail(
     warnings,
     errors,
   }
-}
-
-/**
- * Full import flow: parse, decode, validate
- */
-export function importTrailFromHash(options: TrailValidationOptions): TrailImportResult {
-  const encoded = parseTrailFromUrl()
-  if (!encoded) {
-    return {
-      success: false,
-      warnings: [],
-      errors: ['No trail found in URL'],
-    }
-  }
-
-  const decoded = decodeTrail(encoded)
-  if (!decoded) {
-    return {
-      success: false,
-      warnings: [],
-      errors: ['Failed to decode trail from URL'],
-    }
-  }
-
-  return validateTrail(decoded, options)
 }
 
 // ============================================

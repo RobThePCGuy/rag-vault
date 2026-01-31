@@ -53,23 +53,43 @@ export type { SearchState } from './useDocumentSearch'
 
 // Phase 7: Bookmarks, Tags, Collections
 export { useBookmarks } from './useBookmarks'
-export { useTagsForTarget, useTagsForChunk, useTagsForDocument, useTagsForHighlight } from './useTags'
+export {
+  useTagsForTarget,
+  useTagsForChunk,
+  useTagsForDocument,
+  useTagsForHighlight,
+} from './useTags'
 export { useCollectionsForDocument, useCollectionManagement } from './useCollections'
 
 // Phase 9: Reader UI Enhancements
 export { useDocumentAnnotations, type AnnotationSummaryItem } from './useDocumentAnnotations'
 export { useSkimMode, type SkimSection } from './useSkimMode'
-export { useChunkComparison, computeWordDiff, type ComparisonChunk, type DiffSegment } from './useChunkComparison'
+export {
+  useChunkComparison,
+  computeWordDiff,
+  type ComparisonChunk,
+  type DiffSegment,
+} from './useChunkComparison'
 
 // Phase 10: Graph Evolution
 export { useGraphStatePersistence } from './useGraphStatePersistence'
-export { useGraphClustering, calculateClusterBounds, getClusterColorForNode, type DocumentCluster } from './useGraphClustering'
+export {
+  useGraphClustering,
+  calculateClusterBounds,
+  getClusterColorForNode,
+  type DocumentCluster,
+} from './useGraphClustering'
 
 // Phase 11: Cross-Document Intelligence
 export { useInferredBacklinks, type InferredBacklink } from './useInferredBacklinks'
 export { useCrossDocumentRelated, type CrossDocumentGroup } from './useCrossDocumentRelated'
 export { useReadingStats, formatReadingTime } from './useReadingStats'
-export { useDiscoveryMode, getSuggestionReasonText, type DiscoverySuggestion, type DiscoveryStep } from './useDiscoveryMode'
+export {
+  useDiscoveryMode,
+  getSuggestionReasonText,
+  type DiscoverySuggestion,
+  type DiscoveryStep,
+} from './useDiscoveryMode'
 
 // Zettelkasten Reader
 export { useAutoSelectionSearch } from './useAutoSelectionSearch'

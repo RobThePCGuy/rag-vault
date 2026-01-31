@@ -67,7 +67,11 @@ export function BookmarksPanel({
                 <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <BookmarkOutlineIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No bookmarks yet</p>
-                  <p className="text-xs mt-1">Press <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">b</kbd> on a chunk to bookmark it</p>
+                  <p className="text-xs mt-1">
+                    Press{' '}
+                    <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">b</kbd> on a
+                    chunk to bookmark it
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -138,11 +142,7 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <button
-          type="button"
-          onClick={onNavigate}
-          className="text-left flex-1 min-w-0"
-        >
+        <button type="button" onClick={onNavigate} className="text-left flex-1 min-w-0">
           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate hover:text-blue-600 dark:hover:text-blue-400">
             {displayPath}
           </div>
@@ -199,7 +199,6 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
             placeholder="Add a note..."
             className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             rows={2}
-            autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -261,8 +260,18 @@ function BookmarkIcon({ className }: { className?: string }) {
 
 function BookmarkOutlineIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 20 20" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 20 20"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"
+      />
     </svg>
   )
 }

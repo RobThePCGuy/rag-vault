@@ -391,9 +391,9 @@ export function ReaderLayout({
           ${splitView ? 'w-[40%]' : 'w-[60%]'}
         `}
         >
-          {/* Document header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-            <div className="flex items-center gap-3">
+          {/* Document header - Book style */}
+          <div className="book-header flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-4">
               {/* ToC toggle */}
               <TableOfContents
                 entries={tocEntries}
@@ -404,16 +404,19 @@ export function ReaderLayout({
                 isFallback={tocIsFallback}
               />
 
-              {/* Document title */}
+              {/* Document title - Book style */}
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate" title={filePath}>
+                <h2
+                  className="book-title text-xl truncate"
+                  title={filePath}
+                >
                   {displayName}
                 </h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {chunks.length} chunks
-                  {activeChunkIndex !== null && ` • Reading #${activeChunkIndex}`}
+                <p className="text-sm text-stone-500 dark:text-stone-400 font-serif">
+                  {chunks.length} passages
+                  {activeChunkIndex !== null && ` · §${activeChunkIndex}`}
                   {hasSavedPosition && !initialChunkIndex && (
-                    <span className="ml-2 text-blue-500">• Restored</span>
+                    <span className="ml-2 text-amber-600 dark:text-amber-500">· Restored</span>
                   )}
                 </p>
               </div>
@@ -444,10 +447,10 @@ export function ReaderLayout({
             </div>
           </div>
 
-          {/* Document content */}
+          {/* Document content - Book reader style */}
           <div
             ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900"
+            className="flex-1 overflow-y-auto px-8 py-6 book-reader"
           >
             {isLoadingDoc ? (
               <div className="flex items-center justify-center h-32">

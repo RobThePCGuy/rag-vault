@@ -89,7 +89,10 @@ export interface DiffSegment {
  * Simple word-level diff between two texts
  * Returns segments marked as same, added, or removed
  */
-export function computeWordDiff(left: string, right: string): {
+export function computeWordDiff(
+  left: string,
+  right: string
+): {
   leftSegments: DiffSegment[]
   rightSegments: DiffSegment[]
 } {
@@ -98,7 +101,7 @@ export function computeWordDiff(left: string, right: string): {
 
   // Build LCS (longest common subsequence)
   const lcs = findLCS(leftWords, rightWords)
-  const lcsSet = new Set(lcs.map((w) => w.index + ':' + w.word))
+  const lcsSet = new Set(lcs.map((w) => `${w.index}:${w.word}`))
 
   // Build segments for left
   const leftSegments: DiffSegment[] = []
@@ -106,7 +109,7 @@ export function computeWordDiff(left: string, right: string): {
 
   for (let i = 0; i < leftWords.length; i++) {
     const word = leftWords[i] ?? ''
-    const isCommon = lcsSet.has(i + ':' + word)
+    const isCommon = lcsSet.has(`${i}:${word}`)
     const type: 'same' | 'removed' = isCommon ? 'same' : 'removed'
 
     if (currentLeftSegment && currentLeftSegment.type === type) {

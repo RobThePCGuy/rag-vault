@@ -97,11 +97,12 @@ export function OutlineItemComponent({
       <div
         className={`
           flex items-start gap-2 p-2 rounded-lg border transition-colors
-          ${item.type === 'heading'
-            ? 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
-            : item.type === 'chunk-ref'
-            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+          ${
+            item.type === 'heading'
+              ? 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
+              : item.type === 'chunk-ref'
+                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
           }
         `}
       >
@@ -109,11 +110,12 @@ export function OutlineItemComponent({
         <div
           className={`
             flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-xs
-            ${item.type === 'heading'
-              ? 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
-              : item.type === 'chunk-ref'
-              ? 'bg-blue-200 dark:bg-blue-800 text-blue-600 dark:text-blue-300'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+            ${
+              item.type === 'heading'
+                ? 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+                : item.type === 'chunk-ref'
+                  ? 'bg-blue-200 dark:bg-blue-800 text-blue-600 dark:text-blue-300'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
             }
           `}
         >
@@ -139,12 +141,12 @@ export function OutlineItemComponent({
               onChange={(e) => setEditContent(e.target.value)}
               onBlur={handleSave}
               onKeyDown={handleKeyDown}
-              autoFocus
               className={`
                 w-full bg-transparent border-0 p-0 focus:outline-none resize-none
-                ${item.type === 'heading'
-                  ? 'text-base font-medium text-gray-900 dark:text-gray-100'
-                  : 'text-sm text-gray-700 dark:text-gray-300'
+                ${
+                  item.type === 'heading'
+                    ? 'text-base font-medium text-gray-900 dark:text-gray-100'
+                    : 'text-sm text-gray-700 dark:text-gray-300'
                 }
               `}
               rows={item.type === 'heading' ? 1 : 3}
@@ -155,9 +157,10 @@ export function OutlineItemComponent({
               onClick={() => setIsEditing(true)}
               className={`
                 text-left w-full
-                ${item.type === 'heading'
-                  ? 'text-base font-medium text-gray-900 dark:text-gray-100'
-                  : 'text-sm text-gray-700 dark:text-gray-300'
+                ${
+                  item.type === 'heading'
+                    ? 'text-base font-medium text-gray-900 dark:text-gray-100'
+                    : 'text-sm text-gray-700 dark:text-gray-300'
                 }
               `}
             >

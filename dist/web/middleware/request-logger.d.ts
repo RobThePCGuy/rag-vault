@@ -15,7 +15,7 @@ export interface RequestLogEntry {
 /**
  * Logger function type
  */
-export type LoggerFn = (entry: RequestLogEntry) => void;
+type LoggerFn = (entry: RequestLogEntry) => void;
 /**
  * Request logging configuration
  */
@@ -49,4 +49,5 @@ export declare function createRequestLogger(config?: RequestLoggerConfig): (req:
  * Enable with: REQUEST_LOGGING=true
  */
 export declare function isRequestLoggingEnabled(): boolean;
+export {};
 //# sourceMappingURL=request-logger.d.ts.map

@@ -16,8 +16,15 @@ interface ReaderControlsProps {
  * Controls font size, line height, font family, and chunk number visibility
  */
 export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
-  const { settings, setFontSize, setLineHeight, setFontFamily, setShowChunkNumbers, setShowHeatmap, resetSettings } =
-    useReaderSettings()
+  const {
+    settings,
+    setFontSize,
+    setLineHeight,
+    setFontFamily,
+    setShowChunkNumbers,
+    setShowHeatmap,
+    resetSettings,
+  } = useReaderSettings()
 
   return (
     <AnimatePresence>
@@ -43,10 +50,10 @@ export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
             <div className="space-y-4">
               {/* Font Size */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Font Size
-                </label>
-                <div className="flex gap-1">
+                </span>
+                <div className="flex gap-1" role="group" aria-label="Font size">
                   {(['sm', 'base', 'lg', 'xl'] as FontSize[]).map((size) => (
                     <button
                       key={size}
@@ -54,9 +61,10 @@ export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
                       onClick={() => setFontSize(size)}
                       className={`
                         flex-1 px-2 py-1.5 text-sm rounded-md transition-colors
-                        ${settings.fontSize === size
-                          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        ${
+                          settings.fontSize === size
+                            ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }
                       `}
                     >
@@ -71,10 +79,10 @@ export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
 
               {/* Line Height */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <span className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Line Spacing
-                </label>
-                <div className="flex gap-1">
+                </span>
+                <div className="flex gap-1" role="group" aria-label="Line spacing">
                   {(['tight', 'normal', 'relaxed'] as LineHeight[]).map((height) => (
                     <button
                       key={height}
@@ -82,9 +90,10 @@ export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
                       onClick={() => setLineHeight(height)}
                       className={`
                         flex-1 px-2 py-1.5 text-sm rounded-md transition-colors capitalize
-                        ${settings.lineHeight === height
-                          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        ${
+                          settings.lineHeight === height
+                            ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }
                       `}
                     >
@@ -98,21 +107,21 @@ export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Font
+                  <select
+                    value={settings.fontFamily}
+                    onChange={(e) => setFontFamily(e.target.value as FontFamily)}
+                    className="mt-1 w-full px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 border-0 rounded-md text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="sans">Sans-serif</option>
+                    <option value="serif">Serif</option>
+                    <option value="mono">Monospace</option>
+                  </select>
                 </label>
-                <select
-                  value={settings.fontFamily}
-                  onChange={(e) => setFontFamily(e.target.value as FontFamily)}
-                  className="w-full px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 border-0 rounded-md text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="sans">Sans-serif</option>
-                  <option value="serif">Serif</option>
-                  <option value="mono">Monospace</option>
-                </select>
               </div>
 
               {/* Show Chunk Numbers */}
               <div className="flex items-center justify-between">
-                <label className="text-sm text-gray-700 dark:text-gray-300">Show chunk numbers</label>
+                <span className="text-sm text-gray-700 dark:text-gray-300">Show chunk numbers</span>
                 <button
                   type="button"
                   onClick={() => setShowChunkNumbers(!settings.showChunkNumbers)}
@@ -133,7 +142,7 @@ export function ReaderControls({ isOpen, onClose }: ReaderControlsProps) {
               {/* Semantic Heatmap Toggle */}
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <label className="text-sm text-gray-700 dark:text-gray-300">Semantic heatmap</label>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">Semantic heatmap</span>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     Highlight connected terms
                   </p>
@@ -199,7 +208,12 @@ function SettingsIcon({ className }: { className?: string }) {
         strokeWidth={2}
         d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
       />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
     </svg>
   )
 }

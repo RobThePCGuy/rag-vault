@@ -16,61 +16,51 @@ export function UploadPage() {
   const [activeTab, setActiveTab] = useState<TabType>('file')
   const [uploadQueue, setUploadQueue] = useState<FileUploadStatus[]>([])
   const [isProcessingQueue, setIsProcessingQueue] = useState(false)
-  const {
-    uploadFile,
-    ingestData,
-    isIngesting,
-    ingestError,
-    ingestResult,
-    reset,
-  } = useUpload()
+  const { uploadFile, ingestData, isIngesting, ingestError, ingestResult, reset } = useUpload()
 
-  const processQueue = useCallback(async (files: File[]) => {
-    const queue: FileUploadStatus[] = files.map((file) => ({
-      file,
-      status: 'pending' as const,
-    }))
-    setUploadQueue(queue)
-    setIsProcessingQueue(true)
+  const processQueue = useCallback(
+    async (files: File[]) => {
+      const queue: FileUploadStatus[] = files.map((file) => ({
+        file,
+        status: 'pending' as const,
+      }))
+      setUploadQueue(queue)
+      setIsProcessingQueue(true)
 
-    for (let i = 0; i < queue.length; i++) {
-      const currentFile = queue[i]
-      if (!currentFile) continue
+      for (let i = 0; i < queue.length; i++) {
+        const currentFile = queue[i]
+        if (!currentFile) continue
 
-      setUploadQueue((prev) =>
-        prev.map((item, idx) =>
-          idx === i ? { ...item, status: 'uploading' } : item
+        setUploadQueue((prev) =>
+          prev.map((item, idx) => (idx === i ? { ...item, status: 'uploading' } : item))
         )
-      )
 
-      await new Promise<void>((resolve) => {
-        uploadFile(currentFile.file, {
-          onSuccess: (result) => {
-            setUploadQueue((prev) =>
-              prev.map((item, idx) =>
-                idx === i
-                  ? { ...item, status: 'success', chunkCount: result.chunkCount }
-                  : item
+        await new Promise<void>((resolve) => {
+          uploadFile(currentFile.file, {
+            onSuccess: (result) => {
+              setUploadQueue((prev) =>
+                prev.map((item, idx) =>
+                  idx === i ? { ...item, status: 'success', chunkCount: result.chunkCount } : item
+                )
               )
-            )
-            resolve()
-          },
-          onError: (error) => {
-            setUploadQueue((prev) =>
-              prev.map((item, idx) =>
-                idx === i
-                  ? { ...item, status: 'error', error: error.message }
-                  : item
+              resolve()
+            },
+            onError: (error) => {
+              setUploadQueue((prev) =>
+                prev.map((item, idx) =>
+                  idx === i ? { ...item, status: 'error', error: error.message } : item
+                )
               )
-            )
-            resolve() // Continue with next file even on error
-          },
+              resolve() // Continue with next file even on error
+            },
+          })
         })
-      })
-    }
+      }
 
-    setIsProcessingQueue(false)
-  }, [uploadFile])
+      setIsProcessingQueue(false)
+    },
+    [uploadFile]
+  )
 
   const handleFilesSelect = (files: File[]) => {
     reset()
@@ -97,7 +87,9 @@ export function UploadPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upload Content</h1>
-        <p className="text-gray-600 dark:text-gray-400">Add documents to your knowledge base for semantic search.</p>
+        <p className="text-gray-600 dark:text-gray-400">
+          Add documents to your knowledge base for semantic search.
+        </p>
       </div>
 
       {/* Tabs */}
@@ -164,15 +156,9 @@ export function UploadPage() {
                   {item.status === 'pending' && (
                     <div className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600" />
                   )}
-                  {item.status === 'uploading' && (
-                    <Spinner className="w-5 h-5 text-blue-600" />
-                  )}
-                  {item.status === 'success' && (
-                    <CheckIcon className="w-5 h-5 text-green-600" />
-                  )}
-                  {item.status === 'error' && (
-                    <ErrorIcon className="w-5 h-5 text-red-600" />
-                  )}
+                  {item.status === 'uploading' && <Spinner className="w-5 h-5 text-blue-600" />}
+                  {item.status === 'success' && <CheckIcon className="w-5 h-5 text-green-600" />}
+                  {item.status === 'error' && <ErrorIcon className="w-5 h-5 text-red-600" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
@@ -187,9 +173,7 @@ export function UploadPage() {
                     <p className="text-xs text-red-600 dark:text-red-400">{item.error}</p>
                   )}
                 </div>
-                <div className="text-xs text-gray-400">
-                  {(item.file.size / 1024).toFixed(0)} KB
-                </div>
+                <div className="text-xs text-gray-400">{(item.file.size / 1024).toFixed(0)} KB</div>
               </div>
             ))}
           </div>
@@ -199,14 +183,13 @@ export function UploadPage() {
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 {successCount > 0 && (
                   <span className="text-green-600 dark:text-green-400">
-                    {successCount} file{successCount !== 1 ? 's' : ''} uploaded ({totalChunks} chunks)
+                    {successCount} file{successCount !== 1 ? 's' : ''} uploaded ({totalChunks}{' '}
+                    chunks)
                   </span>
                 )}
                 {successCount > 0 && errorCount > 0 && ' • '}
                 {errorCount > 0 && (
-                  <span className="text-red-600 dark:text-red-400">
-                    {errorCount} failed
-                  </span>
+                  <span className="text-red-600 dark:text-red-400">{errorCount} failed</span>
                 )}
               </p>
             </div>

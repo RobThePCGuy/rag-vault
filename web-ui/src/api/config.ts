@@ -234,7 +234,10 @@ export async function removeAllowedRoot(path: string): Promise<AllowedRootsRespo
 /**
  * Browse a directory
  */
-export async function browseDirectory(path: string, showHidden = false): Promise<BrowseDirectoryResponse> {
+export async function browseDirectory(
+  path: string,
+  showHidden = false
+): Promise<BrowseDirectoryResponse> {
   const params = new URLSearchParams({ path })
   if (showHidden) {
     params.set('showHidden', 'true')

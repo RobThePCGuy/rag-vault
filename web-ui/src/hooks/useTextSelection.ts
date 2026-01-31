@@ -33,9 +33,10 @@ function calculateOffsetsInChunkText(
   // Get all text nodes in the container in order
   const textNodes: Text[] = []
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT)
-  let node: Text | null
-  while ((node = walker.nextNode() as Text | null)) {
+  let node = walker.nextNode() as Text | null
+  while (node !== null) {
     textNodes.push(node)
+    node = walker.nextNode() as Text | null
   }
 
   // Find the start offset
@@ -133,7 +134,10 @@ export function useTextSelection({
       const rect = range.getBoundingClientRect()
 
       // Extract context before and after
-      const contextBefore = chunkText.slice(Math.max(0, offsets.startOffset - 30), offsets.startOffset)
+      const contextBefore = chunkText.slice(
+        Math.max(0, offsets.startOffset - 30),
+        offsets.startOffset
+      )
       const contextAfter = chunkText.slice(offsets.endOffset, offsets.endOffset + 30)
 
       setSelection({

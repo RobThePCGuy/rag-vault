@@ -40,22 +40,22 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
     <Modal isOpen={isOpen} onClose={onClose} title="Document Preview">
       <div className="space-y-4">
         {/* Metadata */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg text-sm">
+        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm">
           <div>
-            <span className="text-gray-500">Source:</span>
-            <p className="font-medium text-gray-900 break-all">{displaySource}</p>
+            <span className="text-gray-500 dark:text-gray-400">Source:</span>
+            <p className="font-medium text-gray-900 dark:text-gray-100 break-all">{displaySource}</p>
           </div>
           <div>
-            <span className="text-gray-500">Chunk:</span>
-            <p className="font-medium text-gray-900">#{result.chunkIndex}</p>
+            <span className="text-gray-500 dark:text-gray-400">Chunk:</span>
+            <p className="font-medium text-gray-900 dark:text-gray-100">#{result.chunkIndex}</p>
           </div>
           <div>
-            <span className="text-gray-500">Score:</span>
-            <p className="font-medium text-gray-900">{result.score.toFixed(4)}</p>
+            <span className="text-gray-500 dark:text-gray-400">Score:</span>
+            <p className="font-medium text-gray-900 dark:text-gray-100">{result.score.toFixed(4)}</p>
           </div>
           <div>
-            <span className="text-gray-500">File Path:</span>
-            <p className="font-medium text-gray-900 break-all truncate" title={result.filePath}>
+            <span className="text-gray-500 dark:text-gray-400">File Path:</span>
+            <p className="font-medium text-gray-900 dark:text-gray-100 break-all truncate" title={result.filePath}>
               {result.filePath}
             </p>
           </div>
@@ -64,11 +64,11 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
         {/* Content */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-700">Content</h3>
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Content</h3>
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
               {copied ? (
                 <>
@@ -83,8 +83,8 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
               )}
             </button>
           </div>
-          <div className="p-4 bg-white border border-gray-200 rounded-lg">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{result.text}</p>
+          <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{result.text}</p>
           </div>
         </div>
       </div>

@@ -32,9 +32,7 @@ export function BacklinksPanel({
       >
         <div className="flex items-center gap-2">
           <BacklinkIcon />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Backlinks
-          </span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Backlinks</span>
           <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
             {backlinks.length}
           </span>
@@ -56,9 +54,7 @@ export function BacklinksPanel({
                 <BacklinkItem
                   key={link.id}
                   link={link}
-                  onNavigate={() =>
-                    onNavigate(link.sourceKey.filePath, link.sourceKey.chunkIndex)
-                  }
+                  onNavigate={() => onNavigate(link.sourceKey.filePath, link.sourceKey.chunkIndex)}
                 />
               ))}
             </div>
@@ -92,14 +88,10 @@ function BacklinkItem({ link, onNavigate }: BacklinkItemProps) {
         </span>
       </div>
 
-      <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-        {link.sourceText}
-      </p>
+      <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{link.sourceText}</p>
 
       {link.label && (
-        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 italic">
-          "{link.label}"
-        </p>
+        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 italic">"{link.label}"</p>
       )}
     </button>
   )

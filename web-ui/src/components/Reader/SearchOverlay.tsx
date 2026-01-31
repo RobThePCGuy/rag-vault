@@ -182,10 +182,7 @@ export function SearchOverlay({
 
             {/* Results List */}
             {query.length > 0 && (
-              <div
-                ref={resultsRef}
-                className="max-h-64 overflow-y-auto"
-              >
+              <div ref={resultsRef} className="max-h-64 overflow-y-auto">
                 {matches.length === 0 ? (
                   <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
                     <p className="text-sm">No matches found</p>
@@ -257,11 +254,7 @@ export function SearchOverlay({
 /**
  * Highlight the matched text within context
  */
-function highlightContext(
-  context: string,
-  query: string,
-  caseSensitive: boolean
-): React.ReactNode {
+function highlightContext(context: string, query: string, caseSensitive: boolean): React.ReactNode {
   if (!query) return context
 
   const searchQuery = caseSensitive ? query : query.toLowerCase()
@@ -277,9 +270,7 @@ function highlightContext(
   return (
     <>
       {before}
-      <mark className="bg-orange-200 dark:bg-orange-800/60 rounded px-0.5">
-        {match}
-      </mark>
+      <mark className="bg-orange-200 dark:bg-orange-800/60 rounded px-0.5">{match}</mark>
       {after}
     </>
   )

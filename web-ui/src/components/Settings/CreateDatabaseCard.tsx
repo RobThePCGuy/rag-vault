@@ -48,7 +48,10 @@ export function CreateDatabaseCard({ onCreate, isLoading, error }: CreateDatabas
       {showForm ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="dbPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label
+              htmlFor="dbPath"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            >
               Database Path
             </label>
             <div className="flex gap-2">

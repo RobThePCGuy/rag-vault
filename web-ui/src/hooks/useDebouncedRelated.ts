@@ -47,7 +47,8 @@ export function useDebouncedRelated(
     error,
   } = useQuery({
     queryKey: ['batchRelatedChunks', debouncedChunks, limit],
-    queryFn: () => (debouncedChunks.length > 0 ? getBatchRelatedChunks(debouncedChunks, limit) : {}),
+    queryFn: () =>
+      debouncedChunks.length > 0 ? getBatchRelatedChunks(debouncedChunks, limit) : {},
     enabled: debouncedChunks.length > 0,
     staleTime: 5 * 60 * 1000, // 5 minutes
   })

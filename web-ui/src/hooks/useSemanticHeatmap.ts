@@ -3,14 +3,89 @@ import { searchDocuments } from '../api/client'
 
 // Common English stopwords to filter out
 const STOPWORDS = new Set([
-  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'has', 'have',
-  'he', 'in', 'is', 'it', 'its', 'of', 'on', 'or', 'that', 'the', 'to', 'was',
-  'were', 'will', 'with', 'this', 'but', 'they', 'had', 'what', 'when', 'where',
-  'who', 'which', 'can', 'could', 'would', 'should', 'their', 'there', 'been',
-  'being', 'do', 'does', 'did', 'doing', 'these', 'those', 'then', 'than',
-  'so', 'if', 'not', 'no', 'nor', 'only', 'own', 'same', 'such', 'too', 'very',
-  'just', 'also', 'any', 'each', 'few', 'more', 'most', 'other', 'some', 'all',
-  'both', 'into', 'out', 'up', 'down', 'about', 'after', 'before', 'over', 'under',
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'by',
+  'for',
+  'from',
+  'has',
+  'have',
+  'he',
+  'in',
+  'is',
+  'it',
+  'its',
+  'of',
+  'on',
+  'or',
+  'that',
+  'the',
+  'to',
+  'was',
+  'were',
+  'will',
+  'with',
+  'this',
+  'but',
+  'they',
+  'had',
+  'what',
+  'when',
+  'where',
+  'who',
+  'which',
+  'can',
+  'could',
+  'would',
+  'should',
+  'their',
+  'there',
+  'been',
+  'being',
+  'do',
+  'does',
+  'did',
+  'doing',
+  'these',
+  'those',
+  'then',
+  'than',
+  'so',
+  'if',
+  'not',
+  'no',
+  'nor',
+  'only',
+  'own',
+  'same',
+  'such',
+  'too',
+  'very',
+  'just',
+  'also',
+  'any',
+  'each',
+  'few',
+  'more',
+  'most',
+  'other',
+  'some',
+  'all',
+  'both',
+  'into',
+  'out',
+  'up',
+  'down',
+  'about',
+  'after',
+  'before',
+  'over',
+  'under',
 ])
 
 /**
@@ -82,9 +157,10 @@ function findWordPositions(text: string, word: string): Array<{ start: number; e
 
   // Use word boundary matching to avoid partial matches
   const regex = new RegExp(`\\b${lowerWord}\\b`, 'gi')
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(lowerText)) !== null) {
+  let match = regex.exec(lowerText)
+  while (match !== null) {
     positions.push({ start: match.index, end: match.index + word.length })
+    match = regex.exec(lowerText)
   }
 
   return positions
@@ -94,13 +170,7 @@ function findWordPositions(text: string, word: string): Array<{ start: number; e
  * Hook for semantic heatmap - shows which terms have connections elsewhere
  */
 export function useSemanticHeatmap(options: UseSemanticHeatmapOptions): UseSemanticHeatmapResult {
-  const {
-    text,
-    currentFilePath,
-    enabled = false,
-    maxPhrases = 20,
-    minWordLength = 5,
-  } = options
+  const { text, currentFilePath, enabled = false, maxPhrases = 20, minWordLength = 5 } = options
 
   const [connections, setConnections] = useState<KeyphraseConnection[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -136,9 +206,7 @@ export function useSemanticHeatmap(options: UseSemanticHeatmapOptions): UseSeman
 
         // Count distinct documents (excluding current)
         const distinctDocs = new Set(
-          results
-            .filter((r) => !currentPath || r.filePath !== currentPath)
-            .map((r) => r.filePath)
+          results.filter((r) => !currentPath || r.filePath !== currentPath).map((r) => r.filePath)
         )
 
         // Find positions in text

@@ -56,7 +56,13 @@ export function AnimatedCardContainer({
   )
 }
 
-export function AnimatedCardItem({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function AnimatedCardItem({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
     <motion.div
       variants={{

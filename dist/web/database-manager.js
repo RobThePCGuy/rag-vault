@@ -37,13 +37,14 @@ function getEnvAllowedScanRoots() {
 }
 /**
  * Read user-added allowed roots from config file
+ * Note: This is async to avoid blocking the event loop
  */
-function readUserAllowedRoots() {
+async function readUserAllowedRoots() {
     if (!(0, node_fs_1.existsSync)(ALLOWED_ROOTS_FILE)) {
         return [];
     }
     try {
-        const content = JSON.parse(require('node:fs').readFileSync(ALLOWED_ROOTS_FILE, 'utf-8'));
+        const content = JSON.parse(await (0, promises_1.readFile)(ALLOWED_ROOTS_FILE, 'utf-8'));
         if (Array.isArray(content.roots)) {
             return content.roots.map((p) => node_path_1.default.resolve(p));
         }
@@ -55,13 +56,14 @@ function readUserAllowedRoots() {
 }
 /**
  * Write user-added allowed roots to config file
+ * Note: This is async to avoid blocking the event loop
  */
-function writeUserAllowedRoots(roots) {
+async function writeUserAllowedRoots(roots) {
     const dir = node_path_1.default.dirname(ALLOWED_ROOTS_FILE);
     if (!(0, node_fs_1.existsSync)(dir)) {
-        require('node:fs').mkdirSync(dir, { recursive: true });
+        await (0, promises_1.mkdir)(dir, { recursive: true });
     }
-    require('node:fs').writeFileSync(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8');
+    await (0, promises_1.writeFile)(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8');
 }
 /**
  * Check if a path is within a set of allowed roots
@@ -370,9 +372,9 @@ class DatabaseManager {
     /**
      * Get all effective allowed roots (env + baseDir + user-added)
      */
-    getEffectiveAllowedRoots() {
+    async getEffectiveAllowedRoots() {
         const envRoots = getEnvAllowedScanRoots();
-        const userRoots = readUserAllowedRoots();
+        const userRoots = await readUserAllowedRoots();
         const baseDir = this.getBaseDir();
         // Combine all sources and deduplicate
         const allRoots = new Set([...envRoots, baseDir, ...userRoots]);
@@ -381,43 +383,47 @@ class DatabaseManager {
     /**
      * Check if a path is within allowed roots
      */
-    isPathAllowed(targetPath) {
-        const allowedRoots = this.getEffectiveAllowedRoots();
+    async isPathAllowed(targetPath) {
+        const allowedRoots = await this.getEffectiveAllowedRoots();
         return isPathWithinRoots(targetPath, allowedRoots);
     }
     /**
      * Get allowed roots info for API response
      */
-    getAllowedRootsInfo() {
+    async getAllowedRootsInfo() {
+        const [roots, userRoots] = await Promise.all([
+            this.getEffectiveAllowedRoots(),
+            readUserAllowedRoots(),
+        ]);
         return {
-            roots: this.getEffectiveAllowedRoots(),
+            roots,
             baseDir: this.getBaseDir(),
             envRoots: getEnvAllowedScanRoots(),
-            userRoots: readUserAllowedRoots(),
+            userRoots,
         };
     }
     /**
      * Add a user-allowed root
      */
-    addUserAllowedRoot(rootPath) {
+    async addUserAllowedRoot(rootPath) {
         const resolved = node_path_1.default.resolve(expandTilde(rootPath));
         if (!(0, node_fs_1.existsSync)(resolved)) {
             throw new Error(`Path does not exist: ${resolved}`);
         }
-        const roots = readUserAllowedRoots();
+        const roots = await readUserAllowedRoots();
         if (!roots.includes(resolved)) {
             roots.push(resolved);
-            writeUserAllowedRoots(roots);
+            await writeUserAllowedRoots(roots);
         }
     }
     /**
      * Remove a user-allowed root
      */
-    removeUserAllowedRoot(rootPath) {
+    async removeUserAllowedRoot(rootPath) {
         const resolved = node_path_1.default.resolve(expandTilde(rootPath));
-        const roots = readUserAllowedRoots();
+        const roots = await readUserAllowedRoots();
         const filtered = roots.filter((r) => r !== resolved);
-        writeUserAllowedRoots(filtered);
+        await writeUserAllowedRoots(filtered);
     }
     /**
      * List directory contents for folder browser
@@ -470,8 +476,8 @@ class DatabaseManager {
         // Expand tilde to home directory
         const resolvedPath = expandTilde(scanPath);
         // Security: Validate path is within allowed roots
-        if (!this.isPathAllowed(resolvedPath)) {
-            const allowedRoots = this.getEffectiveAllowedRoots();
+        if (!(await this.isPathAllowed(resolvedPath))) {
+            const allowedRoots = await this.getEffectiveAllowedRoots();
             throw new Error(`Scan path "${resolvedPath}" is outside allowed roots. ` +
                 `Allowed: ${allowedRoots.join(', ')}. ` +
                 `Add this path to allowed roots or set ALLOWED_SCAN_ROOTS environment variable.`);
@@ -531,17 +537,17 @@ class DatabaseManager {
     /**
      * Export configuration (allowed roots)
      */
-    exportConfig() {
+    async exportConfig() {
         return {
             version: 1,
             exportedAt: new Date().toISOString(),
-            allowedRoots: readUserAllowedRoots(),
+            allowedRoots: await readUserAllowedRoots(),
         };
     }
     /**
      * Import configuration (allowed roots)
      */
-    importConfig(config) {
+    async importConfig(config) {
         if (config.version !== 1) {
             throw new Error(`Unsupported config version: ${config.version}`);
         }
@@ -559,7 +565,7 @@ class DatabaseManager {
                 console.warn(`Skipping non-existent root during import: ${resolved}`);
             }
         }
-        writeUserAllowedRoots(validRoots);
+        await writeUserAllowedRoots(validRoots);
     }
     /**
      * Get the current hybrid search weight

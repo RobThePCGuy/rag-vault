@@ -106,9 +106,7 @@ export function useGraphClustering({
       }
 
       // Calculate bounds if nodes have positions
-      const nodesWithPos = fileNodes.filter(
-        (n) => n.x !== undefined && n.y !== undefined
-      )
+      const nodesWithPos = fileNodes.filter((n) => n.x !== undefined && n.y !== undefined)
 
       if (nodesWithPos.length > 0) {
         const xs = nodesWithPos.map((n) => n.x!)
@@ -144,7 +142,9 @@ export function useGraphClustering({
     const map = new Map<string, string>()
     let colorIndex = 0
     for (const cluster of clusters) {
-      const legendColor = CLUSTER_LEGEND_COLORS[colorIndex % CLUSTER_LEGEND_COLORS.length] ?? CLUSTER_LEGEND_COLORS[0]!
+      const legendColor =
+        CLUSTER_LEGEND_COLORS[colorIndex % CLUSTER_LEGEND_COLORS.length] ??
+        CLUSTER_LEGEND_COLORS[0]!
       map.set(cluster.filePath, legendColor)
       colorIndex++
     }
@@ -184,10 +184,7 @@ export function calculateClusterBounds(
 /**
  * Get cluster color for a node
  */
-export function getClusterColorForNode(
-  nodeId: string,
-  clusters: DocumentCluster[]
-): string | null {
+export function getClusterColorForNode(nodeId: string, clusters: DocumentCluster[]): string | null {
   for (const cluster of clusters) {
     if (cluster.nodeIds.includes(nodeId)) {
       return cluster.color

@@ -11,24 +11,55 @@ const index_js_1 = require("../errors/index.js");
 var index_js_2 = require("../errors/index.js");
 Object.defineProperty(exports, "DatabaseError", { enumerable: true, get: function () { return index_js_2.DatabaseError; } });
 // ============================================
-// Constants
+// Constants (configurable via environment variables)
 // ============================================
+/**
+ * Parse a numeric environment variable with fallback
+ */
+function parseEnvNumber(envVar, defaultValue) {
+    const value = process.env[envVar];
+    if (!value)
+        return defaultValue;
+    const parsed = Number.parseFloat(value);
+    return Number.isNaN(parsed) ? defaultValue : parsed;
+}
+/**
+ * Parse an integer environment variable with fallback
+ */
+function parseEnvInt(envVar, defaultValue) {
+    const value = process.env[envVar];
+    if (!value)
+        return defaultValue;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? defaultValue : parsed;
+}
 /**
  * Standard deviation multiplier for detecting group boundaries.
  * A gap is considered a "boundary" if it exceeds mean + k*std.
  * Value of 1.5 means gaps > 1.5 standard deviations above mean are boundaries.
+ * Configure via RAG_GROUPING_STD_MULTIPLIER environment variable.
  */
-const GROUPING_BOUNDARY_STD_MULTIPLIER = 1.5;
-/** Multiplier for candidate count in hybrid search (to allow reranking) */
-const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = 2;
+const GROUPING_BOUNDARY_STD_MULTIPLIER = parseEnvNumber('RAG_GROUPING_STD_MULTIPLIER', 1.5);
+/**
+ * Multiplier for candidate count in hybrid search (to allow reranking).
+ * Configure via RAG_HYBRID_CANDIDATE_MULTIPLIER environment variable.
+ */
+const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = parseEnvInt('RAG_HYBRID_CANDIDATE_MULTIPLIER', 2);
 /** FTS index name (bump version when changing tokenizer settings) */
 const FTS_INDEX_NAME = 'fts_index_v2';
 /** Threshold for cleaning up old index versions (1 minute) */
 const FTS_CLEANUP_THRESHOLD_MS = 60 * 1000;
-/** FTS circuit breaker: max failures before disabling FTS */
-const FTS_MAX_FAILURES = 3;
-/** FTS circuit breaker: cooldown period before retry (5 minutes) */
-const FTS_COOLDOWN_MS = 5 * 60 * 1000;
+/**
+ * FTS circuit breaker: max failures before disabling FTS.
+ * Configure via RAG_FTS_MAX_FAILURES environment variable.
+ */
+const FTS_MAX_FAILURES = parseEnvInt('RAG_FTS_MAX_FAILURES', 3);
+/**
+ * FTS circuit breaker: cooldown period before retry in milliseconds.
+ * Default: 5 minutes (300000ms).
+ * Configure via RAG_FTS_COOLDOWN_MS environment variable.
+ */
+const FTS_COOLDOWN_MS = parseEnvInt('RAG_FTS_COOLDOWN_MS', 5 * 60 * 1000);
 // ============================================
 // Error Codes (for robust error handling)
 // ============================================
@@ -253,15 +284,15 @@ class VectorStore {
             if (tableNames.includes(this.config.tableName)) {
                 // Open existing table
                 this.table = await this.db.openTable(this.config.tableName);
-                console.error(`VectorStore: Opened existing table "${this.config.tableName}"`);
+                console.log(`VectorStore: Opened existing table "${this.config.tableName}"`);
                 // Ensure FTS index exists (migration for existing databases)
                 await this.ensureFtsIndex();
             }
             else {
                 // Create new table (schema auto-defined on first data insertion)
-                console.error(`VectorStore: Table "${this.config.tableName}" will be created on first data insertion`);
+                console.log(`VectorStore: Table "${this.config.tableName}" will be created on first data insertion`);
             }
-            console.error(`VectorStore initialized: ${this.config.dbPath}`);
+            console.log(`VectorStore initialized: ${this.config.dbPath}`);
         }
         catch (error) {
             throw new index_js_1.DatabaseError('Failed to initialize VectorStore', error);
@@ -275,7 +306,7 @@ class VectorStore {
     async deleteChunks(filePath) {
         if (!this.table) {
             // If table doesn't exist, no deletion targets, return normally
-            console.error('VectorStore: Skipping deletion as table does not exist');
+            console.log('VectorStore: Skipping deletion as table does not exist');
             return;
         }
         // Validate file path before use in query to prevent SQL injection
@@ -291,7 +322,7 @@ class VectorStore {
             // so call delete directly
             // Note: Field names are case-sensitive, use backticks for camelCase fields
             await this.table.delete(`\`filePath\` = '${escapedFilePath}'`);
-            console.error(`VectorStore: Deleted chunks for file "${filePath}"`);
+            console.log(`VectorStore: Deleted chunks for file "${filePath}"`);
             // Rebuild FTS index after deleting data
             await this.rebuildFtsIndex();
         }
@@ -336,7 +367,7 @@ class VectorStore {
                 // LanceDB's createTable API accepts data as Record<string, unknown>[]
                 const records = chunksWithFingerprints.map((chunk) => chunk);
                 this.table = await this.db.createTable(this.config.tableName, records);
-                console.error(`VectorStore: Created table "${this.config.tableName}"`);
+                console.log(`VectorStore: Created table "${this.config.tableName}"`);
                 // Create FTS index for hybrid search
                 await this.ensureFtsIndex();
             }
@@ -347,7 +378,7 @@ class VectorStore {
                 // Rebuild FTS index after adding new data
                 await this.rebuildFtsIndex();
             }
-            console.error(`VectorStore: Inserted ${chunks.length} chunks`);
+            console.log(`VectorStore: Inserted ${chunks.length} chunks`);
         }
         catch (error) {
             throw new index_js_1.DatabaseError('Failed to insert chunks', error);
@@ -385,12 +416,12 @@ class VectorStore {
             name: FTS_INDEX_NAME,
         });
         this.ftsEnabled = true;
-        console.error(`VectorStore: FTS index "${FTS_INDEX_NAME}" created successfully`);
+        console.log(`VectorStore: FTS index "${FTS_INDEX_NAME}" created successfully`);
         // Drop old FTS indices
         for (const idx of existingFtsIndices) {
             if (idx.name !== FTS_INDEX_NAME) {
                 await this.table.dropIndex(idx.name);
-                console.error(`VectorStore: Dropped old FTS index "${idx.name}"`);
+                console.log(`VectorStore: Dropped old FTS index "${idx.name}"`);
             }
         }
     }
@@ -472,7 +503,7 @@ class VectorStore {
      */
     async search(queryVector, queryText, limit = 10) {
         if (!this.table) {
-            console.error('VectorStore: Returning empty results as table does not exist');
+            console.log('VectorStore: Returning empty results as table does not exist');
             return [];
         }
         if (limit < 1 || limit > 20) {
@@ -577,16 +608,21 @@ class VectorStore {
         return boostedResults.sort((a, b) => a.score - b.score);
     }
     /**
-     * Get list of ingested files
+     * Get list of ingested files with optional pagination
      *
+     * @param options - Optional pagination parameters
+     * @param options.limit - Maximum number of files to return (default: all)
+     * @param options.offset - Number of files to skip (default: 0)
      * @returns Array of file information
      */
-    async listFiles() {
+    async listFiles(options) {
         if (!this.table) {
             return []; // Return empty array if table doesn't exist
         }
         try {
-            // Retrieve all records
+            // Retrieve all records - LanceDB doesn't support GROUP BY aggregation,
+            // so we must fetch records and group in memory
+            // TODO(perf): Consider caching file list or using incremental updates for very large datasets
             const allRecords = await this.table.query().toArray();
             // Group by file path
             const fileMap = new Map();
@@ -608,11 +644,23 @@ class VectorStore {
                 }
             }
             // Convert Map to array of objects
-            return Array.from(fileMap.entries()).map(([filePath, info]) => ({
+            let results = Array.from(fileMap.entries()).map(([filePath, info]) => ({
                 filePath,
                 chunkCount: info.chunkCount,
                 timestamp: info.timestamp,
             }));
+            // Sort by timestamp descending (most recent first)
+            results.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+            // Apply pagination if provided
+            const offset = options?.offset ?? 0;
+            const limit = options?.limit;
+            if (offset > 0) {
+                results = results.slice(offset);
+            }
+            if (limit !== undefined && limit > 0) {
+                results = results.slice(0, limit);
+            }
+            return results;
         }
         catch (error) {
             throw new index_js_1.DatabaseError('Failed to list files', error);
@@ -627,7 +675,7 @@ class VectorStore {
         this.ftsEnabled = false;
         this.ftsFailureCount = 0;
         this.ftsLastFailure = null;
-        console.error('VectorStore: Connection closed');
+        console.log('VectorStore: Connection closed');
     }
     /**
      * Get all chunks for a document, ordered by chunkIndex
@@ -696,8 +744,20 @@ class VectorStore {
                 return [];
             }
             const sourceChunk = sourceResults[0];
-            const sourceVector = sourceChunk?.vector;
-            if (!sourceVector || !Array.isArray(sourceVector)) {
+            const rawVector = sourceChunk?.vector;
+            // LanceDB may return vectors as Arrow Vector or Float32Array, not plain Array
+            // Convert to number[] for compatibility
+            let sourceVector;
+            if (rawVector) {
+                if (Array.isArray(rawVector)) {
+                    sourceVector = rawVector;
+                }
+                else if (typeof rawVector === 'object' && 'length' in rawVector) {
+                    // Handle Arrow Vector, Float32Array, or other array-like objects
+                    sourceVector = Array.from(rawVector);
+                }
+            }
+            if (!sourceVector || sourceVector.length === 0) {
                 // Chunk exists but has no embedding (e.g., upload timed out mid-process)
                 // Return empty results instead of throwing - allows batch operations to continue
                 console.warn(`Chunk ${filePath}:${chunkIndex} has no valid vector (possibly corrupted)`);
@@ -744,11 +804,12 @@ class VectorStore {
             };
         }
         try {
-            // Retrieve all records
-            const allRecords = await this.table.query().toArray();
-            const chunkCount = allRecords.length;
-            // Count unique file paths
-            const uniqueFilePaths = new Set(allRecords.map((record) => record.filePath));
+            // Use countRows() for efficient chunk counting instead of fetching all records
+            const chunkCount = await this.table.countRows();
+            // For document count, we still need to query unique filePaths
+            // Use select to only fetch the filePath column (more efficient than full records)
+            const filePathRecords = await this.table.query().select(['filePath']).toArray();
+            const uniqueFilePaths = new Set(filePathRecords.map((record) => record.filePath));
             const documentCount = uniqueFilePaths.size;
             // Get memory usage (in MB)
             const memoryUsage = process.memoryUsage().heapUsed / 1024 / 1024;

@@ -27,10 +27,7 @@ export function useForceSimulation({
   height,
   enabled = true,
 }: UseForceSimulationOptions): UseForceSimulationResult {
-  const config = useMemo(
-    () => ({ ...DEFAULT_GRAPH_CONFIG, ...configOverrides }),
-    [configOverrides]
-  )
+  const config = useMemo(() => ({ ...DEFAULT_GRAPH_CONFIG, ...configOverrides }), [configOverrides])
 
   // Store nodes with positions and velocities
   const [nodes, setNodes] = useState<GraphNode[]>([])
@@ -66,7 +63,7 @@ export function useForceSimulation({
     setNodes(initializedNodes)
     setIsStable(false)
     iterationRef.current = 0
-  }, [graphData.nodes.length, width, height]) // Only reinitialize on node count change
+  }, [graphData.nodes.length, width, height, graphData.nodes.map, nodes.find]) // Only reinitialize on node count change
 
   // Build edge lookup for faster simulation
   const edgeLookup = useRef(new Map<string, string[]>())

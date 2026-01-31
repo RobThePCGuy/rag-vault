@@ -44,7 +44,11 @@ export interface TagsContextValue {
   taggedItems: TaggedItem[]
   addTag: (tagId: string, targetType: TaggedItem['targetType'], targetKey: string) => TaggedItem
   removeTag: (taggedItemId: string) => void
-  removeTagFromTarget: (tagId: string, targetType: TaggedItem['targetType'], targetKey: string) => void
+  removeTagFromTarget: (
+    tagId: string,
+    targetType: TaggedItem['targetType'],
+    targetKey: string
+  ) => void
   getTagsForTarget: (targetType: TaggedItem['targetType'], targetKey: string) => Tag[]
   getTargetsForTag: (tagId: string) => TaggedItem[]
   isTagged: (tagId: string, targetType: TaggedItem['targetType'], targetKey: string) => boolean
@@ -73,7 +77,16 @@ const DEFAULT_STORE: TagsStore = {
   taggedItems: [],
 }
 
-export const TAG_COLORS: TagColor[] = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray']
+export const TAG_COLORS: TagColor[] = [
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'purple',
+  'pink',
+  'gray',
+]
 
 export const TAG_COLOR_CLASSES: Record<TagColor, { bg: string; text: string; border: string }> = {
   red: {
@@ -248,7 +261,8 @@ export function TagsProvider({ children, vaultId = 'default' }: TagsProviderProp
         ...prev,
         updatedAt: new Date().toISOString(),
         taggedItems: prev.taggedItems.filter(
-          (ti) => !(ti.tagId === tagId && ti.targetType === targetType && ti.targetKey === targetKey)
+          (ti) =>
+            !(ti.tagId === tagId && ti.targetType === targetType && ti.targetKey === targetKey)
         ),
       }))
     },

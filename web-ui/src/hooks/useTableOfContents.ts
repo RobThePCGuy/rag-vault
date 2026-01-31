@@ -27,7 +27,9 @@ const NUMBERED_SECTION_PATTERN = /^(\d+(?:\.\d+)*)\s+(.+)$/m
 /**
  * Detect if a line looks like a heading
  */
-function detectHeading(text: string): { text: string; level: number; type: TocEntry['type'] } | null {
+function detectHeading(
+  text: string
+): { text: string; level: number; type: TocEntry['type'] } | null {
   // Check markdown headings first (highest priority)
   const markdownMatch = text.match(MARKDOWN_HEADING_PATTERN)
   if (markdownMatch) {
@@ -60,7 +62,7 @@ function detectHeading(text: string): { text: string; level: number; type: TocEn
   const trimmedLine = text.trim()
   if (trimmedLine.length >= 5 && trimmedLine.length <= 80) {
     const allCapsMatch = trimmedLine.match(ALL_CAPS_PATTERN)
-    if (allCapsMatch && allCapsMatch[1]) {
+    if (allCapsMatch?.[1]) {
       // Make sure it has at least 2 word characters (not just symbols/numbers)
       const wordChars = allCapsMatch[1].match(/[A-Z]/g)
       if (wordChars && wordChars.length >= 3) {

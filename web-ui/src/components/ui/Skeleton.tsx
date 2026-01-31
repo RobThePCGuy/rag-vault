@@ -5,12 +5,7 @@ interface SkeletonProps {
   height?: string | number
 }
 
-export function Skeleton({
-  className = '',
-  variant = 'text',
-  width,
-  height,
-}: SkeletonProps) {
+export function Skeleton({ className = '', variant = 'text', width, height }: SkeletonProps) {
   const baseClasses = 'animate-pulse bg-gray-200 dark:bg-gray-700'
 
   const variantClasses = {
@@ -48,7 +43,9 @@ export function SkeletonCard({ className = '', lines = 3 }: SkeletonCardProps) {
   const lineWidths = defaultLineWidths.slice(0, lines)
 
   return (
-    <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 ${className}`}>
+    <div
+      className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 ${className}`}
+    >
       <div className="flex items-center gap-3 mb-4">
         <Skeleton variant="circular" width={40} height={40} />
         <div className="flex-1 space-y-2">

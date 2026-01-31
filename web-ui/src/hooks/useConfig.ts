@@ -114,8 +114,15 @@ export function useCreateDatabase() {
   const { addToast } = useToast()
 
   const mutation = useMutation({
-    mutationFn: ({ dbPath, name, modelName }: { dbPath: string; name?: string; modelName?: string }) =>
-      createDatabase(dbPath, name, modelName),
+    mutationFn: ({
+      dbPath,
+      name,
+      modelName,
+    }: {
+      dbPath: string
+      name?: string
+      modelName?: string
+    }) => createDatabase(dbPath, name, modelName),
     onSuccess: (_data, variables) => {
       // Invalidate all queries to refresh data from new database
       queryClient.invalidateQueries({ queryKey: ['config'] })

@@ -11,7 +11,10 @@ export interface UseBacklinksResult {
  * Hook for getting backlinks to a specific chunk
  * Shows "what links here" for a given chunk
  */
-export function useBacklinks(filePath: string | null, chunkIndex: number | null): UseBacklinksResult {
+export function useBacklinks(
+  filePath: string | null,
+  chunkIndex: number | null
+): UseBacklinksResult {
   const links = useLinks()
 
   const backlinks = useMemo(() => {

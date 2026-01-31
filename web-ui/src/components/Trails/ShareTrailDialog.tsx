@@ -13,12 +13,7 @@ interface ShareTrailDialogProps {
 /**
  * Dialog for sharing a trail via URL
  */
-export function ShareTrailDialog({
-  isOpen,
-  onClose,
-  trail,
-  vaultId,
-}: ShareTrailDialogProps) {
+export function ShareTrailDialog({ isOpen, onClose, trail, vaultId }: ShareTrailDialogProps) {
   const [shareUrl, setShareUrl] = useState('')
   const [isTooLarge, setIsTooLarge] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -97,8 +92,8 @@ export function ShareTrailDialog({
                       Trail too large for URL
                     </h4>
                     <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                      This trail has too many steps to share via URL.
-                      Consider exporting it as JSON instead.
+                      This trail has too many steps to share via URL. Consider exporting it as JSON
+                      instead.
                     </p>
                   </div>
                 </div>
@@ -107,11 +102,15 @@ export function ShareTrailDialog({
               // Share URL
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label
+                    htmlFor="share-link-input"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  >
                     Share Link
                   </label>
                   <div className="flex gap-2">
                     <input
+                      id="share-link-input"
                       type="text"
                       value={shareUrl}
                       readOnly
@@ -133,8 +132,8 @@ export function ShareTrailDialog({
                 </div>
 
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Anyone with this link can import the trail into their vault.
-                  The link does not contain document content, only file paths and chunk numbers.
+                  Anyone with this link can import the trail into their vault. The link does not
+                  contain document content, only file paths and chunk numbers.
                 </p>
               </div>
             )}

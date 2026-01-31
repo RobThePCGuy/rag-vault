@@ -11,7 +11,9 @@
 
 body {
   @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Scrollbar styling for dark mode */
@@ -119,23 +121,33 @@ body {
 .zettel-slip {
   @apply rounded-lg p-3;
   background: linear-gradient(to bottom, #fffdf0, #fcfaeb);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 6px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 4px 6px rgba(0, 0, 0, 0.05);
   transform: rotate(-0.3deg);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .dark .zettel-slip {
   background: linear-gradient(to bottom, #292524, #1c1917);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .zettel-slip:hover {
   transform: rotate(0) translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.12),
+    0 8px 16px rgba(0, 0, 0, 0.08);
 }
 
 .dark .zettel-slip:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* Type indicator borders */
@@ -187,4 +199,184 @@ body {
 .dark .zettel-searching {
   background: rgba(139, 92, 246, 0.1);
   border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* ============================================
+   Book Reader Theme - Warm Paper Aesthetic
+   ============================================ */
+
+/* Main reading area - warm paper background */
+.book-reader {
+  background: linear-gradient(to bottom, #faf8f5, #f5f2ed);
+  min-height: 100%;
+}
+
+.dark .book-reader {
+  background: linear-gradient(to bottom, #1a1815, #141210);
+}
+
+/* Book page container */
+.book-page {
+  background: linear-gradient(to bottom, #fffcf7, #faf7f2);
+  border-radius: 4px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    inset 0 0 60px rgba(255, 250, 240, 0.5);
+  position: relative;
+}
+
+.dark .book-page {
+  background: linear-gradient(to bottom, #1e1b18, #1a1714);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 0 60px rgba(30, 25, 20, 0.5);
+}
+
+/* Book page left edge (binding shadow) */
+.book-page::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.03), transparent);
+  pointer-events: none;
+}
+
+.dark .book-page::before {
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.15), transparent);
+}
+
+/* Book text styling */
+.book-text {
+  font-family: 'Georgia', 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+  color: #2c2416;
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+}
+
+.dark .book-text {
+  color: #d4cfc5;
+}
+
+/* Active chunk in book style */
+.book-chunk-active {
+  background: linear-gradient(
+    to right,
+    rgba(180, 140, 80, 0.08),
+    rgba(180, 140, 80, 0.03) 20%,
+    transparent
+  );
+  border-left: 3px solid #b4a060;
+}
+
+.dark .book-chunk-active {
+  background: linear-gradient(
+    to right,
+    rgba(180, 140, 80, 0.12),
+    rgba(180, 140, 80, 0.05) 20%,
+    transparent
+  );
+  border-left: 3px solid #9a8650;
+}
+
+/* Book header styling */
+.book-header {
+  background: linear-gradient(to bottom, #f5f2ed, #ebe7e0);
+  border-bottom: 1px solid rgba(180, 160, 130, 0.3);
+}
+
+.dark .book-header {
+  background: linear-gradient(to bottom, #1e1b18, #171412);
+  border-bottom: 1px solid rgba(100, 90, 70, 0.3);
+}
+
+/* Book title styling */
+.book-title {
+  font-family: 'Georgia', 'Palatino Linotype', serif;
+  color: #3d3425;
+  font-weight: 600;
+}
+
+.dark .book-title {
+  color: #c9c2b5;
+}
+
+/* Inline link styling (forward/backward refs) */
+.book-link {
+  color: #6b5b3d;
+  text-decoration: none;
+  border-bottom: 1px dotted #b4a080;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.book-link:hover {
+  color: #4a3f2a;
+  border-bottom-color: #8b7355;
+  background: rgba(180, 160, 128, 0.1);
+}
+
+.dark .book-link {
+  color: #b8a988;
+  border-bottom-color: #7a6b50;
+}
+
+.dark .book-link:hover {
+  color: #d4c9b0;
+  border-bottom-color: #9a8b70;
+  background: rgba(180, 160, 128, 0.15);
+}
+
+/* Chunk number badge in book style */
+.book-chunk-badge {
+  font-family: 'Georgia', serif;
+  font-size: 0.7rem;
+  color: #9a8a70;
+  background: rgba(180, 160, 130, 0.15);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.dark .book-chunk-badge {
+  color: #8a7a60;
+  background: rgba(120, 100, 70, 0.2);
+}
+
+/* Reading progress indicator */
+.book-progress {
+  height: 2px;
+  background: linear-gradient(to right, #b4a060, #d4c090);
+  transition: width 0.3s ease;
+}
+
+.dark .book-progress {
+  background: linear-gradient(to right, #8a7040, #a48850);
+}
+
+/* Paragraph spacing for book feel */
+.book-paragraph {
+  text-indent: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.book-paragraph:first-of-type {
+  text-indent: 0;
+}
+
+/* Drop cap for first letter (optional) */
+.book-dropcap::first-letter {
+  font-size: 3.2em;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.1em;
+  margin-top: 0.1em;
+  color: #5a4a30;
+}
+
+.dark .book-dropcap::first-letter {
+  color: #a09080;
 }

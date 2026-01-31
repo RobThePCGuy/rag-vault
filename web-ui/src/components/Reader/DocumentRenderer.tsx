@@ -69,7 +69,7 @@ export function DocumentRenderer({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="max-w-3xl mx-auto space-y-2">
       {chunks.map((chunk) => {
         const highlights = getHighlightsForChunk?.(chunk.chunkIndex) ?? []
         const searchMatches = getSearchMatchesForChunk?.(chunk.chunkIndex) ?? []
@@ -87,7 +87,14 @@ export function DocumentRenderer({
             onCreateHighlight={
               onCreateHighlight
                 ? (range, text, contextBefore, contextAfter, color) =>
-                    onCreateHighlight(chunk.chunkIndex, range, text, contextBefore, contextAfter, color)
+                    onCreateHighlight(
+                      chunk.chunkIndex,
+                      range,
+                      text,
+                      contextBefore,
+                      contextAfter,
+                      color
+                    )
                 : undefined
             }
             onHighlightClick={onHighlightClick}

@@ -32,7 +32,10 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center justify-between gap-4">
       <div className="flex-1 min-w-0">
-        <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate" title={file.source || file.filePath}>
+        <h3
+          className="font-medium text-gray-900 dark:text-gray-100 truncate"
+          title={file.source || file.filePath}
+        >
           {displayName}
         </h3>
         <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -40,7 +43,10 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
           {isRawData && <span className="text-blue-600 dark:text-blue-400">Ingested content</span>}
         </div>
         {file.source && (
-          <p className="text-xs text-gray-400 dark:text-gray-500 truncate mt-1" title={file.filePath}>
+          <p
+            className="text-xs text-gray-400 dark:text-gray-500 truncate mt-1"
+            title={file.filePath}
+          >
             {file.filePath}
           </p>
         )}

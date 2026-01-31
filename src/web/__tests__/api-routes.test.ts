@@ -62,7 +62,7 @@ type RouterLayer = {
   route?: {
     path?: string
     methods?: Record<string, boolean>
-    stack?: Array<{ handle: (...args: never) => unknown }>
+    stack?: Array<{ handle: (req: Request, res: Response, next: NextFunction) => unknown }>
   }
 }
 

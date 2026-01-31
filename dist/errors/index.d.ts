@@ -1,7 +1,7 @@
 /**
  * Error codes for type-safe error handling
  */
-export declare const ErrorCodes: {
+declare const ErrorCodes: {
     readonly RAG_ERROR: "RAG_ERROR";
     readonly VALIDATION_ERROR: "VALIDATION_ERROR";
     readonly DATABASE_ERROR: "DATABASE_ERROR";
@@ -65,4 +65,5 @@ export declare class EmbeddingError extends RAGError {
  * Get error message with optional stack trace (based on environment)
  */
 export declare function getErrorMessage(error: Error): string;
+export {};
 //# sourceMappingURL=index.d.ts.map

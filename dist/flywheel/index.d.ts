@@ -1,2 +1,2 @@
-export { FeedbackStore, getFeedbackStore, initializeFeedbackStore, type FeedbackEvent, type FeedbackEventType, type ChunkRef, type ScoredResult, type FlywheelConfig, } from './feedback.js';
+export { FeedbackStore, getFeedbackStore, type FeedbackEventType, type ChunkRef, } from './feedback.js';
 //# sourceMappingURL=index.d.ts.map

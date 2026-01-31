@@ -3,7 +3,7 @@
 
 import { run as runSkillsInstall } from './bin/install-skills.js'
 import { RAGServer } from './server/index.js'
-import { buildRAGConfig } from './utils/config.js'
+import { buildRAGConfig, validateRAGConfig } from './utils/config.js'
 import { setupProcessHandlers } from './utils/process-handlers.js'
 
 // ============================================
@@ -42,6 +42,7 @@ if (args[0] === 'skills') {
 async function main(): Promise<void> {
   try {
     const config = buildRAGConfig()
+    validateRAGConfig(config)
 
     console.error('Starting RAG MCP Server...')
     console.error('Configuration:', config)

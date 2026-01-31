@@ -96,7 +96,6 @@ export function DraftingBoard({
               onChange={(e) => onUpdateTitle(e.target.value)}
               onBlur={() => setIsEditingTitle(false)}
               onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
-              autoFocus
               className="text-lg font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-b border-blue-500 focus:outline-none"
             />
           ) : (
@@ -155,9 +154,7 @@ export function DraftingBoard({
             <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <DocumentIcon />
               <p className="mt-2">No items yet</p>
-              <p className="text-sm mt-1">
-                Add content using "Send to Draft" or the form below
-              </p>
+              <p className="text-sm mt-1">Add content using "Send to Draft" or the form below</p>
             </div>
           ) : (
             <AnimatePresence mode="popLayout">

@@ -264,8 +264,7 @@ export function ReadingStatsProvider({ children, vaultId = 'default' }: ReadingS
         }
 
         const endedAt = new Date().toISOString()
-        const durationMs =
-          new Date(endedAt).getTime() - new Date(lastSession.startedAt).getTime()
+        const durationMs = new Date(endedAt).getTime() - new Date(lastSession.startedAt).getTime()
 
         sessions[sessions.length - 1] = {
           ...lastSession,

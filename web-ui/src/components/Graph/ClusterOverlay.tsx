@@ -5,7 +5,6 @@ import { calculateClusterBounds } from '../../hooks/useGraphClustering'
 // Types
 // ============================================
 
-
 interface ClusterLegendProps {
   clusters: DocumentCluster[]
   clusterColors: Map<string, string>
@@ -45,11 +44,7 @@ export function drawClusterOverlays(
       ctx.fillStyle = cluster.color.replace('0.15)', '0.7)')
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
-      ctx.fillText(
-        truncateFileName(cluster.fileName, 20),
-        cluster.bounds.centerX,
-        bounds.y + 4
-      )
+      ctx.fillText(truncateFileName(cluster.fileName, 20), cluster.bounds.centerX, bounds.y + 4)
     }
   }
 }
@@ -76,7 +71,10 @@ export function ClusterLegend({ clusters, clusterColors }: ClusterLegendProps) {
               className="w-3 h-3 rounded flex-shrink-0"
               style={{ backgroundColor: clusterColors.get(cluster.filePath) }}
             />
-            <span className="text-xs text-gray-700 dark:text-gray-300 truncate" title={cluster.filePath}>
+            <span
+              className="text-xs text-gray-700 dark:text-gray-300 truncate"
+              title={cluster.filePath}
+            >
               {cluster.fileName}
             </span>
             <span className="text-xs text-gray-400 dark:text-gray-500">
@@ -121,7 +119,7 @@ function truncateFileName(fileName: string, maxLength: number): string {
     const extension = fileName.slice(ext)
     const base = fileName.slice(0, ext)
     const availableLength = maxLength - extension.length - 3
-    return base.slice(0, availableLength) + '...' + extension
+    return `${base.slice(0, availableLength)}...${extension}`
   }
-  return fileName.slice(0, maxLength - 3) + '...'
+  return `${fileName.slice(0, maxLength - 3)}...`
 }

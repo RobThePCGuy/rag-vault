@@ -84,7 +84,6 @@ export function AnnotationNote({
               placeholder="Add a note..."
               className="w-full px-2 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded border-0 resize-none focus:ring-2 focus:ring-blue-500"
               rows={3}
-              autoFocus
             />
             <div className="flex justify-end gap-2 mt-2">
               <button
@@ -109,12 +108,13 @@ export function AnnotationNote({
         ) : (
           <div>
             {annotation?.note ? (
-              <p
-                className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100"
+              <button
+                type="button"
+                className="text-left text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100"
                 onClick={() => setIsEditing(true)}
               >
                 {annotation.note}
-              </p>
+              </button>
             ) : (
               <button
                 type="button"
@@ -140,7 +140,14 @@ export function AnnotationNote({
           />
           {showColorPicker && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowColorPicker(false)} />
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowColorPicker(false)}
+                onKeyDown={(e) => e.key === 'Escape' && setShowColorPicker(false)}
+                role="button"
+                tabIndex={0}
+                aria-label="Close color picker"
+              />
               <div className="absolute bottom-full left-0 mb-2 z-20 flex gap-1 p-1.5 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                 {COLORS.map(({ color, bg, ring }) => (
                   <button

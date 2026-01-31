@@ -20,7 +20,11 @@ interface UseCollectionsForDocumentResult {
   // Actions
   addToCollection: (collectionId: string) => void
   removeFromCollection: (collectionId: string) => void
-  createCollectionWithDocument: (name: string, color: CollectionColor, description?: string) => Collection
+  createCollectionWithDocument: (
+    name: string,
+    color: CollectionColor,
+    description?: string
+  ) => Collection
 
   // Queries
   isInCollection: (collectionId: string) => boolean
@@ -102,7 +106,10 @@ export function useCollectionsForDocument({
 interface UseCollectionManagementResult {
   collections: Collection[]
   createCollection: (name: string, color: CollectionColor, description?: string) => Collection
-  updateCollection: (collectionId: string, updates: Partial<Pick<Collection, 'name' | 'color' | 'description'>>) => void
+  updateCollection: (
+    collectionId: string,
+    updates: Partial<Pick<Collection, 'name' | 'color' | 'description'>>
+  ) => void
   deleteCollection: (collectionId: string) => void
   getCollection: (collectionId: string) => Collection | undefined
   getDocumentsInCollection: (collectionId: string) => string[]

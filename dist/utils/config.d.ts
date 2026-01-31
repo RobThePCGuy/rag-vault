@@ -34,4 +34,19 @@ export interface RAGConfig {
  * - RAG_HYBRID_WEIGHT: Hybrid search weight (0.0-1.0)
  */
 export declare function buildRAGConfig(overrides?: Partial<RAGConfig>): RAGConfig;
+/**
+ * Validate RAG configuration at startup
+ * Throws ConfigValidationError if configuration is invalid
+ *
+ * @param config - The configuration to validate
+ * @throws ConfigValidationError if validation fails
+ */
+export declare function validateRAGConfig(config: RAGConfig): void;
+/**
+ * Validate ALLOWED_SCAN_ROOTS environment variable
+ * Logs warnings for non-existent paths but doesn't throw
+ *
+ * @returns Array of validated root paths
+ */
+export declare function validateAllowedScanRoots(): string[];
 //# sourceMappingURL=config.d.ts.map

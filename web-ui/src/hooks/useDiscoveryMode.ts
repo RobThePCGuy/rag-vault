@@ -81,17 +81,14 @@ export function useDiscoveryMode({
     setHistory([])
   }, [])
 
-  const goToChunk = useCallback(
-    (chunk: RelatedChunk) => {
-      const step: DiscoveryStep = {
-        chunkKey: { filePath: chunk.filePath, chunkIndex: chunk.chunkIndex },
-        text: chunk.text,
-        timestamp: new Date().toISOString(),
-      }
-      setHistory((prev) => [...prev, step])
-    },
-    []
-  )
+  const goToChunk = useCallback((chunk: RelatedChunk) => {
+    const step: DiscoveryStep = {
+      chunkKey: { filePath: chunk.filePath, chunkIndex: chunk.chunkIndex },
+      text: chunk.text,
+      timestamp: new Date().toISOString(),
+    }
+    setHistory((prev) => [...prev, step])
+  }, [])
 
   const goBack = useCallback((): boolean => {
     if (history.length <= 1) return false
@@ -179,7 +176,6 @@ function generateSuggestions(
     })
     .slice(0, 5) as DiscoverySuggestion[] // Limit to top 5 suggestions
 }
-
 
 /**
  * Get human-readable reason text

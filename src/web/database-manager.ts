@@ -41,13 +41,14 @@ function getEnvAllowedScanRoots(): string[] {
 
 /**
  * Read user-added allowed roots from config file
+ * Note: This is async to avoid blocking the event loop
  */
-function readUserAllowedRoots(): string[] {
+async function readUserAllowedRoots(): Promise<string[]> {
   if (!existsSync(ALLOWED_ROOTS_FILE)) {
     return []
   }
   try {
-    const content = JSON.parse(require('node:fs').readFileSync(ALLOWED_ROOTS_FILE, 'utf-8'))
+    const content = JSON.parse(await readFile(ALLOWED_ROOTS_FILE, 'utf-8'))
     if (Array.isArray(content.roots)) {
       return content.roots.map((p: string) => path.resolve(p))
     }
@@ -59,13 +60,14 @@ function readUserAllowedRoots(): string[] {
 
 /**
  * Write user-added allowed roots to config file
+ * Note: This is async to avoid blocking the event loop
  */
-function writeUserAllowedRoots(roots: string[]): void {
+async function writeUserAllowedRoots(roots: string[]): Promise<void> {
   const dir = path.dirname(ALLOWED_ROOTS_FILE)
   if (!existsSync(dir)) {
-    require('node:fs').mkdirSync(dir, { recursive: true })
+    await mkdir(dir, { recursive: true })
   }
-  require('node:fs').writeFileSync(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8')
+  await writeFile(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8')
 }
 
 /**
@@ -549,9 +551,9 @@ export class DatabaseManager {
   /**
    * Get all effective allowed roots (env + baseDir + user-added)
    */
-  getEffectiveAllowedRoots(): string[] {
+  async getEffectiveAllowedRoots(): Promise<string[]> {
     const envRoots = getEnvAllowedScanRoots()
-    const userRoots = readUserAllowedRoots()
+    const userRoots = await readUserAllowedRoots()
     const baseDir = this.getBaseDir()
 
     // Combine all sources and deduplicate
@@ -562,46 +564,50 @@ export class DatabaseManager {
   /**
    * Check if a path is within allowed roots
    */
-  isPathAllowed(targetPath: string): boolean {
-    const allowedRoots = this.getEffectiveAllowedRoots()
+  async isPathAllowed(targetPath: string): Promise<boolean> {
+    const allowedRoots = await this.getEffectiveAllowedRoots()
     return isPathWithinRoots(targetPath, allowedRoots)
   }
 
   /**
    * Get allowed roots info for API response
    */
-  getAllowedRootsInfo(): AllowedRootsResponse {
+  async getAllowedRootsInfo(): Promise<AllowedRootsResponse> {
+    const [roots, userRoots] = await Promise.all([
+      this.getEffectiveAllowedRoots(),
+      readUserAllowedRoots(),
+    ])
     return {
-      roots: this.getEffectiveAllowedRoots(),
+      roots,
       baseDir: this.getBaseDir(),
       envRoots: getEnvAllowedScanRoots(),
-      userRoots: readUserAllowedRoots(),
+      userRoots,
     }
   }
 
   /**
    * Add a user-allowed root
    */
-  addUserAllowedRoot(rootPath: string): void {
+  async addUserAllowedRoot(rootPath: string): Promise<void> {
     const resolved = path.resolve(expandTilde(rootPath))
     if (!existsSync(resolved)) {
       throw new Error(`Path does not exist: ${resolved}`)
     }
-    const roots = readUserAllowedRoots()
+    const roots = await readUserAllowedRoots()
     if (!roots.includes(resolved)) {
       roots.push(resolved)
-      writeUserAllowedRoots(roots)
+      await writeUserAllowedRoots(roots)
     }
   }
 
   /**
    * Remove a user-allowed root
    */
-  removeUserAllowedRoot(rootPath: string): void {
+  async removeUserAllowedRoot(rootPath: string): Promise<void> {
     const resolved = path.resolve(expandTilde(rootPath))
-    const roots = readUserAllowedRoots()
+    const roots = await readUserAllowedRoots()
     const filtered = roots.filter((r) => r !== resolved)
-    writeUserAllowedRoots(filtered)
+    await writeUserAllowedRoots(filtered)
   }
 
   /**
@@ -661,8 +667,8 @@ export class DatabaseManager {
     const resolvedPath = expandTilde(scanPath)
 
     // Security: Validate path is within allowed roots
-    if (!this.isPathAllowed(resolvedPath)) {
-      const allowedRoots = this.getEffectiveAllowedRoots()
+    if (!(await this.isPathAllowed(resolvedPath))) {
+      const allowedRoots = await this.getEffectiveAllowedRoots()
       throw new Error(
         `Scan path "${resolvedPath}" is outside allowed roots. ` +
           `Allowed: ${allowedRoots.join(', ')}. ` +
@@ -732,18 +738,18 @@ export class DatabaseManager {
   /**
    * Export configuration (allowed roots)
    */
-  exportConfig(): ExportedConfig {
+  async exportConfig(): Promise<ExportedConfig> {
     return {
       version: 1,
       exportedAt: new Date().toISOString(),
-      allowedRoots: readUserAllowedRoots(),
+      allowedRoots: await readUserAllowedRoots(),
     }
   }
 
   /**
    * Import configuration (allowed roots)
    */
-  importConfig(config: ExportedConfig): void {
+  async importConfig(config: ExportedConfig): Promise<void> {
     if (config.version !== 1) {
       throw new Error(`Unsupported config version: ${config.version}`)
     }
@@ -763,7 +769,7 @@ export class DatabaseManager {
       }
     }
 
-    writeUserAllowedRoots(validRoots)
+    await writeUserAllowedRoots(validRoots)
   }
 
   /**
@@ -841,7 +847,9 @@ export class DatabaseManager {
 
     // Cannot delete the currently active database
     if (this.currentConfig && this.currentConfig.dbPath === resolvedPath) {
-      throw new Error('Cannot delete the currently active database. Switch to another database first.')
+      throw new Error(
+        'Cannot delete the currently active database. Switch to another database first.'
+      )
     }
 
     // Remove from recent databases list

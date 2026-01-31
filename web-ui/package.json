@@ -15,7 +15,10 @@
     "check": "pnpm type-check && pnpm lint && pnpm format:check",
     "check:deps": "madge --circular --extensions ts,tsx src",
     "check:unused": "node scripts/check-unused-exports.cjs",
-    "check:all": "pnpm check && pnpm check:unused && pnpm check:deps"
+    "check:all": "pnpm check && pnpm check:unused && pnpm check:deps",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.62.16",
@@ -27,16 +30,19 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.12",
-    "madge": "^8.0.0",
+    "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.0.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "jsdom": "^25.0.0",
+    "madge": "^8.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.6.2",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vitest": "^2.0.0"
   }
 }

@@ -64,11 +64,7 @@ function buildSearchIndex(chunks: DocumentChunk[]): SearchIndex[] {
 /**
  * Find all matches for a query across all chunks
  */
-function findMatches(
-  index: SearchIndex[],
-  query: string,
-  caseSensitive: boolean
-): SearchMatch[] {
+function findMatches(index: SearchIndex[], query: string, caseSensitive: boolean): SearchMatch[] {
   if (!query || query.length === 0) return []
 
   const matches: SearchMatch[] = []
@@ -91,7 +87,8 @@ function findMatches(
         chunkIndex: entry.chunkIndex,
         startOffset: matchIndex,
         endOffset: matchIndex + query.length,
-        context: (contextStart > 0 ? '...' : '') + context + (contextEnd < entry.text.length ? '...' : ''),
+        context:
+          (contextStart > 0 ? '...' : '') + context + (contextEnd < entry.text.length ? '...' : ''),
       })
 
       startPos = matchIndex + 1 // Move past this match to find overlapping matches

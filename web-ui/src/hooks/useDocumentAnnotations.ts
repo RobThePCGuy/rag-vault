@@ -1,5 +1,10 @@
 import { useMemo } from 'react'
-import { useAnnotations, type Highlight, type Annotation, type HighlightColor } from '../contexts/AnnotationsContext'
+import {
+  useAnnotations,
+  type Highlight,
+  type Annotation,
+  type HighlightColor,
+} from '../contexts/AnnotationsContext'
 
 // ============================================
 // Types
@@ -109,7 +114,9 @@ export function useDocumentAnnotations({
         })
       case 'date':
         return items.sort((a, b) => {
-          return new Date(b.highlight.createdAt).getTime() - new Date(a.highlight.createdAt).getTime()
+          return (
+            new Date(b.highlight.createdAt).getTime() - new Date(a.highlight.createdAt).getTime()
+          )
         })
       case 'color':
         return items.sort((a, b) => {

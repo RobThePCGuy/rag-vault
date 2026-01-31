@@ -33,9 +33,7 @@ interface UseBookmarksResult {
  * Hook for managing bookmarks in a document
  * If filePath is provided, filters bookmarks to that document
  */
-export function useBookmarks({
-  filePath,
-}: UseBookmarksOptions = {}): UseBookmarksResult {
+export function useBookmarks({ filePath }: UseBookmarksOptions = {}): UseBookmarksResult {
   const {
     bookmarks: allBookmarks,
     createBookmark,
@@ -106,8 +104,7 @@ export function useBookmarks({
     (chunkKey: ChunkKey): Bookmark | undefined => {
       return allBookmarks.find(
         (b) =>
-          b.chunkKey.filePath === chunkKey.filePath &&
-          b.chunkKey.chunkIndex === chunkKey.chunkIndex
+          b.chunkKey.filePath === chunkKey.filePath && b.chunkKey.chunkIndex === chunkKey.chunkIndex
       )
     },
     [allBookmarks]

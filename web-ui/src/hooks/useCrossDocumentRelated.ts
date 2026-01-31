@@ -52,9 +52,7 @@ export function useCrossDocumentRelated({
     // Filter to cross-document chunks within score range
     const crossDocChunks = relatedChunks.filter(
       (chunk) =>
-        chunk.filePath !== currentFilePath &&
-        chunk.score >= minScore &&
-        chunk.score <= maxScore
+        chunk.filePath !== currentFilePath && chunk.score >= minScore && chunk.score <= maxScore
     )
 
     // Group by file path
@@ -91,15 +89,9 @@ export function useCrossDocumentRelated({
     return result
   }, [currentFilePath, relatedChunks, minScore, maxScore])
 
-  const totalChunks = useMemo(
-    () => groups.reduce((sum, g) => sum + g.chunks.length, 0),
-    [groups]
-  )
+  const totalChunks = useMemo(() => groups.reduce((sum, g) => sum + g.chunks.length, 0), [groups])
 
-  const allChunks = useMemo(
-    () => groups.flatMap((g) => g.chunks),
-    [groups]
-  )
+  const allChunks = useMemo(() => groups.flatMap((g) => g.chunks), [groups])
 
   return {
     groups,

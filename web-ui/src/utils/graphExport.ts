@@ -103,7 +103,9 @@ export function exportGraphAsSVG(
 
   // Start SVG
   const svgParts: string[] = []
-  svgParts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`)
+  svgParts.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`
+  )
   svgParts.push(`  <rect width="100%" height="100%" fill="${backgroundColor}"/>`)
 
   // Draw edges
@@ -133,7 +135,9 @@ export function exportGraphAsSVG(
     const radius = 8
     const fill = '#9ca3af' // gray-400
 
-    svgParts.push(`    <circle cx="${pos.x}" cy="${pos.y}" r="${radius}" fill="${fill}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>`)
+    svgParts.push(
+      `    <circle cx="${pos.x}" cy="${pos.y}" r="${radius}" fill="${fill}" stroke="rgba(0,0,0,0.2)" stroke-width="1"/>`
+    )
 
     // Add node label as title for accessibility
     svgParts.push(`    <title>${escapeXml(node.text.slice(0, 50))}</title>`)
@@ -223,7 +227,6 @@ function getEdgeColor(type: string): string {
       return '#3b82f6' // blue-500
     case 'backlink':
       return '#8b5cf6' // violet-500
-    case 'semantic':
     default:
       return '#d1d5db' // gray-300
   }

@@ -84,7 +84,10 @@ export function DatabaseSwitcher({
           >
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900 dark:text-white">{db.name}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-mono truncate max-w-xs" title={db.path}>
+              <p
+                className="text-sm text-gray-500 dark:text-gray-400 font-mono truncate max-w-xs"
+                title={db.path}
+              >
                 {db.path}
               </p>
               <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
@@ -120,7 +123,11 @@ export function DatabaseSwitcher({
                 className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title="Remove database"
               >
-                {deletingPath === db.path ? <Spinner size="sm" /> : <TrashIcon className="w-5 h-5" />}
+                {deletingPath === db.path ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <TrashIcon className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>
@@ -135,7 +142,8 @@ export function DatabaseSwitcher({
               Remove Database
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Remove <span className="font-medium">{confirmDelete.name}</span> from your recent databases?
+              Remove <span className="font-medium">{confirmDelete.name}</span> from your recent
+              databases?
             </p>
             <div className="space-y-3">
               <button

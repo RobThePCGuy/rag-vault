@@ -27,6 +27,10 @@ try {
       results.total++
       if (line.includes('(used in module)')) {
         results.usedInModule.push(line)
+      } else if (line.includes('/index.ts:')) {
+        // Barrel files (index.ts) are expected to re-export - skip these false positives
+        // ts-prune can't detect usage via barrel imports like: import { X } from '../hooks'
+        continue
       } else {
         results.trulyUnused.push(line)
       }

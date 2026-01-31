@@ -1,7 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useState } from 'react'
 import type { GraphData, GraphNode } from './types'
-import { downloadGraphJSON, downloadGraphSVG, downloadGraphPNG, type GraphExportFormat } from '../../utils/graphExport'
+import {
+  downloadGraphJSON,
+  downloadGraphSVG,
+  downloadGraphPNG,
+  type GraphExportFormat,
+} from '../../utils/graphExport'
 
 // ============================================
 // Types
@@ -66,7 +71,14 @@ export function GraphExportMenu({
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <div
+            className="fixed inset-0 z-40"
+            onClick={onClose}
+            onKeyDown={(e) => e.key === 'Escape' && onClose()}
+            role="button"
+            tabIndex={0}
+            aria-label="Close menu"
+          />
 
           {/* Menu */}
           <motion.div
@@ -78,9 +90,7 @@ export function GraphExportMenu({
           >
             {/* Header */}
             <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Export Graph
-              </h4>
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Export Graph</h4>
             </div>
 
             {/* Options */}

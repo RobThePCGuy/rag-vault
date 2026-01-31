@@ -1,5 +1,10 @@
 import { useCallback, useMemo } from 'react'
-import { useTags as useTagsContext, type Tag, type TagColor, type TaggedItem } from '../contexts/TagsContext'
+import {
+  useTags as useTagsContext,
+  type Tag,
+  type TagColor,
+  type TaggedItem,
+} from '../contexts/TagsContext'
 
 // ============================================
 // Types
@@ -53,10 +58,7 @@ export function useTagsForTarget({
   )
 
   // Get tag suggestions
-  const suggestions = useMemo(
-    () => getTagSuggestions(10),
-    [getTagSuggestions]
-  )
+  const suggestions = useMemo(() => getTagSuggestions(10), [getTagSuggestions])
 
   // Apply a tag to this target
   const applyTag = useCallback(

@@ -1,7 +1,7 @@
 "use strict";
 // Centralized error classes for RAG operations
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EmbeddingError = exports.ParserFileOperationError = exports.ParserValidationError = exports.DatabaseError = exports.ValidationError = exports.RAGError = exports.ErrorCodes = void 0;
+exports.EmbeddingError = exports.ParserFileOperationError = exports.ParserValidationError = exports.DatabaseError = exports.ValidationError = exports.RAGError = void 0;
 exports.getErrorMessage = getErrorMessage;
 // ============================================
 // Error Codes
@@ -9,7 +9,7 @@ exports.getErrorMessage = getErrorMessage;
 /**
  * Error codes for type-safe error handling
  */
-exports.ErrorCodes = {
+const ErrorCodes = {
     // General
     RAG_ERROR: 'RAG_ERROR',
     VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -38,7 +38,7 @@ class RAGError extends Error {
     constructor(message, options = {}) {
         super(message, options.cause ? { cause: options.cause } : undefined);
         this.name = 'RAGError';
-        this.code = options.code || exports.ErrorCodes.RAG_ERROR;
+        this.code = options.code || ErrorCodes.RAG_ERROR;
         this.statusCode = options.statusCode || 500;
         this.details = options.details;
     }
@@ -62,7 +62,7 @@ exports.RAGError = RAGError;
 class ValidationError extends RAGError {
     constructor(message, details, cause) {
         const opts = {
-            code: exports.ErrorCodes.VALIDATION_ERROR,
+            code: ErrorCodes.VALIDATION_ERROR,
             statusCode: 400,
         };
         if (details !== undefined)
@@ -81,7 +81,7 @@ exports.ValidationError = ValidationError;
  * Database operation error
  */
 class DatabaseError extends RAGError {
-    constructor(message, cause, code = exports.ErrorCodes.DATABASE_ERROR) {
+    constructor(message, cause, code = ErrorCodes.DATABASE_ERROR) {
         const opts = {
             code,
             statusCode: 500,
@@ -102,7 +102,7 @@ exports.DatabaseError = DatabaseError;
 class ParserValidationError extends RAGError {
     constructor(message, cause) {
         const opts = {
-            code: exports.ErrorCodes.PARSER_VALIDATION_ERROR,
+            code: ErrorCodes.PARSER_VALIDATION_ERROR,
             statusCode: 400,
         };
         if (cause !== undefined)
@@ -118,7 +118,7 @@ exports.ParserValidationError = ParserValidationError;
 class ParserFileOperationError extends RAGError {
     constructor(message, cause) {
         const opts = {
-            code: exports.ErrorCodes.PARSER_FILE_OPERATION_ERROR,
+            code: ErrorCodes.PARSER_FILE_OPERATION_ERROR,
             statusCode: 500,
         };
         if (cause !== undefined)
@@ -137,7 +137,7 @@ exports.ParserFileOperationError = ParserFileOperationError;
 class EmbeddingError extends RAGError {
     constructor(message, cause) {
         const opts = {
-            code: exports.ErrorCodes.EMBEDDING_ERROR,
+            code: ErrorCodes.EMBEDDING_ERROR,
             statusCode: 500,
         };
         if (cause !== undefined)

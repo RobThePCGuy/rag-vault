@@ -35,7 +35,9 @@ export function SearchResults({ results, hasSearched }: SearchResultsProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Results ({results.length})</h2>
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+        Results ({results.length})
+      </h2>
       <div className="space-y-3">
         {results.map((result, index) => (
           <ResultCard
@@ -75,7 +77,10 @@ function ResultCard({ result, rank, onView, onRead }: ResultCardProps) {
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-400 dark:text-gray-500">#{rank}</span>
-          <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate" title={displaySource}>
+          <h3
+            className="font-medium text-gray-900 dark:text-gray-100 truncate"
+            title={displaySource}
+          >
             {formatSource(displaySource)}
           </h3>
         </div>
@@ -103,7 +108,9 @@ function ResultCard({ result, rank, onView, onRead }: ResultCardProps) {
         </div>
       </div>
 
-      <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap line-clamp-4">{result.text}</p>
+      <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap line-clamp-4">
+        {result.text}
+      </p>
 
       <div className="mt-2 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
         <span>Chunk #{result.chunkIndex}</span>

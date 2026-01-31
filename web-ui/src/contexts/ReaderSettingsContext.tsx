@@ -71,7 +71,10 @@ interface ReaderSettingsProviderProps {
   vaultId?: string
 }
 
-export function ReaderSettingsProvider({ children, vaultId = 'default' }: ReaderSettingsProviderProps) {
+export function ReaderSettingsProvider({
+  children,
+  vaultId = 'default',
+}: ReaderSettingsProviderProps) {
   const storageKey = `rag-vault-reader-settings-${vaultId}`
   const [settings, setSettings] = useLocalStorage<ReaderSettings>(storageKey, DEFAULT_SETTINGS)
 
@@ -134,7 +137,16 @@ export function ReaderSettingsProvider({ children, vaultId = 'default' }: Reader
       resetSettings,
       cssVariables,
     }),
-    [settings, setFontSize, setLineHeight, setFontFamily, setShowChunkNumbers, setShowHeatmap, resetSettings, cssVariables]
+    [
+      settings,
+      setFontSize,
+      setLineHeight,
+      setFontFamily,
+      setShowChunkNumbers,
+      setShowHeatmap,
+      resetSettings,
+      cssVariables,
+    ]
   )
 
   return <ReaderSettingsContext.Provider value={value}>{children}</ReaderSettingsContext.Provider>

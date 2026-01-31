@@ -130,46 +130,57 @@ export function ExportImportCard() {
     } finally {
       setIsProcessing(false)
     }
-  }, [exportOptions, exportLinks, exportAnnotations, exportCollections, exportTags, exportConfigAsync, addToast])
+  }, [
+    exportOptions,
+    exportLinks,
+    exportAnnotations,
+    exportCollections,
+    exportTags,
+    exportConfigAsync,
+    addToast,
+  ])
 
   // Handle file selection for import
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
 
-    try {
-      const text = await file.text()
-      const data = JSON.parse(text)
+      try {
+        const text = await file.text()
+        const data = JSON.parse(text)
 
-      // Check if it's a unified vault export
-      if (data.version === 1 && data.data) {
-        setPendingImportData(data as VaultExport)
-        setShowImportDialog(true)
-      }
-      // Legacy: plain server config
-      else if (data.version && data.allowedRoots) {
-        importConfig(data as ExportedConfig)
+        // Check if it's a unified vault export
+        if (data.version === 1 && data.data) {
+          setPendingImportData(data as VaultExport)
+          setShowImportDialog(true)
+        }
+        // Legacy: plain server config
+        else if (data.version && data.allowedRoots) {
+          importConfig(data as ExportedConfig)
+          addToast({
+            type: 'success',
+            title: 'Config imported',
+            message: 'Server configuration has been restored',
+          })
+        } else {
+          throw new Error('Unrecognized file format')
+        }
+      } catch (error) {
         addToast({
-          type: 'success',
-          title: 'Config imported',
-          message: 'Server configuration has been restored',
+          type: 'error',
+          title: 'Failed to import',
+          message: error instanceof Error ? error.message : 'Invalid file format',
         })
-      } else {
-        throw new Error('Unrecognized file format')
       }
-    } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Failed to import',
-        message: error instanceof Error ? error.message : 'Invalid file format',
-      })
-    }
 
-    // Reset file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }, [importConfig, addToast])
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    },
+    [importConfig, addToast]
+  )
 
   // Perform the actual import
   const handleConfirmImport = useCallback(async () => {
@@ -240,7 +251,16 @@ export function ExportImportCard() {
       setShowImportDialog(false)
       setPendingImportData(null)
     }
-  }, [pendingImportData, importStrategy, importLinks, importAnnotations, importCollections, importTags, importConfig, addToast])
+  }, [
+    pendingImportData,
+    importStrategy,
+    importLinks,
+    importAnnotations,
+    importCollections,
+    importTags,
+    importConfig,
+    addToast,
+  ])
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
@@ -250,7 +270,9 @@ export function ExportImportCard() {
         </div>
         <div>
           <h2 className="text-lg font-medium text-gray-900 dark:text-white">Export / Import</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Backup and restore your vault data</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Backup and restore your vault data
+          </p>
         </div>
       </div>
 
@@ -265,7 +287,9 @@ export function ExportImportCard() {
               <input
                 type="checkbox"
                 checked={exportOptions.includeLinks}
-                onChange={(e) => setExportOptions((prev) => ({ ...prev, includeLinks: e.target.checked }))}
+                onChange={(e) =>
+                  setExportOptions((prev) => ({ ...prev, includeLinks: e.target.checked }))
+                }
                 className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -276,7 +300,9 @@ export function ExportImportCard() {
               <input
                 type="checkbox"
                 checked={exportOptions.includeAnnotations}
-                onChange={(e) => setExportOptions((prev) => ({ ...prev, includeAnnotations: e.target.checked }))}
+                onChange={(e) =>
+                  setExportOptions((prev) => ({ ...prev, includeAnnotations: e.target.checked }))
+                }
                 className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -287,7 +313,9 @@ export function ExportImportCard() {
               <input
                 type="checkbox"
                 checked={exportOptions.includeCollections}
-                onChange={(e) => setExportOptions((prev) => ({ ...prev, includeCollections: e.target.checked }))}
+                onChange={(e) =>
+                  setExportOptions((prev) => ({ ...prev, includeCollections: e.target.checked }))
+                }
                 className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">Collections</span>
@@ -296,7 +324,9 @@ export function ExportImportCard() {
               <input
                 type="checkbox"
                 checked={exportOptions.includeTags}
-                onChange={(e) => setExportOptions((prev) => ({ ...prev, includeTags: e.target.checked }))}
+                onChange={(e) =>
+                  setExportOptions((prev) => ({ ...prev, includeTags: e.target.checked }))
+                }
                 className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">Tags</span>
@@ -305,7 +335,9 @@ export function ExportImportCard() {
               <input
                 type="checkbox"
                 checked={exportOptions.includeServerConfig}
-                onChange={(e) => setExportOptions((prev) => ({ ...prev, includeServerConfig: e.target.checked }))}
+                onChange={(e) =>
+                  setExportOptions((prev) => ({ ...prev, includeServerConfig: e.target.checked }))
+                }
                 className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">Server config</span>
@@ -358,15 +390,15 @@ export function ExportImportCard() {
           <div className="mb-3">
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Import strategy
+              <select
+                value={importStrategy}
+                onChange={(e) => setImportStrategy(e.target.value as ImportStrategy)}
+                className="mt-1 w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              >
+                <option value="merge">Merge (skip duplicates)</option>
+                <option value="overwrite">Add all (may create duplicates)</option>
+              </select>
             </label>
-            <select
-              value={importStrategy}
-              onChange={(e) => setImportStrategy(e.target.value as ImportStrategy)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            >
-              <option value="merge">Merge (skip duplicates)</option>
-              <option value="overwrite">Add all (may create duplicates)</option>
-            </select>
           </div>
 
           <div className="flex gap-2">
@@ -445,7 +477,8 @@ export function ExportImportCard() {
       )}
 
       <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-        Export saves all your vault data including links, annotations, collections, and tags. Import restores from a previously exported backup.
+        Export saves all your vault data including links, annotations, collections, and tags. Import
+        restores from a previously exported backup.
       </p>
     </div>
   )
@@ -460,7 +493,12 @@ function SettingsIcon({ className }: { className?: string }) {
         strokeWidth={2}
         d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
       />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+      />
     </svg>
   )
 }

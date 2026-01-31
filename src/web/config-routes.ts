@@ -154,7 +154,7 @@ export function createConfigRouter(dbManager: DatabaseManager): Router {
   router.get(
     '/allowed-roots',
     asyncHandler(async (_req: Request, res: Response) => {
-      const info = dbManager.getAllowedRootsInfo()
+      const info = await dbManager.getAllowedRootsInfo()
       res.json(info)
     })
   )
@@ -169,8 +169,8 @@ export function createConfigRouter(dbManager: DatabaseManager): Router {
         throw new ValidationError('path is required and must be a string')
       }
 
-      dbManager.addUserAllowedRoot(rootPath)
-      const info = dbManager.getAllowedRootsInfo()
+      await dbManager.addUserAllowedRoot(rootPath)
+      const info = await dbManager.getAllowedRootsInfo()
       res.json({ success: true, ...info })
     })
   )
@@ -185,8 +185,8 @@ export function createConfigRouter(dbManager: DatabaseManager): Router {
         throw new ValidationError('path is required and must be a string')
       }
 
-      dbManager.removeUserAllowedRoot(rootPath)
-      const info = dbManager.getAllowedRootsInfo()
+      await dbManager.removeUserAllowedRoot(rootPath)
+      const info = await dbManager.getAllowedRootsInfo()
       res.json({ success: true, ...info })
     })
   )
@@ -220,7 +220,7 @@ export function createConfigRouter(dbManager: DatabaseManager): Router {
   router.get(
     '/export',
     asyncHandler(async (_req: Request, res: Response) => {
-      const config = dbManager.exportConfig()
+      const config = await dbManager.exportConfig()
       res.json(config)
     })
   )
@@ -235,8 +235,8 @@ export function createConfigRouter(dbManager: DatabaseManager): Router {
         throw new ValidationError('config is required and must be an object')
       }
 
-      dbManager.importConfig(config)
-      const info = dbManager.getAllowedRootsInfo()
+      await dbManager.importConfig(config)
+      const info = await dbManager.getAllowedRootsInfo()
       res.json({ success: true, ...info })
     })
   )

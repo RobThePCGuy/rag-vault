@@ -113,7 +113,8 @@ export function useReadingProgress({
         const fingerprint = currentFingerprintRef.current
         if (!fingerprint) return
 
-        const { chunkIndex: latestChunkIndex, scrollOffset: latestScrollOffset } = latestPositionRef.current
+        const { chunkIndex: latestChunkIndex, scrollOffset: latestScrollOffset } =
+          latestPositionRef.current
         const key = getProgressKey(fingerprint)
         setProgress((prev) => ({
           ...prev,

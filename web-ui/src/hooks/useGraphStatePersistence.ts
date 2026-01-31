@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { useGraphState, type SavedNodePosition, type GraphViewState } from '../contexts/GraphStateContext'
+import {
+  useGraphState,
+  type SavedNodePosition,
+  type GraphViewState,
+} from '../contexts/GraphStateContext'
 
 // ============================================
 // Types
@@ -38,14 +42,8 @@ export function useGraphStatePersistence({
   debounceMs = 500,
   enabled = true,
 }: UseGraphStatePersistenceOptions = {}): UseGraphStatePersistenceResult {
-  const {
-    nodePositions,
-    getNodePosition,
-    setNodePosition,
-    viewState,
-    setViewState,
-    resetAll,
-  } = useGraphState()
+  const { nodePositions, getNodePosition, setNodePosition, viewState, setViewState, resetAll } =
+    useGraphState()
 
   // Debounce timers
   const positionTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())

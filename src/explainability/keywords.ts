@@ -158,7 +158,7 @@ function getNgramFrequency(text: string, n: number): Map<string, number> {
  * Find shared keywords between two texts
  * Returns keywords sorted by combined frequency
  */
-export function findSharedKeywords(text1: string, text2: string, maxCount = 5): string[] {
+function findSharedKeywords(text1: string, text2: string, maxCount = 5): string[] {
   const freq1 = getWordFrequency(text1)
   const freq2 = getWordFrequency(text2)
 
@@ -182,7 +182,7 @@ export function findSharedKeywords(text1: string, text2: string, maxCount = 5): 
  * Find shared phrases (bigrams and trigrams) between two texts
  * Returns phrases sorted by combined frequency
  */
-export function findSharedPhrases(text1: string, text2: string, maxCount = 3): string[] {
+function findSharedPhrases(text1: string, text2: string, maxCount = 3): string[] {
   const phrases: Array<{ phrase: string; score: number }> = []
 
   // Check bigrams
@@ -214,7 +214,7 @@ export function findSharedPhrases(text1: string, text2: string, maxCount = 3): s
 /**
  * Reason label based on similarity characteristics
  */
-export type ReasonLabel = 'same_doc' | 'very_similar' | 'related_topic' | 'loosely_related'
+type ReasonLabel = 'same_doc' | 'very_similar' | 'related_topic' | 'loosely_related'
 
 /**
  * Determine relationship reason based on heuristics
@@ -222,7 +222,7 @@ export type ReasonLabel = 'same_doc' | 'very_similar' | 'related_topic' | 'loose
  * - Low lexical overlap + context → "related_topic"
  * - Same document → "same_doc"
  */
-export function determineReasonLabel(
+function determineReasonLabel(
   text1: string,
   text2: string,
   isSameDocument: boolean,
@@ -255,7 +255,7 @@ export function determineReasonLabel(
 /**
  * Explanation for why two chunks are related
  */
-export interface ChunkExplanation {
+interface ChunkExplanation {
   sharedKeywords: string[]
   sharedPhrases: string[]
   reasonLabel: ReasonLabel

@@ -75,6 +75,7 @@ else {
 async function main() {
     try {
         const config = (0, config_js_1.buildRAGConfig)();
+        (0, config_js_1.validateRAGConfig)(config);
         console.error('Starting RAG MCP Server...');
         console.error('Configuration:', config);
         // Start RAGServer

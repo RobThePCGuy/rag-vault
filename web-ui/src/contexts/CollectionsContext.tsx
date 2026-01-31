@@ -5,7 +5,15 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 // Types
 // ============================================
 
-export type CollectionColor = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'pink' | 'gray'
+export type CollectionColor =
+  | 'red'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'blue'
+  | 'purple'
+  | 'pink'
+  | 'gray'
 
 export interface Collection {
   id: string
@@ -28,7 +36,10 @@ export interface CollectionsContextValue {
   // Collections
   collections: Collection[]
   createCollection: (name: string, color: CollectionColor, description?: string) => Collection
-  updateCollection: (collectionId: string, updates: Partial<Pick<Collection, 'name' | 'color' | 'description'>>) => void
+  updateCollection: (
+    collectionId: string,
+    updates: Partial<Pick<Collection, 'name' | 'color' | 'description'>>
+  ) => void
   deleteCollection: (collectionId: string) => void
   getCollection: (collectionId: string) => Collection | undefined
 
@@ -60,10 +71,20 @@ const DEFAULT_STORE: CollectionsStore = {
 }
 
 export const COLLECTION_COLORS: CollectionColor[] = [
-  'red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'purple',
+  'pink',
+  'gray',
 ]
 
-export const COLLECTION_COLOR_CLASSES: Record<CollectionColor, { bg: string; text: string; border: string }> = {
+export const COLLECTION_COLOR_CLASSES: Record<
+  CollectionColor,
+  { bg: string; text: string; border: string }
+> = {
   red: {
     bg: 'bg-red-100 dark:bg-red-900/40',
     text: 'text-red-700 dark:text-red-300',
@@ -152,14 +173,15 @@ export function CollectionsProvider({ children, vaultId = 'default' }: Collectio
   )
 
   const updateCollection = useCallback(
-    (collectionId: string, updates: Partial<Pick<Collection, 'name' | 'color' | 'description'>>) => {
+    (
+      collectionId: string,
+      updates: Partial<Pick<Collection, 'name' | 'color' | 'description'>>
+    ) => {
       setStore((prev) => ({
         ...prev,
         updatedAt: new Date().toISOString(),
         collections: prev.collections.map((c) =>
-          c.id === collectionId
-            ? { ...c, ...updates, updatedAt: new Date().toISOString() }
-            : c
+          c.id === collectionId ? { ...c, ...updates, updatedAt: new Date().toISOString() } : c
         ),
       }))
     },

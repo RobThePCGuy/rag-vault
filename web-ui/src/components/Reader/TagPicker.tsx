@@ -65,9 +65,8 @@ export function TagPicker({
     : suggestions
 
   // Check if we should show "create new tag" option
-  const showCreateOption = searchQuery && !allTags.some(
-    (t) => t.name.toLowerCase() === searchQuery.toLowerCase()
-  )
+  const showCreateOption =
+    searchQuery && !allTags.some((t) => t.name.toLowerCase() === searchQuery.toLowerCase())
 
   // Handle creating a new tag
   const handleCreateTag = useCallback(() => {
@@ -106,7 +105,11 @@ export function TagPicker({
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
           className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-72"
-          style={position ? { left: position.x, top: position.y } : { left: '50%', top: '30%', transform: 'translateX(-50%)' }}
+          style={
+            position
+              ? { left: position.x, top: position.y }
+              : { left: '50%', top: '30%', transform: 'translateX(-50%)' }
+          }
         >
           {/* Header */}
           <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -139,25 +142,24 @@ export function TagPicker({
                 <div>
                   <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Tag name
+                    <input
+                      type="text"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      className="mt-1 w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCreateTag()
+                        }
+                      }}
+                    />
                   </label>
-                  <input
-                    type="text"
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    className="w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleCreateTag()
-                      }
-                    }}
-                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Color
-                  </label>
+                  </span>
                   <div className="flex flex-wrap gap-1">
                     {TAG_COLORS.map((color) => (
                       <button
@@ -284,9 +286,7 @@ function TagItem({ tag, isApplied, onToggle }: TagItemProps) {
         >
           {tag.name}
         </span>
-        {tag.usageCount > 0 && (
-          <span className="text-xs text-gray-400">×{tag.usageCount}</span>
-        )}
+        {tag.usageCount > 0 && <span className="text-xs text-gray-400">×{tag.usageCount}</span>}
       </div>
       {isApplied ? (
         <CheckIcon className="w-4 h-4 text-green-500" />

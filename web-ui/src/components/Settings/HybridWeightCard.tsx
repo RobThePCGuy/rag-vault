@@ -50,8 +50,12 @@ export function HybridWeightCard() {
           <SearchIcon className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
         </div>
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Hybrid Search Weight</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Balance between semantic and keyword matching</p>
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+            Hybrid Search Weight
+          </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Balance between semantic and keyword matching
+          </p>
         </div>
       </div>
 

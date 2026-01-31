@@ -7,7 +7,7 @@
 /**
  * Error codes for type-safe error handling
  */
-export const ErrorCodes = {
+const ErrorCodes = {
   // General
   RAG_ERROR: 'RAG_ERROR',
   VALIDATION_ERROR: 'VALIDATION_ERROR',

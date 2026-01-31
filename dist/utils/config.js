@@ -1,9 +1,26 @@
 "use strict";
 // Shared configuration builder for RAG servers
 // Used by both MCP server (src/index.ts) and Web server (src/web/index.ts)
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildRAGConfig = buildRAGConfig;
+exports.validateRAGConfig = validateRAGConfig;
+exports.validateAllowedScanRoots = validateAllowedScanRoots;
+const node_fs_1 = require("node:fs");
+const node_path_1 = __importDefault(require("node:path"));
 const config_parsers_js_1 = require("./config-parsers.js");
+/**
+ * Configuration validation error (internal use only)
+ */
+class ConfigValidationError extends Error {
+    constructor(message, field) {
+        super(message);
+        this.field = field;
+        this.name = 'ConfigValidationError';
+    }
+}
 /**
  * Default configuration values
  */
@@ -48,5 +65,72 @@ function buildRAGConfig(overrides) {
         config.hybridWeight = hybridWeight;
     }
     return config;
+}
+/**
+ * Validate RAG configuration at startup
+ * Throws ConfigValidationError if configuration is invalid
+ *
+ * @param config - The configuration to validate
+ * @throws ConfigValidationError if validation fails
+ */
+function validateRAGConfig(config) {
+    // Validate dbPath - must be a valid path format
+    if (!config.dbPath || typeof config.dbPath !== 'string') {
+        throw new ConfigValidationError('dbPath must be a non-empty string', 'dbPath');
+    }
+    // Validate modelName - must be non-empty
+    if (!config.modelName || typeof config.modelName !== 'string') {
+        throw new ConfigValidationError('modelName must be a non-empty string', 'modelName');
+    }
+    // Validate cacheDir - must be a valid path format
+    if (!config.cacheDir || typeof config.cacheDir !== 'string') {
+        throw new ConfigValidationError('cacheDir must be a non-empty string', 'cacheDir');
+    }
+    // Validate baseDir - must be a non-empty string (directory will be created if needed)
+    if (!config.baseDir || typeof config.baseDir !== 'string') {
+        throw new ConfigValidationError('baseDir must be a non-empty string', 'baseDir');
+    }
+    // Validate maxFileSize - must be positive
+    if (config.maxFileSize <= 0) {
+        throw new ConfigValidationError(`maxFileSize must be a positive number, got: ${config.maxFileSize}`, 'maxFileSize');
+    }
+    // Validate maxDistance - must be positive if provided
+    if (config.maxDistance !== undefined && config.maxDistance <= 0) {
+        throw new ConfigValidationError(`maxDistance must be a positive number, got: ${config.maxDistance}`, 'maxDistance');
+    }
+    // Validate hybridWeight - must be between 0 and 1 if provided
+    if (config.hybridWeight !== undefined && (config.hybridWeight < 0 || config.hybridWeight > 1)) {
+        throw new ConfigValidationError(`hybridWeight must be between 0.0 and 1.0, got: ${config.hybridWeight}`, 'hybridWeight');
+    }
+    // Validate grouping - must be valid enum if provided
+    if (config.grouping !== undefined &&
+        config.grouping !== 'similar' &&
+        config.grouping !== 'related') {
+        throw new ConfigValidationError(`grouping must be 'similar' or 'related', got: ${config.grouping}`, 'grouping');
+    }
+}
+/**
+ * Validate ALLOWED_SCAN_ROOTS environment variable
+ * Logs warnings for non-existent paths but doesn't throw
+ *
+ * @returns Array of validated root paths
+ */
+function validateAllowedScanRoots() {
+    const envRoots = process.env['ALLOWED_SCAN_ROOTS'];
+    if (!envRoots) {
+        return [];
+    }
+    const roots = envRoots.split(',').map((p) => node_path_1.default.resolve(p.trim()));
+    const validRoots = [];
+    for (const root of roots) {
+        if (!root)
+            continue;
+        if (!(0, node_fs_1.existsSync)(root)) {
+            console.warn(`ALLOWED_SCAN_ROOTS: Path does not exist: ${root}`);
+            continue;
+        }
+        validRoots.push(root);
+    }
+    return validRoots;
 }
 //# sourceMappingURL=config.js.map

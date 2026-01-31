@@ -12,8 +12,7 @@ interface PinButtonProps {
  */
 export function PinButton({ isPinned, onToggle, size = 'sm' }: PinButtonProps) {
   const sizeClasses = size === 'sm' ? 'w-5 h-5' : 'w-6 h-6'
-  const buttonClasses =
-    size === 'sm' ? 'p-1 rounded' : 'p-1.5 rounded-lg'
+  const buttonClasses = size === 'sm' ? 'p-1 rounded' : 'p-1.5 rounded-lg'
 
   return (
     <motion.button

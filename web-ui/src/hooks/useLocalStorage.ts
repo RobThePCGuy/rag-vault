@@ -5,7 +5,10 @@ import { useCallback, useEffect, useState } from 'react'
  * @param key - The localStorage key
  * @param initialValue - The initial value if no stored value exists
  */
-export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
+export function useLocalStorage<T>(
+  key: string,
+  initialValue: T
+): [T, (value: T | ((prev: T) => T)) => void] {
   // Get initial value from localStorage or use provided initial value
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {

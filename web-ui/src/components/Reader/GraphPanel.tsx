@@ -103,7 +103,9 @@ export function GraphPanel({
                     <div className="text-center">
                       <GraphIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">No graph data available</p>
-                      <p className="text-xs mt-1">Scroll through the document to load related content</p>
+                      <p className="text-xs mt-1">
+                        Scroll through the document to load related content
+                      </p>
                     </div>
                   </div>
                 ) : (

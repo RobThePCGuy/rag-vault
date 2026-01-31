@@ -4,7 +4,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeedbackStore = void 0;
 exports.getFeedbackStore = getFeedbackStore;
-exports.initializeFeedbackStore = initializeFeedbackStore;
 const DEFAULT_CONFIG = {
     pinBoost: 1.3,
     coPinBoost: 1.15,
@@ -216,12 +215,5 @@ function getFeedbackStore() {
         globalFeedbackStore = new FeedbackStore();
     }
     return globalFeedbackStore;
-}
-/**
- * Initialize feedback store with saved events
- */
-function initializeFeedbackStore(events) {
-    globalFeedbackStore = new FeedbackStore();
-    globalFeedbackStore.importEvents(events);
 }
 //# sourceMappingURL=feedback.js.map

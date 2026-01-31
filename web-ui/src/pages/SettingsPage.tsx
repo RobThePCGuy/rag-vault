@@ -46,9 +46,13 @@ const itemVariants = {
 
 export function SettingsPage() {
   const { preferences } = usePreferences()
-  const { config, isLoading: isLoadingConfig, error: configError, refetch, isFetching } = useCurrentConfig(
-    preferences.statsRefreshInterval
-  )
+  const {
+    config,
+    isLoading: isLoadingConfig,
+    error: configError,
+    refetch,
+    isFetching,
+  } = useCurrentConfig(preferences.statsRefreshInterval)
   const { databases, isLoading: isLoadingDatabases } = useRecentDatabases()
   const { switchDatabase, isLoading: isSwitching } = useSwitchDatabase()
   const { deleteDatabase, isLoading: isDeleting } = useDeleteDatabase()
@@ -93,7 +97,9 @@ export function SettingsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage your RAG database configuration.</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            Manage your RAG database configuration.
+          </p>
         </div>
         <button
           type="button"
@@ -148,7 +154,11 @@ export function SettingsPage() {
 
           {/* Create New Database */}
           <motion.div variants={itemVariants}>
-            <CreateDatabaseCard onCreate={handleCreate} isLoading={isCreating} error={createError} />
+            <CreateDatabaseCard
+              onCreate={handleCreate}
+              isLoading={isCreating}
+              error={createError}
+            />
           </motion.div>
 
           {/* Scan for Databases */}

@@ -61,7 +61,10 @@ export function ScanDatabasesCard({
 
       <form onSubmit={handleScan} className="space-y-4">
         <div>
-          <label htmlFor="scanPath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label
+            htmlFor="scanPath"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
             Directory to Scan
           </label>
           <div className="flex gap-2">
@@ -126,7 +129,9 @@ export function ScanDatabasesCard({
           </div>
 
           {scanResults.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 py-2">No databases found in this directory.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
+              No databases found in this directory.
+            </p>
           ) : (
             <div className="space-y-2">
               {scanResults.map((db) => (

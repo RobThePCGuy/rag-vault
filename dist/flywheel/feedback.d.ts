@@ -13,7 +13,7 @@ export interface ChunkRef {
 /**
  * A feedback event from user interaction
  */
-export interface FeedbackEvent {
+interface FeedbackEvent {
     type: FeedbackEventType;
     source: ChunkRef;
     target: ChunkRef;
@@ -22,7 +22,7 @@ export interface FeedbackEvent {
 /**
  * Search result with score
  */
-export interface ScoredResult {
+interface ScoredResult {
     filePath: string;
     chunkIndex: number;
     fingerprint?: string;
@@ -31,7 +31,7 @@ export interface ScoredResult {
 /**
  * Flywheel configuration
  */
-export interface FlywheelConfig {
+interface FlywheelConfig {
     /** Boost multiplier for pinned targets (default: 1.3) */
     pinBoost: number;
     /** Boost multiplier for co-pinned patterns (default: 1.15) */
@@ -101,8 +101,5 @@ export declare class FeedbackStore {
  * Get or create the global feedback store
  */
 export declare function getFeedbackStore(): FeedbackStore;
-/**
- * Initialize feedback store with saved events
- */
-export declare function initializeFeedbackStore(events: FeedbackEvent[]): void;
+export {};
 //# sourceMappingURL=feedback.d.ts.map

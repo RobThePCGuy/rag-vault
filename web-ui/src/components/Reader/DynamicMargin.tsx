@@ -5,12 +5,7 @@ import type { PinnedLink } from '../../contexts/LinksContext'
 import { Spinner } from '../ui'
 import { AnnotationNote } from './AnnotationNote'
 import type { SelectionAction } from './SelectionPopover'
-import {
-  ZettelSlip,
-  ZettelEmptyState,
-  ZettelSectionHeader,
-  ZettelLoadingSlip,
-} from './ZettelSlip'
+import { ZettelSlip, ZettelEmptyState, ZettelSectionHeader, ZettelLoadingSlip } from './ZettelSlip'
 
 /**
  * X-Ray Vision: Selection search result with context
@@ -170,8 +165,12 @@ export function DynamicMargin({
                 icon={<SelectionIcon className="w-3.5 h-3.5" />}
               />
               {selectionText && (
-                <span className="zettel-selection-pill truncate max-w-[150px]" title={selectionText}>
-                  "{selectionText.slice(0, 30)}{selectionText.length > 30 ? '...' : ''}"
+                <span
+                  className="zettel-selection-pill truncate max-w-[150px]"
+                  title={selectionText}
+                >
+                  "{selectionText.slice(0, 30)}
+                  {selectionText.length > 30 ? '...' : ''}"
                 </span>
               )}
             </div>
@@ -199,8 +198,14 @@ export function DynamicMargin({
                       type="semantic"
                       score={result.score}
                       onNavigate={() => onNavigateToChunk(result.filePath, result.chunkIndex)}
-                      onPin={onTogglePin ? () => onTogglePin(result.filePath, result.chunkIndex) : undefined}
-                      isPinned={pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false}
+                      onPin={
+                        onTogglePin
+                          ? () => onTogglePin(result.filePath, result.chunkIndex)
+                          : undefined
+                      }
+                      isPinned={
+                        pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false
+                      }
                       animationIndex={idx}
                     />
                   ))}
@@ -215,7 +220,11 @@ export function DynamicMargin({
           <div className="border-b border-stone-200/50 dark:border-stone-700/50 pb-4">
             <div className="flex items-center justify-between mb-2">
               <ZettelSectionHeader
-                title={selectionSearchResults ? getActionLabel(selectionSearchResults.action) : 'Searching...'}
+                title={
+                  selectionSearchResults
+                    ? getActionLabel(selectionSearchResults.action)
+                    : 'Searching...'
+                }
                 count={selectionSearchResults?.results.length}
                 icon={<SearchIcon className="w-3.5 h-3.5" />}
               />
@@ -247,8 +256,14 @@ export function DynamicMargin({
                       type="semantic"
                       score={result.score}
                       onNavigate={() => onNavigateToChunk(result.filePath, result.chunkIndex)}
-                      onPin={onTogglePin ? () => onTogglePin(result.filePath, result.chunkIndex) : undefined}
-                      isPinned={pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false}
+                      onPin={
+                        onTogglePin
+                          ? () => onTogglePin(result.filePath, result.chunkIndex)
+                          : undefined
+                      }
+                      isPinned={
+                        pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false
+                      }
                       animationIndex={idx}
                     />
                   ))}
@@ -353,7 +368,11 @@ export function DynamicMargin({
                       score={chunk.score}
                       sharedKeywords={chunk.explanation?.sharedKeywords}
                       onNavigate={() => onNavigateToChunk(chunk.filePath, chunk.chunkIndex)}
-                      onPin={onTogglePin ? () => onTogglePin(chunk.filePath, chunk.chunkIndex) : undefined}
+                      onPin={
+                        onTogglePin
+                          ? () => onTogglePin(chunk.filePath, chunk.chunkIndex)
+                          : undefined
+                      }
                       isPinned={isPinned}
                       animationIndex={idx}
                     />

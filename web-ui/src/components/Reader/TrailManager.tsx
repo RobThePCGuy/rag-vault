@@ -69,9 +69,7 @@ export function TrailManager({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Trail Manager
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Trail Manager</h2>
           <button
             type="button"
             onClick={onClose}
@@ -334,8 +332,7 @@ function SavedTrailItem({ trail, onLoad, onDelete }: SavedTrailItemProps) {
             {trail.name}
           </h4>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            {trail.steps.length} steps &middot;{' '}
-            {new Date(trail.updatedAt).toLocaleDateString()}
+            {trail.steps.length} steps &middot; {new Date(trail.updatedAt).toLocaleDateString()}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -478,13 +475,14 @@ function TrailTreeNode({
         <div
           className={`
             flex items-center justify-center min-w-[2rem] h-6 px-1.5 rounded text-xs font-medium
-            ${isActive
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+            ${
+              isActive
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
             }
           `}
         >
-          {node.branchLabel || (depth + 1)}
+          {node.branchLabel || depth + 1}
         </div>
 
         {/* Node content */}
@@ -496,9 +494,10 @@ function TrailTreeNode({
           }}
           className={`
             flex-1 text-left p-2 rounded-lg transition-colors
-            ${isActive
-              ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
-              : 'hover:bg-gray-50 dark:hover:bg-gray-750'
+            ${
+              isActive
+                ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
+                : 'hover:bg-gray-50 dark:hover:bg-gray-750'
             }
           `}
         >

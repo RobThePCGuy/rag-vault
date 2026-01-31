@@ -383,14 +383,3 @@ export async function recordFeedback(
     body: JSON.stringify({ type, source, target }),
   })
 }
-
-/**
- * Get feedback statistics
- */
-export async function getFeedbackStats(): Promise<{
-  eventCount: number
-  pinnedPairs: number
-  dismissedPairs: number
-}> {
-  return fetchApi('/feedback/stats')
-}

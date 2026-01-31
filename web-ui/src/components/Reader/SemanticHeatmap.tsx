@@ -31,11 +31,7 @@ function getUnderlineIntensity(docCount: number): string {
  * Semantic heatmap renderer
  * Highlights keyphrases with underlines indicating vault connectivity
  */
-export function SemanticHeatmap({
-  text,
-  connections,
-  onConnectionClick,
-}: SemanticHeatmapProps) {
+export function SemanticHeatmap({ text, connections, onConnectionClick }: SemanticHeatmapProps) {
   // Build a map of all highlighted positions
   const segments = useMemo(() => {
     if (connections.length === 0) {
@@ -102,17 +98,27 @@ export function SemanticHeatmap({
     <span className="whitespace-pre-wrap">
       {segments.map((segment, idx) => {
         if (!segment.connection) {
-          return <Fragment key={idx}>{segment.text}</Fragment>
+          return (
+            <Fragment key={`text-${idx}-${segment.text.slice(0, 10)}`}>{segment.text}</Fragment>
+          )
         }
 
         const intensity = getUnderlineIntensity(segment.connection.documentCount)
 
         return (
           <span
-            key={idx}
+            key={`conn-${segment.connection.phrase}-${idx}`}
             className={`underline underline-offset-2 ${intensity} cursor-help transition-all hover:decoration-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20`}
             title={`Connected to ${segment.connection.documentCount} document${segment.connection.documentCount > 1 ? 's' : ''}`}
             onClick={() => onConnectionClick?.(segment.connection!.phrase)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onConnectionClick?.(segment.connection!.phrase)
+              }
+            }}
+            role="button"
+            tabIndex={0}
           >
             {segment.text}
           </span>
@@ -141,11 +147,7 @@ export function HeatmapStats({
   }
 
   if (connectionCount === 0) {
-    return (
-      <span className="text-xs text-gray-400 dark:text-gray-500">
-        No connections found
-      </span>
-    )
+    return <span className="text-xs text-gray-400 dark:text-gray-500">No connections found</span>
   }
 
   return (

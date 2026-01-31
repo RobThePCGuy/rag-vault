@@ -42,7 +42,7 @@ export interface TrailNode {
   chunkKey: ChunkKey
   visitedAt: string
   connectionReason?: string
-  branchLabel?: string  // e.g., "1a", "1b"
+  branchLabel?: string // e.g., "1a", "1b"
   children: TrailNode[]
 }
 
@@ -141,39 +141,6 @@ function isSameChunkKey(a: ChunkKey, b: ChunkKey): boolean {
   }
   // Fallback to path + index comparison
   return a.filePath === b.filePath && a.chunkIndex === b.chunkIndex
-}
-
-/**
- * Resolve a ChunkKey using fingerprint-based lookup.
- * Returns the resolved chunk index, or the hint index if resolution fails.
- * Used for resilient linking when chunks may have been re-indexed.
- */
-export function resolveChunkKey(
-  ref: ChunkKey,
-  fingerprintMap: Map<string, number>
-): number {
-  // Try fingerprint first (primary resolution)
-  if (ref.fingerprint && fingerprintMap.has(ref.fingerprint)) {
-    return fingerprintMap.get(ref.fingerprint)!
-  }
-  // Fallback to index hint
-  return ref.chunkIndex
-}
-
-/**
- * Build a fingerprint-to-index map from chunks.
- * Used for efficient chunk reference resolution.
- */
-export function buildFingerprintMap(
-  chunks: Array<{ fingerprint?: string; chunkIndex: number }>
-): Map<string, number> {
-  const map = new Map<string, number>()
-  for (const chunk of chunks) {
-    if (chunk.fingerprint) {
-      map.set(chunk.fingerprint, chunk.chunkIndex)
-    }
-  }
-  return map
 }
 
 const DEFAULT_STORE: LinksStore = {
@@ -468,9 +435,7 @@ export function LinksProvider({ children, vaultId = 'default' }: LinksProviderPr
     (bookmarkId: string, note: string) => {
       setStore((prev) => ({
         ...prev,
-        bookmarks: (prev.bookmarks || []).map((b) =>
-          b.id === bookmarkId ? { ...b, note } : b
-        ),
+        bookmarks: (prev.bookmarks || []).map((b) => (b.id === bookmarkId ? { ...b, note } : b)),
       }))
     },
     [setStore]
@@ -487,18 +452,14 @@ export function LinksProvider({ children, vaultId = 'default' }: LinksProviderPr
 
   const isBookmarked = useCallback(
     (chunkKey: ChunkKey): boolean => {
-      return (store.bookmarks || []).some(
-        (b) => isSameChunkKey(b.chunkKey, chunkKey)
-      )
+      return (store.bookmarks || []).some((b) => isSameChunkKey(b.chunkKey, chunkKey))
     },
     [store.bookmarks]
   )
 
   const toggleBookmark = useCallback(
     (chunkKey: ChunkKey): boolean => {
-      const existing = (store.bookmarks || []).find((b) =>
-        isSameChunkKey(b.chunkKey, chunkKey)
-      )
+      const existing = (store.bookmarks || []).find((b) => isSameChunkKey(b.chunkKey, chunkKey))
 
       if (existing) {
         deleteBookmark(existing.id)

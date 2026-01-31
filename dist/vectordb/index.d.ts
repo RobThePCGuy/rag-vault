@@ -212,11 +212,17 @@ export declare class VectorStore {
      */
     private applyKeywordBoost;
     /**
-     * Get list of ingested files
+     * Get list of ingested files with optional pagination
      *
+     * @param options - Optional pagination parameters
+     * @param options.limit - Maximum number of files to return (default: all)
+     * @param options.offset - Number of files to skip (default: 0)
      * @returns Array of file information
      */
-    listFiles(): Promise<{
+    listFiles(options?: {
+        limit?: number;
+        offset?: number;
+    }): Promise<{
         filePath: string;
         chunkCount: number;
         timestamp: string;

@@ -82,8 +82,11 @@ async function main() {
                 break;
             }
         }
-        // Build RAG config from environment
+        // Build and validate RAG config from environment
         const config = (0, config_js_1.buildRAGConfig)();
+        (0, config_js_1.validateRAGConfig)(config);
+        // Validate allowed scan roots (logs warnings for non-existent paths)
+        (0, config_js_1.validateAllowedScanRoots)();
         console.log('Starting RAG Web Server...');
         console.log('Configuration:', { ...config, port, uploadDir, staticDir });
         // Create DatabaseManager with server factory

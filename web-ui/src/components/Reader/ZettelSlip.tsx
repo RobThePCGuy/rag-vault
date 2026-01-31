@@ -157,9 +157,7 @@ export function ZettelSlip({
 
       {/* Footer with type label and actions */}
       <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-stone-200/50 dark:border-stone-700/50">
-        <span className="text-xs text-stone-500 dark:text-stone-400 italic">
-          {typeLabel}
-        </span>
+        <span className="text-xs text-stone-500 dark:text-stone-400 italic">{typeLabel}</span>
         <div className="flex items-center gap-1">
           {onPin && (
             <span
@@ -178,9 +176,10 @@ export function ZettelSlip({
               }}
               className={`
                 p-1 rounded transition-colors
-                ${isPinned
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-stone-400 hover:text-amber-500 dark:text-stone-500 dark:hover:text-amber-400'
+                ${
+                  isPinned
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-stone-400 hover:text-amber-500 dark:text-stone-500 dark:hover:text-amber-400'
                 }
               `}
               title={isPinned ? 'Unpin' : 'Pin'}
@@ -204,12 +203,7 @@ function TypeIndicator({ type }: { type: ZettelSlipType }) {
     semantic: 'bg-violet-500',
   }[type]
 
-  return (
-    <span
-      className={`w-2 h-2 rounded-full ${colorClass} flex-shrink-0`}
-      aria-hidden="true"
-    />
-  )
+  return <span className={`w-2 h-2 rounded-full ${colorClass} flex-shrink-0`} aria-hidden="true" />
 }
 
 function PinIcon({ className }: { className?: string }) {

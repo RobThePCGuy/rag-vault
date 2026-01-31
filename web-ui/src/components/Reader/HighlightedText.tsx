@@ -100,17 +100,25 @@ export function HighlightedText({ text, highlights, onHighlightClick }: Highligh
         const colorClass = COLOR_CLASSES[segment.highlight.color]
 
         return (
-          <mark
+          <span
             key={segment.highlight.id}
             className={`${colorClass} cursor-pointer rounded px-0.5 transition-colors`}
             onClick={(e) => {
               e.stopPropagation()
               onHighlightClick?.(segment.highlight!)
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onHighlightClick?.(segment.highlight!)
+              }
+            }}
+            role="button"
+            tabIndex={0}
             data-highlight-id={segment.highlight.id}
           >
             {segment.text}
-          </mark>
+          </span>
         )
       })}
     </span>

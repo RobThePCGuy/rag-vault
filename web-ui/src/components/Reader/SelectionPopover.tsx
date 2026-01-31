@@ -64,7 +64,14 @@ export function SelectionPopover({
   return (
     <>
       {/* Invisible backdrop to catch clicks outside */}
-      <div className="fixed inset-0 z-50" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-50"
+        onClick={onClose}
+        onKeyDown={(e) => e.key === 'Escape' && onClose()}
+        role="button"
+        tabIndex={0}
+        aria-label="Close popover"
+      />
 
       {/* Popover */}
       <motion.div
@@ -115,9 +122,10 @@ export function SelectionPopover({
                 className={`
                   flex items-center justify-center w-8 h-8 rounded-md text-sm
                   transition-all
-                  ${isActionLoading
-                    ? 'opacity-50 cursor-not-allowed'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ${
+                    isActionLoading
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                   }
                 `}
                 title={title}

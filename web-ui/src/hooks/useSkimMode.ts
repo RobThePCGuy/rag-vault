@@ -98,7 +98,7 @@ function detectHeading(lines: string[]): string | null {
 
   // Check markdown heading
   const markdownMatch = firstLine.match(MARKDOWN_HEADING_PATTERN)
-  if (markdownMatch && markdownMatch[2]) {
+  if (markdownMatch?.[2]) {
     return markdownMatch[2].trim()
   }
 
@@ -137,9 +137,7 @@ function extractFirstSentence(text: string, heading: string | null): string {
     // Try to remove the heading line
     const lines = text.split('\n')
     const headingIndex = lines.findIndex(
-      (line) =>
-        line.includes(heading) ||
-        line.replace(/^#+\s*/, '').trim() === heading
+      (line) => line.includes(heading) || line.replace(/^#+\s*/, '').trim() === heading
     )
     if (headingIndex !== -1) {
       processedText = lines.slice(headingIndex + 1).join('\n')
@@ -157,7 +155,7 @@ function extractFirstSentence(text: string, heading: string | null): string {
     const sentence = processedText.slice(0, endIndex).trim()
     // Limit length for display
     if (sentence.length > 200) {
-      return sentence.slice(0, 200) + '...'
+      return `${sentence.slice(0, 200)}...`
     }
     return sentence
   }
@@ -168,9 +166,9 @@ function extractFirstSentence(text: string, heading: string | null): string {
     const truncated = processedText.slice(0, 200)
     const lastSpace = truncated.lastIndexOf(' ')
     if (lastSpace > 150) {
-      return truncated.slice(0, lastSpace) + '...'
+      return `${truncated.slice(0, lastSpace)}...`
     }
-    return truncated + '...'
+    return `${truncated}...`
   }
 
   return processedText

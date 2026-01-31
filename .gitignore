@@ -3,6 +3,8 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-lock.yaml
+package-lock.json
 
 # Build artifacts
 *.tsbuildinfo

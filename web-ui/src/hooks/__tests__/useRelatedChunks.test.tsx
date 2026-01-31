@@ -49,6 +49,19 @@ describe('useRelatedChunks', () => {
     expect(mockGetRelatedChunks).not.toHaveBeenCalled()
   })
 
+  it('should return empty when filePath is null even with valid chunkIndex=0', () => {
+    // Tests the compound condition: filePath && chunkIndex !== null
+    // Even when chunkIndex is 0 (a valid falsy value), null filePath should disable the query
+    const { result } = renderHook(() => useRelatedChunks(null, 0), {
+      wrapper: createWrapper(),
+    })
+
+    expect(result.current.related).toEqual([])
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.error).toBeNull()
+    expect(mockGetRelatedChunks).not.toHaveBeenCalled()
+  })
+
   it('should fetch related chunks when both params are valid', async () => {
     const mockRelated = [
       {

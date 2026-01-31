@@ -145,9 +145,7 @@ export function ChunkBlock({
       {/* Chunk index badge - Book style */}
       {showChunkNumbers && (
         <div className="absolute -left-1 top-5 flex items-center gap-1.5">
-          <span className="book-chunk-badge">
-            §{chunk.chunkIndex}
-          </span>
+          <span className="book-chunk-badge">§{chunk.chunkIndex}</span>
           {isBookmarked && (
             <BookmarkIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
           )}

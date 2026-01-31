@@ -406,10 +406,7 @@ export function ReaderLayout({
 
               {/* Document title - Book style */}
               <div>
-                <h2
-                  className="book-title text-xl truncate"
-                  title={filePath}
-                >
+                <h2 className="book-title text-xl truncate" title={filePath}>
                   {displayName}
                 </h2>
                 <p className="text-sm text-stone-500 dark:text-stone-400 font-serif">
@@ -448,10 +445,7 @@ export function ReaderLayout({
           </div>
 
           {/* Document content - Book reader style */}
-          <div
-            ref={scrollContainerRef}
-            className="flex-1 overflow-y-auto px-8 py-6 book-reader"
-          >
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-8 py-6 book-reader">
             {isLoadingDoc ? (
               <div className="flex items-center justify-center h-32">
                 <Spinner className="w-6 h-6 text-gray-400" />

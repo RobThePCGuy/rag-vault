@@ -43,7 +43,9 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
         <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm">
           <div>
             <span className="text-gray-500 dark:text-gray-400">Source:</span>
-            <p className="font-medium text-gray-900 dark:text-gray-100 break-all">{displaySource}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 break-all">
+              {displaySource}
+            </p>
           </div>
           <div>
             <span className="text-gray-500 dark:text-gray-400">Chunk:</span>
@@ -51,11 +53,16 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
           </div>
           <div>
             <span className="text-gray-500 dark:text-gray-400">Score:</span>
-            <p className="font-medium text-gray-900 dark:text-gray-100">{result.score.toFixed(4)}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100">
+              {result.score.toFixed(4)}
+            </p>
           </div>
           <div>
             <span className="text-gray-500 dark:text-gray-400">File Path:</span>
-            <p className="font-medium text-gray-900 dark:text-gray-100 break-all truncate" title={result.filePath}>
+            <p
+              className="font-medium text-gray-900 dark:text-gray-100 break-all truncate"
+              title={result.filePath}
+            >
               {result.filePath}
             </p>
           </div>
@@ -84,7 +91,9 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
             </button>
           </div>
           <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{result.text}</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              {result.text}
+            </p>
           </div>
         </div>
       </div>

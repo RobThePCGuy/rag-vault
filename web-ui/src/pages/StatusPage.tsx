@@ -9,8 +9,12 @@ export function StatusPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">System Status</h1>
-          <p className="text-gray-600 dark:text-gray-400">Monitor your RAG system metrics and configuration.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            System Status
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Monitor your RAG system metrics and configuration.
+          </p>
         </div>
         <button
           type="button"

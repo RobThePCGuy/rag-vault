@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
 usage() {
   echo -e "${YELLOW}Usage: ./scripts/release.sh [patch|minor|major]${NC}"
   echo "  patch: 1.0.0 -> 1.0.1 (bug fixes)"
@@ -43,25 +38,6 @@ if [ "$BRANCH" != "main" ]; then
   read -r -p "Continue anyway? (y/N) " -n 1 REPLY
   echo
   if [[ ! "$REPLY" =~ ^[Yy]$ ]]; then exit 1; fi
-fi
-
-echo -e "${GREEN}Fetching origin...${NC}"
-git fetch origin main --tags
-
-LOCAL="$(git rev-parse HEAD)"
-REMOTE="$(git rev-parse origin/main)"
-BASE="$(git merge-base HEAD origin/main)"
-
-if [ "$LOCAL" != "$REMOTE" ]; then
-  if [ "$LOCAL" = "$BASE" ]; then
-    echo -e "${RED}Error: local branch is behind origin/main. Pull first.${NC}"
-    exit 1
-  elif [ "$REMOTE" = "$BASE" ]; then
-    echo -e "${YELLOW}Warning: local branch is ahead of origin/main.${NC}"
-  else
-    echo -e "${RED}Error: local and origin/main have diverged. Resolve first.${NC}"
-    exit 1
-  fi
 fi
 
 echo -e "${GREEN}Building project...${NC}"

@@ -236,7 +236,7 @@ body {
 
 /* Book page left edge (binding shadow) */
 .book-page::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;
@@ -252,7 +252,7 @@ body {
 
 /* Book text styling */
 .book-text {
-  font-family: 'Georgia', 'Palatino Linotype', 'Book Antiqua', Palatino, serif;
+  font-family: "Georgia", "Palatino Linotype", "Book Antiqua", Palatino, serif;
   color: #2c2416;
   line-height: 1.8;
   letter-spacing: 0.01em;
@@ -296,7 +296,7 @@ body {
 
 /* Book title styling */
 .book-title {
-  font-family: 'Georgia', 'Palatino Linotype', serif;
+  font-family: "Georgia", "Palatino Linotype", serif;
   color: #3d3425;
   font-weight: 600;
 }
@@ -333,7 +333,7 @@ body {
 
 /* Chunk number badge in book style */
 .book-chunk-badge {
-  font-family: 'Georgia', serif;
+  font-family: "Georgia", serif;
   font-size: 0.7rem;
   color: #9a8a70;
   background: rgba(180, 160, 130, 0.15);

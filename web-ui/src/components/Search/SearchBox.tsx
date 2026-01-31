@@ -19,7 +19,10 @@ export function SearchBox({ onSearch, isLoading }: SearchBoxProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="query" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label
+          htmlFor="query"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
           Search Query
         </label>
         <div className="flex gap-2">

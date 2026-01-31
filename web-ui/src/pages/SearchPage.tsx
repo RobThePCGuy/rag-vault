@@ -7,7 +7,9 @@ export function SearchPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Search Documents</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          Search Documents
+        </h1>
         <p className="text-gray-600 dark:text-gray-400">
           Search through your ingested documents using semantic and keyword matching.
         </p>

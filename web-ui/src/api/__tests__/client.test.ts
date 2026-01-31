@@ -7,6 +7,9 @@ import {
   deleteFile,
   getStatus,
   getRelatedChunks,
+  ingestData,
+  getBatchRelatedChunks,
+  recordFeedback,
 } from '../client'
 
 // Mock fetch globally
@@ -125,6 +128,27 @@ describe('API Client', () => {
 
       const file = new File(['content'], 'test.txt')
       await expect(uploadFile(file)).rejects.toThrow('File too large')
+    })
+
+    it('should throw "Upload timed out" on AbortError', async () => {
+      vi.useFakeTimers()
+
+      mockFetch.mockImplementationOnce(() => {
+        return new Promise((_, reject) => {
+          setTimeout(() => {
+            const error = new Error('Aborted')
+            error.name = 'AbortError'
+            reject(error)
+          }, 350000)
+        })
+      })
+
+      const file = new File(['content'], 'test.txt')
+      const promise = uploadFile(file)
+      vi.advanceTimersByTime(350000)
+
+      await expect(promise).rejects.toThrow('Upload timed out')
+      vi.useRealTimers()
     })
   })
 
@@ -259,6 +283,344 @@ describe('API Client', () => {
 
       const url = mockFetch.mock.calls[0]![0] as string
       expect(url).toContain('excludeSameDoc=true')
+    })
+
+    it('should pass includeExplanation=true parameter', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ related: [] }),
+      })
+
+      await getRelatedChunks('/doc.txt', 0, { includeExplanation: true })
+
+      const url = mockFetch.mock.calls[0]![0] as string
+      expect(url).toContain('includeExplanation=true')
+    })
+
+    it('should use explanation.reasonLabel for connectionReason when available', async () => {
+      const mockRelated = [
+        {
+          filePath: '/other.txt',
+          chunkIndex: 2,
+          text: 'related',
+          score: 0.3,
+          explanation: {
+            sharedKeywords: ['test'],
+            sharedPhrases: [],
+            reasonLabel: 'very_similar' as const,
+          },
+        },
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ related: mockRelated }),
+      })
+
+      const result = await getRelatedChunks('/doc.txt', 0, { includeExplanation: true })
+
+      expect(result[0]?.connectionReason).toBe('Very similar')
+    })
+
+    it('should return "Same document" for same_doc reasonLabel', async () => {
+      const mockRelated = [
+        {
+          filePath: '/doc.txt',
+          chunkIndex: 2,
+          text: 'related',
+          score: 0.1,
+          explanation: {
+            sharedKeywords: [],
+            sharedPhrases: [],
+            reasonLabel: 'same_doc' as const,
+          },
+        },
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ related: mockRelated }),
+      })
+
+      const result = await getRelatedChunks('/doc.txt', 0, { includeExplanation: true })
+
+      expect(result[0]?.connectionReason).toBe('Same document')
+    })
+
+    it('should return "Related topic" for related_topic reasonLabel', async () => {
+      const mockRelated = [
+        {
+          filePath: '/other.txt',
+          chunkIndex: 2,
+          text: 'related',
+          score: 0.4,
+          explanation: {
+            sharedKeywords: ['topic'],
+            sharedPhrases: [],
+            reasonLabel: 'related_topic' as const,
+          },
+        },
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ related: mockRelated }),
+      })
+
+      const result = await getRelatedChunks('/doc.txt', 0, { includeExplanation: true })
+
+      expect(result[0]?.connectionReason).toBe('Related topic')
+    })
+
+    it('should return "Loosely related" for loosely_related reasonLabel', async () => {
+      const mockRelated = [
+        {
+          filePath: '/other.txt',
+          chunkIndex: 2,
+          text: 'related',
+          score: 0.6,
+          explanation: {
+            sharedKeywords: [],
+            sharedPhrases: [],
+            reasonLabel: 'loosely_related' as const,
+          },
+        },
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ related: mockRelated }),
+      })
+
+      const result = await getRelatedChunks('/doc.txt', 0, { includeExplanation: true })
+
+      expect(result[0]?.connectionReason).toBe('Loosely related')
+    })
+
+    it('should return "Related" for unknown reasonLabel', async () => {
+      const mockRelated = [
+        {
+          filePath: '/other.txt',
+          chunkIndex: 2,
+          text: 'related',
+          score: 0.5,
+          explanation: {
+            sharedKeywords: [],
+            sharedPhrases: [],
+            reasonLabel: 'unknown_label' as unknown as
+              | 'same_doc'
+              | 'very_similar'
+              | 'related_topic'
+              | 'loosely_related',
+          },
+        },
+      ]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ related: mockRelated }),
+      })
+
+      const result = await getRelatedChunks('/doc.txt', 0, { includeExplanation: true })
+
+      expect(result[0]?.connectionReason).toBe('Related')
+    })
+  })
+
+  describe('ingestData', () => {
+    it('should POST content with metadata to /data endpoint', async () => {
+      const mockResult = {
+        filePath: '/ingested/content.txt',
+        chunkCount: 3,
+        timestamp: '2024-01-01T00:00:00Z',
+      }
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResult),
+      })
+
+      const result = await ingestData('Hello world', 'web-paste', 'text')
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/data',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            content: 'Hello world',
+            metadata: { source: 'web-paste', format: 'text' },
+          }),
+        })
+      )
+      expect(result).toEqual(mockResult)
+    })
+
+    it('should support all format types: text, html, markdown', async () => {
+      const formats = ['text', 'html', 'markdown'] as const
+
+      for (const format of formats) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({ filePath: '/test', chunkCount: 1, timestamp: '2024-01-01' }),
+        })
+
+        await ingestData('content', 'source', format)
+
+        const callArgs = mockFetch.mock.calls[mockFetch.mock.calls.length - 1]
+        const body = JSON.parse(callArgs![1]?.body as string)
+        expect(body.metadata.format).toBe(format)
+      }
+    })
+
+    it('should throw error on ingest failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Content too large' }),
+      })
+
+      await expect(ingestData('content', 'source', 'text')).rejects.toThrow('Content too large')
+    })
+  })
+
+  describe('getBatchRelatedChunks', () => {
+    it('should POST chunks array to /chunks/batch-related', async () => {
+      const chunks = [
+        { filePath: '/doc1.txt', chunkIndex: 0 },
+        { filePath: '/doc2.txt', chunkIndex: 1 },
+      ]
+      const mockResults = {
+        '/doc1.txt:0': [{ filePath: '/other.txt', chunkIndex: 2, text: 'related', score: 0.3 }],
+        '/doc2.txt:1': [{ filePath: '/another.txt', chunkIndex: 0, text: 'also related', score: 0.4 }],
+      }
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ results: mockResults }),
+      })
+
+      const result = await getBatchRelatedChunks(chunks)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/chunks/batch-related',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ chunks, limit: undefined }),
+        })
+      )
+      expect(result).toHaveProperty('/doc1.txt:0')
+      expect(result).toHaveProperty('/doc2.txt:1')
+    })
+
+    it('should pass limit parameter when provided', async () => {
+      const chunks = [{ filePath: '/doc.txt', chunkIndex: 0 }]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ results: {} }),
+      })
+
+      await getBatchRelatedChunks(chunks, 10)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/chunks/batch-related',
+        expect.objectContaining({
+          body: JSON.stringify({ chunks, limit: 10 }),
+        })
+      )
+    })
+
+    it('should add connectionReason to all returned chunks', async () => {
+      const chunks = [{ filePath: '/doc.txt', chunkIndex: 0 }]
+      const mockResults = {
+        '/doc.txt:0': [
+          { filePath: '/other.txt', chunkIndex: 2, text: 'related', score: 0.25 },
+          { filePath: '/doc.txt', chunkIndex: 3, text: 'same doc', score: 0.1 },
+        ],
+      }
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ results: mockResults }),
+      })
+
+      const result = await getBatchRelatedChunks(chunks)
+
+      expect(result['/doc.txt:0']![0]?.connectionReason).toBe('Very similar')
+      expect(result['/doc.txt:0']![1]?.connectionReason).toBe('Same document')
+    })
+
+    it('should handle empty results', async () => {
+      const chunks = [{ filePath: '/doc.txt', chunkIndex: 0 }]
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ results: {} }),
+      })
+
+      const result = await getBatchRelatedChunks(chunks)
+
+      expect(result).toEqual({})
+    })
+  })
+
+  describe('recordFeedback', () => {
+    const sourceChunk = { filePath: '/doc.txt', chunkIndex: 0 }
+    const targetChunk = { filePath: '/other.txt', chunkIndex: 1 }
+
+    it('should POST pin feedback', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+
+      await recordFeedback('pin', sourceChunk, targetChunk)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/feedback',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ type: 'pin', source: sourceChunk, target: targetChunk }),
+        })
+      )
+    })
+
+    it('should POST unpin feedback', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+
+      await recordFeedback('unpin', sourceChunk, targetChunk)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/feedback',
+        expect.objectContaining({
+          body: JSON.stringify({ type: 'unpin', source: sourceChunk, target: targetChunk }),
+        })
+      )
+    })
+
+    it('should POST dismiss_inferred feedback', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+
+      await recordFeedback('dismiss_inferred', sourceChunk, targetChunk)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/feedback',
+        expect.objectContaining({
+          body: JSON.stringify({ type: 'dismiss_inferred', source: sourceChunk, target: targetChunk }),
+        })
+      )
+    })
+
+    it('should POST click_related feedback', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({}),
+      })
+
+      await recordFeedback('click_related', sourceChunk, targetChunk)
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/v1/feedback',
+        expect.objectContaining({
+          body: JSON.stringify({ type: 'click_related', source: sourceChunk, target: targetChunk }),
+        })
+      )
     })
   })
 

@@ -29,14 +29,19 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {metrics.map((metric) => (
-          <div key={metric.label} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+          <div
+            key={metric.label}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6"
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                 <metric.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{metric.label}</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{metric.value}</p>
+                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                  {metric.value}
+                </p>
               </div>
             </div>
           </div>
@@ -49,7 +54,9 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
         <dl className="space-y-3">
           <div className="flex justify-between">
             <dt className="text-gray-500 dark:text-gray-400">Search Mode</dt>
-            <dd className="text-gray-900 dark:text-gray-100 font-mono text-sm">{status.searchMode}</dd>
+            <dd className="text-gray-900 dark:text-gray-100 font-mono text-sm">
+              {status.searchMode}
+            </dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-gray-500 dark:text-gray-400">FTS Index</dt>
@@ -59,7 +66,9 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
           </div>
           <div className="flex justify-between">
             <dt className="text-gray-500 dark:text-gray-400">Uptime</dt>
-            <dd className="text-gray-900 dark:text-gray-100 font-mono text-sm">{formatUptime(status.uptime)}</dd>
+            <dd className="text-gray-900 dark:text-gray-100 font-mono text-sm">
+              {formatUptime(status.uptime)}
+            </dd>
           </div>
         </dl>
       </div>

@@ -39,6 +39,9 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
+      jsdom:
+        specifier: ^27.4.0
+        version: 27.4.0
       mammoth:
         specifier: ^1.11.0
         version: 1.11.0
@@ -88,9 +91,6 @@ importers:
       concurrently:
         specifier: ^9.2.1
         version: 9.2.1
-      jsdom:
-        specifier: ^27.4.0
-        version: 27.4.0
       knip:
         specifier: ^5.61.0
         version: 5.82.1(@types/node@24.10.9)(typescript@5.9.3)

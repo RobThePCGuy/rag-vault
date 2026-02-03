@@ -4,6 +4,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeedbackStore = void 0;
 exports.getFeedbackStore = getFeedbackStore;
+const promises_1 = require("node:fs/promises");
+const node_path_1 = require("node:path");
+const file_utils_js_1 = require("../utils/file-utils.js");
 const DEFAULT_CONFIG = {
     pinBoost: 1.3,
     coPinBoost: 1.15,
@@ -173,13 +176,19 @@ class FeedbackStore {
     }
     /**
      * Import events (e.g., from disk)
+     * Validates timestamps and skips invalid events
      */
     importEvents(events) {
         for (const event of events) {
-            // Ensure timestamp is a Date object
+            // Ensure timestamp is a valid Date object
+            const timestamp = new Date(event.timestamp);
+            if (Number.isNaN(timestamp.getTime())) {
+                console.warn('FeedbackStore: Skipping event with invalid timestamp:', event);
+                continue;
+            }
             const e = {
                 ...event,
-                timestamp: new Date(event.timestamp),
+                timestamp,
             };
             this.events.push(e);
             this.updateIndices(e);
@@ -203,17 +212,63 @@ class FeedbackStore {
             dismissedPairs: dismissedCount,
         };
     }
+    /**
+     * Save feedback events to disk
+     * @param dbPath - Path to the database directory
+     */
+    async saveToDisk(dbPath) {
+        const filePath = (0, node_path_1.join)(dbPath, 'feedback.json');
+        const data = {
+            version: 1,
+            events: this.events.map((e) => ({
+                ...e,
+                timestamp: e.timestamp.toISOString(),
+            })),
+        };
+        await (0, file_utils_js_1.atomicWriteFile)(filePath, JSON.stringify(data, null, 2));
+        console.error(`FeedbackStore: Saved ${this.events.length} events to ${filePath}`);
+    }
+    /**
+     * Load feedback events from disk
+     * @param dbPath - Path to the database directory
+     */
+    async loadFromDisk(dbPath) {
+        const filePath = (0, node_path_1.join)(dbPath, 'feedback.json');
+        try {
+            const content = await (0, promises_1.readFile)(filePath, 'utf-8');
+            const data = JSON.parse(content);
+            // Validate JSON structure before importing
+            if (data.version !== 1) {
+                console.warn(`FeedbackStore: Unsupported version ${data.version} in ${filePath}, starting fresh`);
+                return;
+            }
+            if (!Array.isArray(data.events)) {
+                console.warn(`FeedbackStore: Invalid format (events not an array) in ${filePath}, starting fresh`);
+                return;
+            }
+            this.importEvents(data.events);
+            console.error(`FeedbackStore: Loaded ${data.events.length} events from ${filePath}`);
+        }
+        catch (error) {
+            const nodeError = error;
+            // File doesn't exist - this is normal for new databases
+            if (nodeError.code === 'ENOENT') {
+                return;
+            }
+            // JSON parse error or other issues - log warning and start fresh
+            console.warn(`FeedbackStore: Could not load from ${filePath}:`, error);
+        }
+    }
 }
 exports.FeedbackStore = FeedbackStore;
-// Global feedback store instance
-let globalFeedbackStore = null;
+// Global feedback store instance (eager initialization to prevent race conditions)
+// Using eager init instead of lazy init avoids the check-then-act race where
+// concurrent requests could create separate instances and lose feedback events.
+const globalFeedbackStore = new FeedbackStore();
 /**
- * Get or create the global feedback store
+ * Get the global feedback store
  */
 function getFeedbackStore() {
-    if (!globalFeedbackStore) {
-        globalFeedbackStore = new FeedbackStore();
-    }
     return globalFeedbackStore;
 }
 //# sourceMappingURL=feedback.js.map

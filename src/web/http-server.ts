@@ -175,8 +175,11 @@ function requestTimeout(defaultTimeoutMs: number) {
       }
     }, timeoutMs)
 
+    // Clear timeout on all completion scenarios to prevent memory leaks
     res.on('finish', () => clearTimeout(timeoutId))
     res.on('close', () => clearTimeout(timeoutId))
+    res.on('error', () => clearTimeout(timeoutId))
+    req.on('aborted', () => clearTimeout(timeoutId))
 
     next()
   }
@@ -317,8 +320,9 @@ async function createHttpServerInternal(
           const { unlink } = await import('node:fs/promises')
           try {
             await unlink(file.path)
-          } catch {
-            // Ignore deletion errors
+          } catch (unlinkError) {
+            // Log deletion errors for debugging (may indicate permission issues)
+            console.warn(`Failed to delete invalid upload file: ${file.path}`, unlinkError)
           }
           res.status(400).json({
             error: 'File content does not match allowed types',

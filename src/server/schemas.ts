@@ -25,7 +25,23 @@ export const QueryDocumentsSchema = z.object({
     .describe(
       'Maximum number of results to return (default: 10, max: 20). Recommended: 5 for precision, 10 for balance, 20 for broad exploration.'
     ),
+  explain: z
+    .boolean()
+    .optional()
+    .describe('Include explanation of why each result matched (shared keywords, phrases, match type).'),
 })
+
+/**
+ * Custom metadata schema for ingestion
+ * Enforces reasonable limits on key/value sizes to prevent abuse
+ */
+export const CustomMetadataSchema = z
+  .record(
+    z.string().max(100, 'Metadata key must be at most 100 characters'),
+    z.string().max(1000, 'Metadata value must be at most 1000 characters')
+  )
+  .optional()
+  .describe('Optional custom metadata fields (e.g., {"author": "John", "domain": "legal", "tags": "contract,review"})')
 
 /**
  * ingest_file tool input schema
@@ -35,6 +51,7 @@ export const IngestFileSchema = z.object({
     .string()
     .min(1, 'File path cannot be empty')
     .describe('Absolute path to the file to ingest. Example: "/Users/user/documents/manual.pdf"'),
+  metadata: CustomMetadataSchema,
 })
 
 /**
@@ -48,6 +65,7 @@ export const IngestDataMetadataSchema = z.object({
       'Source identifier. For web pages, use the URL (e.g., "https://example.com/page"). For other content, use URL-scheme format: "{type}://{date}" or "{type}://{date}/{detail}". Examples: "clipboard://2024-12-30", "chat://2024-12-30/project-discussion".'
     ),
   format: ContentFormatSchema.describe('Content format: "text", "html", or "markdown"'),
+  custom: CustomMetadataSchema,
 })
 
 /**
@@ -96,12 +114,28 @@ export type DeleteFileInput = z.infer<typeof DeleteFileSchema>
 // Output types (plain TypeScript interfaces)
 // ============================================
 
+/**
+ * Explanation of why a result matched the query
+ */
+export interface QueryResultExplanation {
+  /** Keywords shared between query and result */
+  sharedKeywords: string[]
+  /** Phrases (bigrams/trigrams) shared between query and result */
+  sharedPhrases: string[]
+  /** Relationship category */
+  reasonLabel: 'same_doc' | 'very_similar' | 'related_topic' | 'loosely_related'
+}
+
 export interface QueryResult {
   filePath: string
   chunkIndex: number
   text: string
   score: number
   source?: string
+  /** Custom metadata fields if present on the document */
+  metadata?: Record<string, string>
+  /** Explanation of why this result matched (only present when explain=true) */
+  explanation?: QueryResultExplanation
 }
 
 export interface IngestResult {

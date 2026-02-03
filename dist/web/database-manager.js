@@ -10,6 +10,7 @@ const promises_1 = require("node:fs/promises");
 const node_os_1 = require("node:os");
 const node_path_1 = __importDefault(require("node:path"));
 const schemas_js_1 = require("../server/schemas.js");
+const file_utils_js_1 = require("../utils/file-utils.js");
 // ============================================
 // Constants
 // ============================================
@@ -56,14 +57,10 @@ async function readUserAllowedRoots() {
 }
 /**
  * Write user-added allowed roots to config file
- * Note: This is async to avoid blocking the event loop
+ * Uses atomic write to prevent race conditions
  */
 async function writeUserAllowedRoots(roots) {
-    const dir = node_path_1.default.dirname(ALLOWED_ROOTS_FILE);
-    if (!(0, node_fs_1.existsSync)(dir)) {
-        await (0, promises_1.mkdir)(dir, { recursive: true });
-    }
-    await (0, promises_1.writeFile)(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8');
+    await (0, file_utils_js_1.atomicWriteFile)(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2));
 }
 /**
  * Check if a path is within a set of allowed roots
@@ -254,6 +251,8 @@ class DatabaseManager {
         // Close current server
         if (this.currentServer) {
             await this.currentServer.close();
+            this.currentServer = null;
+            this.currentConfig = null;
         }
         // Use stored model name if available, otherwise fall back to baseConfig
         const effectiveModelName = modelName || this.baseConfig.modelName;
@@ -263,12 +262,27 @@ class DatabaseManager {
             dbPath: resolvedPath,
             modelName: effectiveModelName,
         };
-        this.currentServer = this.serverFactory(config);
-        this.currentConfig = config;
-        await this.currentServer.initialize();
-        // Update recent databases with the model name
-        await this.addToRecent(resolvedPath, effectiveModelName);
-        console.log(`Switched to database: ${resolvedPath} (model: ${effectiveModelName})`);
+        const newServer = this.serverFactory(config);
+        try {
+            await newServer.initialize();
+            // Success - update state
+            this.currentServer = newServer;
+            this.currentConfig = config;
+            // Update recent databases with the model name
+            await this.addToRecent(resolvedPath, effectiveModelName);
+            console.log(`Switched to database: ${resolvedPath} (model: ${effectiveModelName})`);
+        }
+        catch (error) {
+            // Cleanup new server on failure
+            try {
+                await newServer.close();
+            }
+            catch {
+                // Ignore cleanup errors
+            }
+            // Re-throw the original error
+            throw error;
+        }
     }
     /**
      * Create a new database
@@ -308,8 +322,11 @@ class DatabaseManager {
      * Internal method to perform the actual switch to a new database
      */
     async performSwitchToNew(newDbPath, modelName) {
+        // Close current server
         if (this.currentServer) {
             await this.currentServer.close();
+            this.currentServer = null;
+            this.currentConfig = null;
         }
         // Use provided modelName or fall back to baseConfig
         const effectiveModelName = modelName || this.baseConfig.modelName;
@@ -318,11 +335,26 @@ class DatabaseManager {
             dbPath: newDbPath,
             modelName: effectiveModelName,
         };
-        this.currentServer = this.serverFactory(config);
-        this.currentConfig = config;
-        await this.currentServer.initialize();
-        await this.addToRecent(newDbPath, effectiveModelName);
-        console.log(`Created and switched to database: ${newDbPath} (model: ${effectiveModelName})`);
+        const newServer = this.serverFactory(config);
+        try {
+            await newServer.initialize();
+            // Success - update state
+            this.currentServer = newServer;
+            this.currentConfig = config;
+            await this.addToRecent(newDbPath, effectiveModelName);
+            console.log(`Created and switched to database: ${newDbPath} (model: ${effectiveModelName})`);
+        }
+        catch (error) {
+            // Cleanup new server on failure
+            try {
+                await newServer.close();
+            }
+            catch {
+                // Ignore cleanup errors
+            }
+            // Re-throw the original error
+            throw error;
+        }
     }
     /**
      * Get list of recent databases
@@ -589,6 +621,7 @@ class DatabaseManager {
     }
     /**
      * Add a database to recent list
+     * Uses atomic write to prevent read-modify-write race conditions
      */
     async addToRecent(dbPath, modelName) {
         const databases = await this.getRecentDatabases();
@@ -606,10 +639,11 @@ class DatabaseManager {
             version: 1,
             databases: updated,
         };
-        await (0, promises_1.writeFile)(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2), 'utf-8');
+        await (0, file_utils_js_1.atomicWriteFile)(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2));
     }
     /**
      * Remove a database from the recent list
+     * Uses atomic write to prevent read-modify-write race conditions
      */
     async removeFromRecent(dbPath) {
         const databases = await this.getRecentDatabases();
@@ -618,7 +652,7 @@ class DatabaseManager {
             version: 1,
             databases: filtered,
         };
-        await (0, promises_1.writeFile)(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2), 'utf-8');
+        await (0, file_utils_js_1.atomicWriteFile)(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2));
     }
     /**
      * Delete a database (removes from recent list and optionally deletes files)

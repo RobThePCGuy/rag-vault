@@ -86,6 +86,7 @@ export declare class FeedbackStore {
     exportEvents(): FeedbackEvent[];
     /**
      * Import events (e.g., from disk)
+     * Validates timestamps and skips invalid events
      */
     importEvents(events: FeedbackEvent[]): void;
     /**
@@ -96,9 +97,19 @@ export declare class FeedbackStore {
         pinnedPairs: number;
         dismissedPairs: number;
     };
+    /**
+     * Save feedback events to disk
+     * @param dbPath - Path to the database directory
+     */
+    saveToDisk(dbPath: string): Promise<void>;
+    /**
+     * Load feedback events from disk
+     * @param dbPath - Path to the database directory
+     */
+    loadFromDisk(dbPath: string): Promise<void>;
 }
 /**
- * Get or create the global feedback store
+ * Get the global feedback store
  */
 export declare function getFeedbackStore(): FeedbackStore;
 export {};

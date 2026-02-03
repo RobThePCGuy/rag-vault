@@ -70,6 +70,13 @@ export declare class RAGServer {
     setHybridWeight(weight: number): void;
     /**
      * Execute query_documents logic (returns plain data)
+     *
+     * Supports advanced query syntax:
+     * - "exact phrase" → Phrase matching (FTS)
+     * - field:value → Metadata filter
+     * - term1 AND term2 → Both required (default)
+     * - term1 OR term2 → Either matches
+     * - -term → Exclude term
      */
     private executeQueryDocuments;
     /**
@@ -133,6 +140,18 @@ export declare class RAGServer {
             text: string;
         }];
     }>;
+    /**
+     * Execute feedback_pin logic
+     */
+    private executeFeedbackPin;
+    /**
+     * Execute feedback_dismiss logic
+     */
+    private executeFeedbackDismiss;
+    /**
+     * Execute feedback_stats logic
+     */
+    private executeFeedbackStats;
     /**
      * Execute delete_file logic (returns plain data)
      */

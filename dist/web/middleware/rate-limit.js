@@ -40,16 +40,23 @@ function createRateLimiter(config = {}) {
         clearInterval(cleanupInterval);
     }
     // Cleanup old entries periodically
-    cleanupInterval = setInterval(() => {
-        const now = Date.now();
-        for (const [key, record] of clients.entries()) {
-            if (record.resetTime < now) {
-                clients.delete(key);
+    try {
+        cleanupInterval = setInterval(() => {
+            const now = Date.now();
+            for (const [key, record] of clients.entries()) {
+                if (record.resetTime < now) {
+                    clients.delete(key);
+                }
             }
-        }
-    }, windowMs * 2);
-    // Prevent interval from keeping process alive
-    cleanupInterval.unref();
+        }, windowMs * 2);
+        // Prevent interval from keeping process alive
+        cleanupInterval.unref();
+    }
+    catch (error) {
+        // setInterval can fail in edge cases (e.g., resource exhaustion)
+        console.error('Failed to create rate limit cleanup interval:', error);
+        cleanupInterval = null;
+    }
     return (req, res, next) => {
         // Get client identifier (IP address)
         const clientId = req.ip || req.socket.remoteAddress || 'unknown';

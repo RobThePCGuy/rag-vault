@@ -10,8 +10,10 @@ export declare function onShutdown(callback: () => void | Promise<void>): void;
  * Setup global process error handlers
  *
  * Handles:
- * - unhandledRejection: Logs promise rejection and exits
- * - uncaughtException: Logs exception and exits
+ * - unhandledRejection: Logs promise rejection, runs cleanup, and exits
+ * - uncaughtException: Logs exception, runs cleanup, and exits
+ *
+ * Guards against duplicate registration to prevent multiple handlers.
  *
  * @param exitCode - Exit code to use on error (default: 1)
  */
@@ -21,6 +23,8 @@ export declare function setupProcessHandlers(exitCode?: number): void;
  *
  * Executes all registered cleanup callbacks before exiting.
  * Use onShutdown() to register cleanup functions.
+ * Includes a forced exit timeout to prevent hanging on slow cleanup.
+ * Guards against duplicate registration to prevent multiple handlers.
  */
 export declare function setupGracefulShutdown(): void;
 //# sourceMappingURL=process-handlers.d.ts.map

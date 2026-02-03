@@ -173,6 +173,8 @@ export interface DocumentMetadata {
   fileSize: number
   /** File type (extension) */
   fileType: string
+  /** Optional custom metadata fields (e.g., author, domain, tags) */
+  custom?: Record<string, string>
 }
 
 /**
@@ -242,11 +244,19 @@ interface LanceDBRawResult {
 function isDocumentMetadata(value: unknown): value is DocumentMetadata {
   if (typeof value !== 'object' || value === null) return false
   const obj = value as Record<string, unknown>
-  return (
-    typeof obj['fileName'] === 'string' &&
-    typeof obj['fileSize'] === 'number' &&
-    typeof obj['fileType'] === 'string'
-  )
+  // Required fields
+  if (
+    typeof obj['fileName'] !== 'string' ||
+    typeof obj['fileSize'] !== 'number' ||
+    typeof obj['fileType'] !== 'string'
+  ) {
+    return false
+  }
+  // Optional custom field must be an object if present
+  if (obj['custom'] !== undefined && (typeof obj['custom'] !== 'object' || obj['custom'] === null)) {
+    return false
+  }
+  return true
 }
 
 /**
@@ -261,6 +271,23 @@ function isLanceDBRawResult(value: unknown): value is LanceDBRawResult {
     typeof obj['text'] === 'string' &&
     isDocumentMetadata(obj['metadata'])
   )
+}
+
+/**
+ * Convert VectorChunk to LanceDB record format
+ * This explicit conversion avoids unsafe `as unknown as Record` casts
+ */
+function toDbRecord(chunk: VectorChunk): Record<string, unknown> {
+  return {
+    id: chunk.id,
+    filePath: chunk.filePath,
+    chunkIndex: chunk.chunkIndex,
+    text: chunk.text,
+    vector: chunk.vector,
+    metadata: chunk.metadata,
+    timestamp: chunk.timestamp,
+    fingerprint: chunk.fingerprint,
+  }
 }
 
 /**
@@ -312,10 +339,12 @@ export class VectorStore {
   private ftsEnabled = false
   private ftsFailureCount = 0
   private ftsLastFailure: number | null = null
-  /** Mutex to prevent race conditions in circuit breaker state transitions */
-  private circuitBreakerResetting = false
+  /** Promise-based mutex for atomic circuit breaker reset */
+  private ftsRecoveryPromise: Promise<boolean> | null = null
   /** Runtime override for hybrid weight (allows dynamic adjustment) */
   private hybridWeightOverride: number | null = null
+  /** Promise-based mutex for table creation (prevents race on first insert) */
+  private tableCreationPromise: Promise<void> | null = null
 
   constructor(config: VectorStoreConfig) {
     this.config = config
@@ -343,7 +372,7 @@ export class VectorStore {
    * Check if FTS should be attempted (circuit breaker logic)
    * - Returns false if max failures reached and cooldown not elapsed
    * - Resets failure count after successful cooldown period
-   * - Uses mutex to prevent race conditions during reset
+   * - Uses promise-based mutex for atomic reset (prevents race conditions)
    */
   private shouldAttemptFts(): boolean {
     if (!this.ftsEnabled) return false
@@ -353,18 +382,29 @@ export class VectorStore {
 
     // Check if cooldown period has elapsed
     if (this.ftsLastFailure && Date.now() - this.ftsLastFailure > FTS_COOLDOWN_MS) {
-      // Use mutex to prevent multiple concurrent resets (race condition protection)
-      if (this.circuitBreakerResetting) {
-        // Another call is already resetting, don't allow FTS yet
+      // Check if another call is already handling recovery
+      if (this.ftsRecoveryPromise) {
+        // Recovery in progress - don't allow FTS until it completes
         return false
       }
 
-      // Acquire mutex and reset circuit breaker (half-open state)
-      this.circuitBreakerResetting = true
-      this.ftsFailureCount = 0
-      this.ftsLastFailure = null
-      this.circuitBreakerResetting = false
-      console.error('VectorStore: FTS circuit breaker reset - attempting recovery')
+      // Atomically create the recovery promise before any state changes
+      // This ensures only one caller can enter recovery mode
+      this.ftsRecoveryPromise = Promise.resolve()
+        .then(() => {
+          this.ftsFailureCount = 0
+          this.ftsLastFailure = null
+          this.ftsRecoveryPromise = null
+          console.error('VectorStore: FTS circuit breaker reset - attempting recovery')
+          return true
+        })
+        .catch((err) => {
+          // Reset promise on failure to allow retry
+          this.ftsRecoveryPromise = null
+          console.error('VectorStore: FTS circuit breaker reset failed:', err)
+          return false
+        })
+
       return true
     }
 
@@ -373,6 +413,8 @@ export class VectorStore {
 
   /**
    * Record FTS failure (circuit breaker)
+   * Note: This method is synchronous, so ftsFailureCount++ is atomic in Node.js
+   * single-threaded execution model (no await points = no interleaving).
    */
   private recordFtsFailure(error: Error): void {
     this.ftsFailureCount++
@@ -425,6 +467,24 @@ export class VectorStore {
 
       console.log(`VectorStore initialized: ${this.config.dbPath}`)
     } catch (error) {
+      // Clean up partially initialized resources on failure
+      // Close table first if it was opened, then db
+      if (this.table) {
+        try {
+          this.table.close()
+        } catch {
+          // Ignore cleanup errors
+        }
+        this.table = null
+      }
+      if (this.db) {
+        try {
+          this.db.close()
+        } catch {
+          // Ignore cleanup errors
+        }
+        this.db = null
+      }
       throw new DatabaseError('Failed to initialize VectorStore', error as Error)
     }
   }
@@ -502,29 +562,47 @@ export class VectorStore {
       }))
 
       if (!this.table) {
-        // Create table on first insertion
-        if (!this.db) {
-          throw new DatabaseError('VectorStore is not initialized. Call initialize() first.')
+        // Use promise-based mutex to prevent concurrent table creation race
+        if (this.tableCreationPromise) {
+          // Another call is already creating the table, wait for it
+          await this.tableCreationPromise
         }
-        // LanceDB's createTable API accepts data as Record<string, unknown>[]
-        const records = chunksWithFingerprints.map(
-          (chunk) => chunk as unknown as Record<string, unknown>
-        )
-        this.table = await this.db.createTable(this.config.tableName, records)
-        console.log(`VectorStore: Created table "${this.config.tableName}"`)
 
-        // Create FTS index for hybrid search
-        await this.ensureFtsIndex()
-      } else {
-        // Add data to existing table
-        const records = chunksWithFingerprints.map(
-          (chunk) => chunk as unknown as Record<string, unknown>
-        )
-        await this.table.add(records)
+        // Double-check after waiting (table may have been created)
+        if (!this.table) {
+          // Create table on first insertion with mutex
+          if (!this.db) {
+            throw new DatabaseError('VectorStore is not initialized. Call initialize() first.')
+          }
 
-        // Rebuild FTS index after adding new data
-        await this.rebuildFtsIndex()
+          // Set promise atomically before async operation
+          this.tableCreationPromise = (async () => {
+            // Convert to LanceDB record format using explicit field mapping
+            const records = chunksWithFingerprints.map(toDbRecord)
+            this.table = await this.db!.createTable(this.config.tableName, records)
+            console.log(`VectorStore: Created table "${this.config.tableName}"`)
+
+            // Create FTS index for hybrid search
+            await this.ensureFtsIndex()
+          })()
+
+          try {
+            await this.tableCreationPromise
+          } finally {
+            this.tableCreationPromise = null
+          }
+
+          console.log(`VectorStore: Inserted ${chunks.length} chunks`)
+          return
+        }
       }
+
+      // Add data to existing table
+      const records = chunksWithFingerprints.map(toDbRecord)
+      await this.table.add(records)
+
+      // Rebuild FTS index after adding new data
+      await this.rebuildFtsIndex()
 
       console.log(`VectorStore: Inserted ${chunks.length} chunks`)
     } catch (error) {
@@ -858,14 +936,51 @@ export class VectorStore {
 
   /**
    * Close the database connection and release resources
+   *
+   * Properly releases LanceDB resources:
+   * - Table.close() releases cached index data
+   * - Connection.close() releases HTTP connection pools
+   * Both are safe to call multiple times.
+   *
+   * @throws DatabaseError if closing fails (after attempting to close both resources)
    */
   async close(): Promise<void> {
-    this.db = null
-    this.table = null
+    const errors: Error[] = []
+
+    // Close table first (releases cached index data)
+    if (this.table) {
+      try {
+        this.table.close()
+      } catch (error) {
+        console.error('Error closing table:', error)
+        errors.push(error as Error)
+      }
+      this.table = null
+    }
+
+    // Close database connection (releases HTTP connection pools)
+    if (this.db) {
+      try {
+        this.db.close()
+      } catch (error) {
+        console.error('Error closing database:', error)
+        errors.push(error as Error)
+      }
+      this.db = null
+    }
+
     this.ftsEnabled = false
     this.ftsFailureCount = 0
     this.ftsLastFailure = null
     console.log('VectorStore: Connection closed')
+
+    // Propagate errors to caller after cleanup is complete
+    if (errors.length > 0) {
+      throw new DatabaseError(
+        `Errors during close: ${errors.map((e) => e.message).join('; ')}`,
+        errors[0]
+      )
+    }
   }
 
   /**

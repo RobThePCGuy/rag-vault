@@ -2,7 +2,7 @@
 // Zod schemas for MCP tool validation
 // Used by RAGServer with McpServer high-level API
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RecentDatabasesFileSchema = exports.StatusResponseSchema = exports.DeleteFileSchema = exports.IngestDataSchema = exports.IngestDataMetadataSchema = exports.IngestFileSchema = exports.QueryDocumentsSchema = exports.ContentFormatSchema = void 0;
+exports.RecentDatabasesFileSchema = exports.StatusResponseSchema = exports.DeleteFileSchema = exports.IngestDataSchema = exports.IngestDataMetadataSchema = exports.IngestFileSchema = exports.CustomMetadataSchema = exports.QueryDocumentsSchema = exports.ContentFormatSchema = void 0;
 const zod_1 = require("zod");
 /**
  * Content format enum for ingest_data
@@ -23,7 +23,19 @@ exports.QueryDocumentsSchema = zod_1.z.object({
         .max(20, 'Limit cannot exceed 20')
         .optional()
         .describe('Maximum number of results to return (default: 10, max: 20). Recommended: 5 for precision, 10 for balance, 20 for broad exploration.'),
+    explain: zod_1.z
+        .boolean()
+        .optional()
+        .describe('Include explanation of why each result matched (shared keywords, phrases, match type).'),
 });
+/**
+ * Custom metadata schema for ingestion
+ * Enforces reasonable limits on key/value sizes to prevent abuse
+ */
+exports.CustomMetadataSchema = zod_1.z
+    .record(zod_1.z.string().max(100, 'Metadata key must be at most 100 characters'), zod_1.z.string().max(1000, 'Metadata value must be at most 1000 characters'))
+    .optional()
+    .describe('Optional custom metadata fields (e.g., {"author": "John", "domain": "legal", "tags": "contract,review"})');
 /**
  * ingest_file tool input schema
  */
@@ -32,6 +44,7 @@ exports.IngestFileSchema = zod_1.z.object({
         .string()
         .min(1, 'File path cannot be empty')
         .describe('Absolute path to the file to ingest. Example: "/Users/user/documents/manual.pdf"'),
+    metadata: exports.CustomMetadataSchema,
 });
 /**
  * ingest_data metadata schema
@@ -42,6 +55,7 @@ exports.IngestDataMetadataSchema = zod_1.z.object({
         .min(1, 'Source cannot be empty')
         .describe('Source identifier. For web pages, use the URL (e.g., "https://example.com/page"). For other content, use URL-scheme format: "{type}://{date}" or "{type}://{date}/{detail}". Examples: "clipboard://2024-12-30", "chat://2024-12-30/project-discussion".'),
     format: exports.ContentFormatSchema.describe('Content format: "text", "html", or "markdown"'),
+    custom: exports.CustomMetadataSchema,
 });
 /**
  * ingest_data tool input schema

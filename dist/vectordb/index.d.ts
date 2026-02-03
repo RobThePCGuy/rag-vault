@@ -51,6 +51,8 @@ export interface DocumentMetadata {
     fileSize: number;
     /** File type (extension) */
     fileType: string;
+    /** Optional custom metadata fields (e.g., author, domain, tags) */
+    custom?: Record<string, string>;
 }
 /**
  * Vector chunk
@@ -114,10 +116,12 @@ export declare class VectorStore {
     private ftsEnabled;
     private ftsFailureCount;
     private ftsLastFailure;
-    /** Mutex to prevent race conditions in circuit breaker state transitions */
-    private circuitBreakerResetting;
+    /** Promise-based mutex for atomic circuit breaker reset */
+    private ftsRecoveryPromise;
     /** Runtime override for hybrid weight (allows dynamic adjustment) */
     private hybridWeightOverride;
+    /** Promise-based mutex for table creation (prevents race on first insert) */
+    private tableCreationPromise;
     constructor(config: VectorStoreConfig);
     /**
      * Get the current hybrid weight (runtime override or config default)
@@ -132,11 +136,13 @@ export declare class VectorStore {
      * Check if FTS should be attempted (circuit breaker logic)
      * - Returns false if max failures reached and cooldown not elapsed
      * - Resets failure count after successful cooldown period
-     * - Uses mutex to prevent race conditions during reset
+     * - Uses promise-based mutex for atomic reset (prevents race conditions)
      */
     private shouldAttemptFts;
     /**
      * Record FTS failure (circuit breaker)
+     * Note: This method is synchronous, so ftsFailureCount++ is atomic in Node.js
+     * single-threaded execution model (no await points = no interleaving).
      */
     private recordFtsFailure;
     /**
@@ -229,6 +235,13 @@ export declare class VectorStore {
     }[]>;
     /**
      * Close the database connection and release resources
+     *
+     * Properly releases LanceDB resources:
+     * - Table.close() releases cached index data
+     * - Connection.close() releases HTTP connection pools
+     * Both are safe to call multiple times.
+     *
+     * @throws DatabaseError if closing fails (after attempting to close both resources)
      */
     close(): Promise<void>;
     /**

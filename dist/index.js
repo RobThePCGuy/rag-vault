@@ -67,7 +67,12 @@ else {
     // MCP Server (default behavior)
     // ============================================
     (0, process_handlers_js_1.setupProcessHandlers)();
-    main();
+    (0, process_handlers_js_1.setupGracefulShutdown)(); // Listen for SIGTERM/SIGINT
+    // Add .catch() to handle initialization errors and prevent unhandled rejections
+    main().catch((error) => {
+        console.error('Fatal error during startup:', error);
+        process.exit(1);
+    });
 }
 /**
  * Entry point - Start RAG MCP Server
@@ -80,6 +85,11 @@ async function main() {
         console.error('Configuration:', config);
         // Start RAGServer
         const server = new index_js_1.RAGServer(config);
+        // Register cleanup callback for graceful shutdown
+        (0, process_handlers_js_1.onShutdown)(async () => {
+            console.error('Closing RAG server...');
+            await server.close();
+        });
         await server.initialize();
         await server.run();
         console.error('RAG MCP Server started successfully');

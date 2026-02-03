@@ -4,7 +4,7 @@
 import { run as runSkillsInstall } from './bin/install-skills.js'
 import { RAGServer } from './server/index.js'
 import { buildRAGConfig, validateRAGConfig } from './utils/config.js'
-import { setupProcessHandlers } from './utils/process-handlers.js'
+import { setupProcessHandlers, setupGracefulShutdown, onShutdown } from './utils/process-handlers.js'
 
 // ============================================
 // Subcommand Routing
@@ -33,7 +33,12 @@ if (args[0] === 'skills') {
   // MCP Server (default behavior)
   // ============================================
   setupProcessHandlers()
-  main()
+  setupGracefulShutdown() // Listen for SIGTERM/SIGINT
+  // Add .catch() to handle initialization errors and prevent unhandled rejections
+  main().catch((error) => {
+    console.error('Fatal error during startup:', error)
+    process.exit(1)
+  })
 }
 
 /**
@@ -49,6 +54,13 @@ async function main(): Promise<void> {
 
     // Start RAGServer
     const server = new RAGServer(config)
+
+    // Register cleanup callback for graceful shutdown
+    onShutdown(async () => {
+      console.error('Closing RAG server...')
+      await server.close()
+    })
+
     await server.initialize()
     await server.run()
 

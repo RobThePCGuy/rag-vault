@@ -29,7 +29,7 @@ test-output.json
 *.swp
 *.swo
 *~
-
+scripts/
 # OS specific files
 .DS_Store
 Thumbs.db

@@ -67,17 +67,23 @@ export function createRateLimiter(config: Partial<RateLimitConfig> = {}) {
   }
 
   // Cleanup old entries periodically
-  cleanupInterval = setInterval(() => {
-    const now = Date.now()
-    for (const [key, record] of clients.entries()) {
-      if (record.resetTime < now) {
-        clients.delete(key)
+  try {
+    cleanupInterval = setInterval(() => {
+      const now = Date.now()
+      for (const [key, record] of clients.entries()) {
+        if (record.resetTime < now) {
+          clients.delete(key)
+        }
       }
-    }
-  }, windowMs * 2)
+    }, windowMs * 2)
 
-  // Prevent interval from keeping process alive
-  cleanupInterval.unref()
+    // Prevent interval from keeping process alive
+    cleanupInterval.unref()
+  } catch (error) {
+    // setInterval can fail in edge cases (e.g., resource exhaustion)
+    console.error('Failed to create rate limit cleanup interval:', error)
+    cleanupInterval = null
+  }
 
   return (req: Request, res: Response, next: NextFunction): void => {
     // Get client identifier (IP address)

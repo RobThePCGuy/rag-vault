@@ -100,5 +100,8 @@ async function main(): Promise<void> {
   }
 }
 
-// Execute main
-main()
+// Execute main with error handling to prevent unhandled rejections
+main().catch((error) => {
+  console.error('Fatal error during startup:', error)
+  process.exit(1)
+})

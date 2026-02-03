@@ -10,9 +10,12 @@ const zod_1 = require("zod");
 const index_js_1 = require("../chunker/index.js");
 const index_js_2 = require("../embedder/index.js");
 const index_js_3 = require("../errors/index.js");
+const keywords_js_1 = require("../explainability/keywords.js");
+const feedback_js_1 = require("../flywheel/feedback.js");
 const html_parser_js_1 = require("../parser/html-parser.js");
 const index_js_4 = require("../parser/index.js");
-const index_js_5 = require("../vectordb/index.js");
+const index_js_5 = require("../query/index.js");
+const index_js_6 = require("../vectordb/index.js");
 const raw_data_utils_js_1 = require("./raw-data-utils.js");
 const schemas_js_1 = require("./schemas.js");
 // ============================================
@@ -49,7 +52,7 @@ class RAGServer {
         if (config.hybridWeight !== undefined) {
             vectorStoreConfig.hybridWeight = config.hybridWeight;
         }
-        this.vectorStore = new index_js_5.VectorStore(vectorStoreConfig);
+        this.vectorStore = new index_js_6.VectorStore(vectorStoreConfig);
         this.embedder = new index_js_2.Embedder({
             modelPath: config.modelName,
             batchSize: 16,
@@ -68,9 +71,16 @@ class RAGServer {
      */
     setupHandlers() {
         // query_documents tool
-        this.server.tool('query_documents', 'Search ingested documents. Your query words are matched exactly (keyword search). Your query meaning is matched semantically (vector search). Preserve specific terms from the user. Add context if the query is ambiguous. Results include score (0 = most relevant, higher = less relevant).', {
+        this.server.tool('query_documents', `Search ingested documents using hybrid semantic + keyword search. Advanced syntax supported:
+- "exact phrase" → Match phrase exactly
+- field:value → Filter by custom metadata (e.g., domain:legal, author:john)
+- term1 AND term2 → Both terms required (default)
+- term1 OR term2 → Either term matches
+- -term → Exclude results containing term
+Results include score (0 = most relevant, higher = less relevant). Set explain=true to see why each result matched.`, {
             query: zod_1.z.string(),
             limit: zod_1.z.number().optional(),
+            explain: zod_1.z.boolean().optional(),
         }, async (args) => {
             const results = await this.executeQueryDocuments(args);
             return {
@@ -78,8 +88,9 @@ class RAGServer {
             };
         });
         // ingest_file tool
-        this.server.tool('ingest_file', 'Ingest a document file (PDF, DOCX, TXT, MD, JSON, JSONL) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents.', {
+        this.server.tool('ingest_file', 'Ingest a document file (PDF, DOCX, TXT, MD, JSON, JSONL) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents. Optional metadata can include author, domain, tags, etc.', {
             filePath: zod_1.z.string(),
+            metadata: zod_1.z.record(zod_1.z.string()).optional(),
         }, async (args) => {
             const result = await this.executeIngestFile(args);
             return {
@@ -87,11 +98,12 @@ class RAGServer {
             };
         });
         // ingest_data tool
-        this.server.tool('ingest_data', 'Ingest content as a string, not from a file. Use for: fetched web pages (format: html), copied text (format: text), or markdown strings (format: markdown). The source identifier enables re-ingestion to update existing content. For files on disk, use ingest_file instead.', {
+        this.server.tool('ingest_data', 'Ingest content as a string, not from a file. Use for: fetched web pages (format: html), copied text (format: text), or markdown strings (format: markdown). The source identifier enables re-ingestion to update existing content. Optional custom metadata can include author, domain, tags, etc. For files on disk, use ingest_file instead.', {
             content: zod_1.z.string(),
             metadata: zod_1.z.object({
                 source: zod_1.z.string(),
                 format: zod_1.z.enum(['text', 'html', 'markdown']),
+                custom: zod_1.z.record(zod_1.z.string()).optional(),
             }),
         }, async (args) => {
             const result = await this.executeIngestData(args);
@@ -127,6 +139,61 @@ class RAGServer {
             return {
                 content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
             };
+        });
+        // feedback_pin tool
+        this.server.tool('feedback_pin', 'Pin a search result as relevant for a query. Pinned results will be boosted in future searches. Use when a result was particularly helpful.', {
+            sourceQuery: zod_1.z.string().describe('The query that returned this result'),
+            targetFilePath: zod_1.z.string().describe('File path of the result to pin'),
+            targetChunkIndex: zod_1.z.number().describe('Chunk index of the result to pin'),
+            targetFingerprint: zod_1.z.string().optional().describe('Optional fingerprint for resilient matching'),
+        }, async (args) => {
+            try {
+                const result = this.executeFeedbackPin(args);
+                return {
+                    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+                };
+            }
+            catch (error) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }) }],
+                    isError: true,
+                };
+            }
+        });
+        // feedback_dismiss tool
+        this.server.tool('feedback_dismiss', 'Dismiss a search result as irrelevant for a query. Dismissed results will be penalized in future searches. Use when a result was unhelpful.', {
+            sourceQuery: zod_1.z.string().describe('The query that returned this result'),
+            targetFilePath: zod_1.z.string().describe('File path of the result to dismiss'),
+            targetChunkIndex: zod_1.z.number().describe('Chunk index of the result to dismiss'),
+            targetFingerprint: zod_1.z.string().optional().describe('Optional fingerprint for resilient matching'),
+        }, async (args) => {
+            try {
+                const result = this.executeFeedbackDismiss(args);
+                return {
+                    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+                };
+            }
+            catch (error) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }) }],
+                    isError: true,
+                };
+            }
+        });
+        // feedback_stats tool
+        this.server.tool('feedback_stats', 'Get feedback statistics including total events, pinned pairs, and dismissed pairs.', {}, async () => {
+            try {
+                const stats = this.executeFeedbackStats();
+                return {
+                    content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }],
+                };
+            }
+            catch (error) {
+                return {
+                    content: [{ type: 'text', text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }) }],
+                    isError: true,
+                };
+            }
         });
     }
     /**
@@ -168,12 +235,50 @@ class RAGServer {
     }
     /**
      * Execute query_documents logic (returns plain data)
+     *
+     * Supports advanced query syntax:
+     * - "exact phrase" → Phrase matching (FTS)
+     * - field:value → Metadata filter
+     * - term1 AND term2 → Both required (default)
+     * - term1 OR term2 → Either matches
+     * - -term → Exclude term
      */
     async executeQueryDocuments(args) {
-        // Generate query embedding
-        const queryVector = await this.embedder.embed(args.query);
+        // Parse query for advanced syntax
+        const parsed = (0, index_js_5.parseQuery)(args.query);
+        const semanticQuery = (0, index_js_5.toSemanticQuery)(parsed);
+        // Generate query embedding from semantic terms
+        const queryVector = await this.embedder.embed(semanticQuery || args.query);
+        // Request extra results to account for post-filtering (capped at 20)
+        const userLimit = args.limit || 10;
+        const hasFilters = parsed.excludeTerms.length > 0 || parsed.filters.length > 0;
+        const requestLimit = hasFilters ? Math.min(userLimit * 2, 20) : userLimit;
         // Hybrid search (vector + BM25 keyword matching)
-        const searchResults = await this.vectorStore.search(queryVector, args.query, args.limit || 10);
+        let searchResults = await this.vectorStore.search(queryVector, args.query, requestLimit);
+        // Apply flywheel reranking based on user feedback
+        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        const sourceRef = {
+            filePath: '__query__',
+            chunkIndex: 0,
+            fingerprint: args.query,
+        };
+        searchResults = feedbackStore.rerankResults(searchResults, sourceRef);
+        // Apply post-search filters from parsed query
+        if (parsed.excludeTerms.length > 0 || parsed.filters.length > 0) {
+            searchResults = searchResults.filter((result) => {
+                // Exclude results containing excluded terms
+                if ((0, index_js_5.shouldExclude)(result.text, parsed.excludeTerms)) {
+                    return false;
+                }
+                // Filter by metadata if filters specified (only if custom metadata exists)
+                if (parsed.filters.length > 0 && !(0, index_js_5.matchesFilters)(result.metadata?.custom, parsed.filters)) {
+                    return false;
+                }
+                return true;
+            });
+        }
+        // Trim to requested limit after filtering
+        searchResults = searchResults.slice(0, args.limit || 10);
         // Format results with source restoration for raw-data files
         return searchResults.map((result) => {
             const queryResult = {
@@ -188,6 +293,16 @@ class RAGServer {
                 if (source) {
                     queryResult.source = source;
                 }
+            }
+            // Include custom metadata if present
+            if (result.metadata?.custom) {
+                queryResult.metadata = result.metadata.custom;
+            }
+            // Add explanation if requested
+            if (args.explain) {
+                const explanation = (0, keywords_js_1.explainChunkSimilarity)(args.query, result.text, false, // Not same document (query vs result)
+                result.score);
+                queryResult.explanation = explanation;
             }
             return queryResult;
         });
@@ -216,7 +331,6 @@ class RAGServer {
      * Execute ingest_file logic (returns plain data)
      */
     async executeIngestFile(args) {
-        let backup = null;
         // Parse file (with header/footer filtering for PDFs)
         // For raw-data files (from ingest_data), read directly without validation
         // since the path is internally generated and content is already processed
@@ -237,37 +351,29 @@ class RAGServer {
         const chunks = await this.chunker.chunkText(text, this.embedder);
         // Generate embeddings for final chunks
         const embeddings = await this.embedder.embedBatch(chunks.map((chunk) => chunk.text));
-        // Create backup (if existing data exists)
+        // Note: Full backup with vectors is not implemented because search results don't include vectors.
+        // If rollback is needed, re-ingestion from the original file is required.
+        // Track if this is a re-ingestion for logging purposes.
+        let isReingestion = false;
         try {
             const existingFiles = await this.vectorStore.listFiles();
             const existingFile = existingFiles.find((file) => file.filePath === args.filePath);
             if (existingFile && existingFile.chunkCount > 0) {
-                // Backup existing data (retrieve via search)
-                const queryVector = embeddings[0] || [];
-                if (queryVector.length > 0) {
-                    const allChunks = await this.vectorStore.search(queryVector, undefined, 20); // Retrieve max 20 items
-                    backup = allChunks
-                        .filter((chunk) => chunk.filePath === args.filePath)
-                        .map((chunk) => ({
-                        id: (0, node_crypto_1.randomUUID)(),
-                        filePath: chunk.filePath,
-                        chunkIndex: chunk.chunkIndex,
-                        text: chunk.text,
-                        vector: queryVector, // Use dummy vector since actual vector cannot be retrieved
-                        metadata: chunk.metadata,
-                        timestamp: new Date().toISOString(),
-                    }));
-                }
-                console.error(`Backup created: ${backup?.length || 0} chunks for ${args.filePath}`);
+                isReingestion = true;
+                console.error(`Re-ingesting existing file: ${args.filePath} (${existingFile.chunkCount} existing chunks)`);
             }
         }
         catch (error) {
-            // Backup creation failure is warning only (for new files)
-            console.warn('Failed to create backup (new file?):', error);
+            // File check failure is warning only (for new files)
+            console.warn('Failed to check existing file (new file?):', error);
         }
         // Delete existing data
         await this.vectorStore.deleteChunks(args.filePath);
         console.error(`Deleted existing chunks for: ${args.filePath}`);
+        // Validate embeddings and chunks match
+        if (embeddings.length !== chunks.length) {
+            throw new Error(`Embedding count (${embeddings.length}) doesn't match chunk count (${chunks.length})`);
+        }
         // Create vector chunks
         const timestamp = new Date().toISOString();
         const vectorChunks = chunks.map((chunk, index) => {
@@ -285,6 +391,7 @@ class RAGServer {
                     fileName: args.filePath.split('/').pop() || args.filePath,
                     fileSize: text.length,
                     fileType: args.filePath.split('.').pop() || '',
+                    ...(args.metadata && { custom: args.metadata }),
                 },
                 timestamp,
             };
@@ -293,21 +400,14 @@ class RAGServer {
         try {
             await this.vectorStore.insertChunks(vectorChunks);
             console.error(`Inserted ${vectorChunks.length} chunks for: ${args.filePath}`);
-            // Delete backup on success
-            backup = null;
         }
         catch (insertError) {
-            // Rollback on error
-            if (backup && backup.length > 0) {
-                console.error('Ingestion failed, rolling back...', insertError);
-                try {
-                    await this.vectorStore.insertChunks(backup);
-                    console.error(`Rollback completed: ${backup.length} chunks restored`);
-                }
-                catch (rollbackError) {
-                    console.error('Rollback failed:', rollbackError);
-                    throw new Error(`Failed to ingest file and rollback failed: ${insertError.message}`);
-                }
+            // Note: Full rollback is not possible without stored vectors.
+            // If this was a re-ingestion and it failed, the old data has been deleted.
+            // User should re-ingest from the original file.
+            if (isReingestion) {
+                console.error('Ingestion failed during re-ingestion. Previous data was deleted. ' +
+                    'Please re-ingest from the original file to restore.', insertError);
             }
             throw insertError;
         }
@@ -360,7 +460,10 @@ class RAGServer {
         console.error(`Saved raw data: ${args.metadata.source} -> ${rawDataPath}`);
         // Call executeIngestFile internally with rollback on failure
         try {
-            return await this.executeIngestFile({ filePath: rawDataPath });
+            return await this.executeIngestFile({
+                filePath: rawDataPath,
+                ...(args.metadata.custom && { metadata: args.metadata.custom }),
+            });
         }
         catch (ingestError) {
             // Rollback: delete the raw-data file if ingest fails
@@ -456,6 +559,69 @@ class RAGServer {
             console.error('Failed to get status:', error);
             throw error;
         }
+    }
+    /**
+     * Execute feedback_pin logic
+     */
+    executeFeedbackPin(args) {
+        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        // Create source reference from query (using query text as fingerprint)
+        const sourceRef = {
+            filePath: '__query__',
+            chunkIndex: 0,
+            fingerprint: args.sourceQuery,
+        };
+        // Create target reference
+        const targetRef = {
+            filePath: args.targetFilePath,
+            chunkIndex: args.targetChunkIndex,
+            ...(args.targetFingerprint && { fingerprint: args.targetFingerprint }),
+        };
+        feedbackStore.recordEvent({
+            type: 'pin',
+            source: sourceRef,
+            target: targetRef,
+            timestamp: new Date(),
+        });
+        return {
+            success: true,
+            message: `Pinned chunk ${args.targetFilePath}:${args.targetChunkIndex} for query "${args.sourceQuery}"`,
+        };
+    }
+    /**
+     * Execute feedback_dismiss logic
+     */
+    executeFeedbackDismiss(args) {
+        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        // Create source reference from query (using query text as fingerprint)
+        const sourceRef = {
+            filePath: '__query__',
+            chunkIndex: 0,
+            fingerprint: args.sourceQuery,
+        };
+        // Create target reference
+        const targetRef = {
+            filePath: args.targetFilePath,
+            chunkIndex: args.targetChunkIndex,
+            ...(args.targetFingerprint && { fingerprint: args.targetFingerprint }),
+        };
+        feedbackStore.recordEvent({
+            type: 'dismiss_inferred',
+            source: sourceRef,
+            target: targetRef,
+            timestamp: new Date(),
+        });
+        return {
+            success: true,
+            message: `Dismissed chunk ${args.targetFilePath}:${args.targetChunkIndex} for query "${args.sourceQuery}"`,
+        };
+    }
+    /**
+     * Execute feedback_stats logic
+     */
+    executeFeedbackStats() {
+        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        return feedbackStore.getStats();
     }
     /**
      * Execute delete_file logic (returns plain data)

@@ -1,3 +1,0 @@
-pnpm install
-pnpm build
-pnpm --prefix web-ui install

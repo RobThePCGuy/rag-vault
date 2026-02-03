@@ -1,6 +1,10 @@
 // Curatorial Flywheel v1: Feedback-based Re-ranking
 // Tracks user actions (pins, dismissals) to improve retrieval quality
 
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { atomicWriteFile } from '../utils/file-utils.js'
+
 /**
  * Types of user feedback events
  */
@@ -242,13 +246,20 @@ export class FeedbackStore {
 
   /**
    * Import events (e.g., from disk)
+   * Validates timestamps and skips invalid events
    */
   importEvents(events: FeedbackEvent[]): void {
     for (const event of events) {
-      // Ensure timestamp is a Date object
+      // Ensure timestamp is a valid Date object
+      const timestamp = new Date(event.timestamp)
+      if (Number.isNaN(timestamp.getTime())) {
+        console.warn('FeedbackStore: Skipping event with invalid timestamp:', event)
+        continue
+      }
+
       const e = {
         ...event,
-        timestamp: new Date(event.timestamp),
+        timestamp,
       }
       this.events.push(e)
       this.updateIndices(e)
@@ -273,17 +284,66 @@ export class FeedbackStore {
       dismissedPairs: dismissedCount,
     }
   }
+
+  /**
+   * Save feedback events to disk
+   * @param dbPath - Path to the database directory
+   */
+  async saveToDisk(dbPath: string): Promise<void> {
+    const filePath = join(dbPath, 'feedback.json')
+    const data = {
+      version: 1,
+      events: this.events.map((e) => ({
+        ...e,
+        timestamp: e.timestamp.toISOString(),
+      })),
+    }
+    await atomicWriteFile(filePath, JSON.stringify(data, null, 2))
+    console.error(`FeedbackStore: Saved ${this.events.length} events to ${filePath}`)
+  }
+
+  /**
+   * Load feedback events from disk
+   * @param dbPath - Path to the database directory
+   */
+  async loadFromDisk(dbPath: string): Promise<void> {
+    const filePath = join(dbPath, 'feedback.json')
+    try {
+      const content = await readFile(filePath, 'utf-8')
+      const data = JSON.parse(content)
+
+      // Validate JSON structure before importing
+      if (data.version !== 1) {
+        console.warn(`FeedbackStore: Unsupported version ${data.version} in ${filePath}, starting fresh`)
+        return
+      }
+      if (!Array.isArray(data.events)) {
+        console.warn(`FeedbackStore: Invalid format (events not an array) in ${filePath}, starting fresh`)
+        return
+      }
+
+      this.importEvents(data.events)
+      console.error(`FeedbackStore: Loaded ${data.events.length} events from ${filePath}`)
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException
+      // File doesn't exist - this is normal for new databases
+      if (nodeError.code === 'ENOENT') {
+        return
+      }
+      // JSON parse error or other issues - log warning and start fresh
+      console.warn(`FeedbackStore: Could not load from ${filePath}:`, error)
+    }
+  }
 }
 
-// Global feedback store instance
-let globalFeedbackStore: FeedbackStore | null = null
+// Global feedback store instance (eager initialization to prevent race conditions)
+// Using eager init instead of lazy init avoids the check-then-act race where
+// concurrent requests could create separate instances and lose feedback events.
+const globalFeedbackStore = new FeedbackStore()
 
 /**
- * Get or create the global feedback store
+ * Get the global feedback store
  */
 export function getFeedbackStore(): FeedbackStore {
-  if (!globalFeedbackStore) {
-    globalFeedbackStore = new FeedbackStore()
-  }
   return globalFeedbackStore
 }

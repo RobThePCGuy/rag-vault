@@ -1,11 +1,12 @@
 // DatabaseManager - Manages RAG database lifecycle and configuration
 
 import { existsSync, realpathSync } from 'node:fs'
-import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import type { RAGServer, RAGServerConfig } from '../server/index.js'
 import { RecentDatabasesFileSchema, StatusResponseSchema } from '../server/schemas.js'
+import { atomicWriteFile } from '../utils/file-utils.js'
 
 // ============================================
 // Constants
@@ -60,14 +61,10 @@ async function readUserAllowedRoots(): Promise<string[]> {
 
 /**
  * Write user-added allowed roots to config file
- * Note: This is async to avoid blocking the event loop
+ * Uses atomic write to prevent race conditions
  */
 async function writeUserAllowedRoots(roots: string[]): Promise<void> {
-  const dir = path.dirname(ALLOWED_ROOTS_FILE)
-  if (!existsSync(dir)) {
-    await mkdir(dir, { recursive: true })
-  }
-  await writeFile(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2), 'utf-8')
+  await atomicWriteFile(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2))
 }
 
 /**
@@ -407,6 +404,8 @@ export class DatabaseManager {
     // Close current server
     if (this.currentServer) {
       await this.currentServer.close()
+      this.currentServer = null
+      this.currentConfig = null
     }
 
     // Use stored model name if available, otherwise fall back to baseConfig
@@ -419,14 +418,30 @@ export class DatabaseManager {
       modelName: effectiveModelName,
     }
 
-    this.currentServer = this.serverFactory(config)
-    this.currentConfig = config
-    await this.currentServer.initialize()
+    const newServer = this.serverFactory(config)
 
-    // Update recent databases with the model name
-    await this.addToRecent(resolvedPath, effectiveModelName)
+    try {
+      await newServer.initialize()
 
-    console.log(`Switched to database: ${resolvedPath} (model: ${effectiveModelName})`)
+      // Success - update state
+      this.currentServer = newServer
+      this.currentConfig = config
+
+      // Update recent databases with the model name
+      await this.addToRecent(resolvedPath, effectiveModelName)
+
+      console.log(`Switched to database: ${resolvedPath} (model: ${effectiveModelName})`)
+    } catch (error) {
+      // Cleanup new server on failure
+      try {
+        await newServer.close()
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      // Re-throw the original error
+      throw error
+    }
   }
 
   /**
@@ -474,8 +489,11 @@ export class DatabaseManager {
    * Internal method to perform the actual switch to a new database
    */
   private async performSwitchToNew(newDbPath: string, modelName?: string): Promise<void> {
+    // Close current server
     if (this.currentServer) {
       await this.currentServer.close()
+      this.currentServer = null
+      this.currentConfig = null
     }
 
     // Use provided modelName or fall back to baseConfig
@@ -487,13 +505,29 @@ export class DatabaseManager {
       modelName: effectiveModelName,
     }
 
-    this.currentServer = this.serverFactory(config)
-    this.currentConfig = config
-    await this.currentServer.initialize()
+    const newServer = this.serverFactory(config)
 
-    await this.addToRecent(newDbPath, effectiveModelName)
+    try {
+      await newServer.initialize()
 
-    console.log(`Created and switched to database: ${newDbPath} (model: ${effectiveModelName})`)
+      // Success - update state
+      this.currentServer = newServer
+      this.currentConfig = config
+
+      await this.addToRecent(newDbPath, effectiveModelName)
+
+      console.log(`Created and switched to database: ${newDbPath} (model: ${effectiveModelName})`)
+    } catch (error) {
+      // Cleanup new server on failure
+      try {
+        await newServer.close()
+      } catch {
+        // Ignore cleanup errors
+      }
+
+      // Re-throw the original error
+      throw error
+    }
   }
 
   /**
@@ -796,6 +830,7 @@ export class DatabaseManager {
 
   /**
    * Add a database to recent list
+   * Uses atomic write to prevent read-modify-write race conditions
    */
   private async addToRecent(dbPath: string, modelName?: string): Promise<void> {
     const databases = await this.getRecentDatabases()
@@ -818,11 +853,12 @@ export class DatabaseManager {
       databases: updated,
     }
 
-    await writeFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2), 'utf-8')
+    await atomicWriteFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2))
   }
 
   /**
    * Remove a database from the recent list
+   * Uses atomic write to prevent read-modify-write race conditions
    */
   private async removeFromRecent(dbPath: string): Promise<void> {
     const databases = await this.getRecentDatabases()
@@ -833,7 +869,7 @@ export class DatabaseManager {
       databases: filtered,
     }
 
-    await writeFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2), 'utf-8')
+    await atomicWriteFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2))
   }
 
   /**

@@ -223,10 +223,12 @@ export declare class DatabaseManager {
     setHybridWeight(weight: number): void;
     /**
      * Add a database to recent list
+     * Uses atomic write to prevent read-modify-write race conditions
      */
     private addToRecent;
     /**
      * Remove a database from the recent list
+     * Uses atomic write to prevent read-modify-write race conditions
      */
     private removeFromRecent;
     /**

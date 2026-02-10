@@ -143,7 +143,8 @@ function isDocumentMetadata(value) {
         return false;
     }
     // Optional custom field must be an object if present
-    if (obj['custom'] !== undefined && (typeof obj['custom'] !== 'object' || obj['custom'] === null)) {
+    if (obj['custom'] !== undefined &&
+        (typeof obj['custom'] !== 'object' || obj['custom'] === null)) {
         return false;
     }
     return true;

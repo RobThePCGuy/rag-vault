@@ -23,7 +23,7 @@ const testConfig = {
 // Tests
 // ============================================
 
-describe('HTML Workflow E2E', () => {
+describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')('HTML Workflow E2E', () => {
   let server: RAGServer
 
   beforeAll(async () => {

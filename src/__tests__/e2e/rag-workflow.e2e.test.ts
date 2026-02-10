@@ -7,7 +7,7 @@ import { RAGServer } from '../../server/index.js'
 // E2E Test: Complete RAG Workflow
 // ============================================
 
-describe('RAG MCP Server E2E Test', () => {
+describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')('RAG MCP Server E2E Test', () => {
   // Note: Each test case uses independent RAGServer instance (to prevent inter-test interference)
 
   // --------------------------------------------

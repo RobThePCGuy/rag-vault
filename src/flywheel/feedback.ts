@@ -314,11 +314,15 @@ export class FeedbackStore {
 
       // Validate JSON structure before importing
       if (data.version !== 1) {
-        console.warn(`FeedbackStore: Unsupported version ${data.version} in ${filePath}, starting fresh`)
+        console.warn(
+          `FeedbackStore: Unsupported version ${data.version} in ${filePath}, starting fresh`
+        )
         return
       }
       if (!Array.isArray(data.events)) {
-        console.warn(`FeedbackStore: Invalid format (events not an array) in ${filePath}, starting fresh`)
+        console.warn(
+          `FeedbackStore: Invalid format (events not an array) in ${filePath}, starting fresh`
+        )
         return
       }
 

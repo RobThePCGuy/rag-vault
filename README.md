@@ -392,11 +392,17 @@ git clone https://github.com/RobThePCGuy/rag-vault.git
 cd rag-vault
 pnpm install
 
-# Run tests
-pnpm test
+# Install local git hooks (recommended, even for solo dev)
+pnpm hooks:install
 
-# Type check + lint + format
+# Fast local quality gate (type + lint + format + deps + unused + build + unit tests)
 pnpm check:all
+
+# Unit tests only (no model download required)
+pnpm test:unit
+
+# Integration/E2E tests (requires model download/network)
+pnpm test:integration
 
 # Build
 pnpm build
@@ -407,6 +413,19 @@ pnpm dev
 # Run web server locally
 pnpm web:dev
 ```
+
+
+### Test Tiers
+
+- `pnpm test:unit`: deterministic tests for local/CI quality checks, excluding model-download integration paths.
+- `pnpm test:integration`: full integration and E2E workflows, including embedding model initialization.
+
+Use `RUN_EMBEDDING_INTEGRATION=1` to explicitly opt into network/model-dependent suites.
+
+### CI Strategy
+
+- `quality.yml` runs on PRs and pushes and enforces type-checking, linting, formatting, dependency checks, unused exports, and unit tests.
+- A nightly scheduled job runs the integration/E2E suite so model-dependent workflows stay healthy without blocking every PR.
 
 ### Project Structure
 

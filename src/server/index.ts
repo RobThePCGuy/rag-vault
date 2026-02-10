@@ -241,7 +241,10 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         sourceQuery: z.string().describe('The query that returned this result'),
         targetFilePath: z.string().describe('File path of the result to pin'),
         targetChunkIndex: z.number().describe('Chunk index of the result to pin'),
-        targetFingerprint: z.string().optional().describe('Optional fingerprint for resilient matching'),
+        targetFingerprint: z
+          .string()
+          .optional()
+          .describe('Optional fingerprint for resilient matching'),
       } as ToolSchema,
       async (args: ToolSchema) => {
         try {
@@ -251,7 +254,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
           }
         } catch (error) {
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: getErrorMessage(error as Error) }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: getErrorMessage(error as Error) }),
+              },
+            ],
             isError: true,
           }
         }
@@ -266,7 +274,10 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         sourceQuery: z.string().describe('The query that returned this result'),
         targetFilePath: z.string().describe('File path of the result to dismiss'),
         targetChunkIndex: z.number().describe('Chunk index of the result to dismiss'),
-        targetFingerprint: z.string().optional().describe('Optional fingerprint for resilient matching'),
+        targetFingerprint: z
+          .string()
+          .optional()
+          .describe('Optional fingerprint for resilient matching'),
       } as ToolSchema,
       async (args: ToolSchema) => {
         try {
@@ -276,7 +287,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
           }
         } catch (error) {
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: getErrorMessage(error as Error) }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: getErrorMessage(error as Error) }),
+              },
+            ],
             isError: true,
           }
         }
@@ -296,7 +312,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
           }
         } catch (error) {
           return {
-            content: [{ type: 'text' as const, text: JSON.stringify({ error: getErrorMessage(error as Error) }) }],
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ error: getErrorMessage(error as Error) }),
+              },
+            ],
             isError: true,
           }
         }
@@ -492,7 +513,9 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
       const existingFile = existingFiles.find((file) => file.filePath === args.filePath)
       if (existingFile && existingFile.chunkCount > 0) {
         isReingestion = true
-        console.error(`Re-ingesting existing file: ${args.filePath} (${existingFile.chunkCount} existing chunks)`)
+        console.error(
+          `Re-ingesting existing file: ${args.filePath} (${existingFile.chunkCount} existing chunks)`
+        )
       }
     } catch (error) {
       // File check failure is warning only (for new files)
@@ -799,7 +822,11 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
   /**
    * Execute feedback_stats logic
    */
-  private executeFeedbackStats(): { eventCount: number; pinnedPairs: number; dismissedPairs: number } {
+  private executeFeedbackStats(): {
+    eventCount: number
+    pinnedPairs: number
+    dismissedPairs: number
+  } {
     const feedbackStore = getFeedbackStore()
     return feedbackStore.getStats()
   }

@@ -145,7 +145,10 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             sourceQuery: zod_1.z.string().describe('The query that returned this result'),
             targetFilePath: zod_1.z.string().describe('File path of the result to pin'),
             targetChunkIndex: zod_1.z.number().describe('Chunk index of the result to pin'),
-            targetFingerprint: zod_1.z.string().optional().describe('Optional fingerprint for resilient matching'),
+            targetFingerprint: zod_1.z
+                .string()
+                .optional()
+                .describe('Optional fingerprint for resilient matching'),
         }, async (args) => {
             try {
                 const result = this.executeFeedbackPin(args);
@@ -155,7 +158,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             }
             catch (error) {
                 return {
-                    content: [{ type: 'text', text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }) }],
+                    content: [
+                        {
+                            type: 'text',
+                            text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }),
+                        },
+                    ],
                     isError: true,
                 };
             }
@@ -165,7 +173,10 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             sourceQuery: zod_1.z.string().describe('The query that returned this result'),
             targetFilePath: zod_1.z.string().describe('File path of the result to dismiss'),
             targetChunkIndex: zod_1.z.number().describe('Chunk index of the result to dismiss'),
-            targetFingerprint: zod_1.z.string().optional().describe('Optional fingerprint for resilient matching'),
+            targetFingerprint: zod_1.z
+                .string()
+                .optional()
+                .describe('Optional fingerprint for resilient matching'),
         }, async (args) => {
             try {
                 const result = this.executeFeedbackDismiss(args);
@@ -175,7 +186,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             }
             catch (error) {
                 return {
-                    content: [{ type: 'text', text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }) }],
+                    content: [
+                        {
+                            type: 'text',
+                            text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }),
+                        },
+                    ],
                     isError: true,
                 };
             }
@@ -190,7 +206,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             }
             catch (error) {
                 return {
-                    content: [{ type: 'text', text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }) }],
+                    content: [
+                        {
+                            type: 'text',
+                            text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }),
+                        },
+                    ],
                     isError: true,
                 };
             }

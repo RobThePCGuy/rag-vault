@@ -22,6 +22,8 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install --ignore-scripts
+      - name: Install web-ui dependencies
+        run: pnpm --prefix web-ui install --ignore-scripts
       - name: Type check
         run: pnpm type-check
       - name: Lint
@@ -52,5 +54,7 @@ jobs:
           cache: 'pnpm'
       - name: Install dependencies
         run: pnpm install
+      - name: Install web-ui dependencies
+        run: pnpm --prefix web-ui install --ignore-scripts
       - name: Integration and E2E suite
         run: pnpm test:integration

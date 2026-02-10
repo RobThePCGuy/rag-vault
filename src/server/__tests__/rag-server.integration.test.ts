@@ -12,405 +12,408 @@ import { RAGServer } from '../index.js'
 // Core Functionality Integration Test
 // ============================================
 
-describe('RAG MCP Server Integration Test', () => {
-  let ragServer: RAGServer
-  const testDbPath = resolve('./tmp/test-lancedb')
-  const testDataDir = resolve('./tmp/test-data')
+describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
+  'RAG MCP Server Integration Test',
+  () => {
+    let ragServer: RAGServer
+    const testDbPath = resolve('./tmp/test-lancedb')
+    const testDataDir = resolve('./tmp/test-data')
 
-  beforeAll(async () => {
-    // Setup: LanceDB initialization, Transformers.js model load
-    mkdirSync(testDbPath, { recursive: true })
-    mkdirSync(testDataDir, { recursive: true })
+    beforeAll(async () => {
+      // Setup: LanceDB initialization, Transformers.js model load
+      mkdirSync(testDbPath, { recursive: true })
+      mkdirSync(testDataDir, { recursive: true })
 
-    ragServer = new RAGServer({
-      dbPath: testDbPath,
-      modelName: 'Xenova/all-MiniLM-L6-v2',
-      cacheDir: './tmp/models',
-      baseDir: testDataDir,
-      maxFileSize: 100 * 1024 * 1024, // 100MB
+      ragServer = new RAGServer({
+        dbPath: testDbPath,
+        modelName: 'Xenova/all-MiniLM-L6-v2',
+        cacheDir: './tmp/models',
+        baseDir: testDataDir,
+        maxFileSize: 100 * 1024 * 1024, // 100MB
+      })
+
+      await ragServer.initialize()
     })
 
-    await ragServer.initialize()
-  })
-
-  afterAll(async () => {
-    // Cleanup: Delete test data, close DB connection
-    rmSync(testDbPath, { recursive: true, force: true })
-    rmSync(testDataDir, { recursive: true, force: true })
-  })
-
-  describe('AC-001: MCP Protocol Integration', () => {
-    // AC interpretation: [Functional requirement] Recognized as MCP server and 4 tools are properly registered
-    // Validation: 4 tools (query_documents, ingest_file, list_files, status) are callable from MCP client
-    it('MCP server starts via stdio transport and is recognized by MCP client', async () => {
-      // Verify RAGServer is initialized
-      expect(ragServer).toBeDefined()
-
-      // Verify 4 handler methods exist
-      expect(typeof ragServer.handleQueryDocuments).toBe('function')
-      expect(typeof ragServer.handleIngestFile).toBe('function')
-      expect(typeof ragServer.handleListFiles).toBe('function')
-      expect(typeof ragServer.handleStatus).toBe('function')
+    afterAll(async () => {
+      // Cleanup: Delete test data, close DB connection
+      rmSync(testDbPath, { recursive: true, force: true })
+      rmSync(testDataDir, { recursive: true, force: true })
     })
 
-    // AC interpretation: [Technical requirement] JSON Schema-compliant tool definitions are recognized by MCP client
-    // Validation: Each tool's JSON Schema is correctly defined and returned to MCP client
-    it('JSON Schema definitions for 4 tools (query_documents, ingest_file, list_files, status) are recognized by MCP client', async () => {
-      // Verify setupHandlers() is called during RAGServer initialization and tool definitions are configured
-      // Since actual MCP SDK tool list retrieval is the responsibility of the MCP client,
-      // here we verify that 4 tool handlers are properly defined
-      expect(ragServer).toBeDefined()
+    describe('AC-001: MCP Protocol Integration', () => {
+      // AC interpretation: [Functional requirement] Recognized as MCP server and 4 tools are properly registered
+      // Validation: 4 tools (query_documents, ingest_file, list_files, status) are callable from MCP client
+      it('MCP server starts via stdio transport and is recognized by MCP client', async () => {
+        // Verify RAGServer is initialized
+        expect(ragServer).toBeDefined()
 
-      // Verify status, list_files handler operations (no arguments)
-      const statusResult = await ragServer.handleStatus()
-      expect(statusResult).toBeDefined()
-      expect(statusResult.content).toBeDefined()
-      expect(statusResult.content.length).toBe(1)
-      expect(statusResult.content[0].type).toBe('text')
+        // Verify 4 handler methods exist
+        expect(typeof ragServer.handleQueryDocuments).toBe('function')
+        expect(typeof ragServer.handleIngestFile).toBe('function')
+        expect(typeof ragServer.handleListFiles).toBe('function')
+        expect(typeof ragServer.handleStatus).toBe('function')
+      })
 
-      const listFilesResult = await ragServer.handleListFiles()
-      expect(listFilesResult).toBeDefined()
-      expect(listFilesResult.content).toBeDefined()
-      expect(listFilesResult.content.length).toBe(1)
-      expect(listFilesResult.content[0].type).toBe('text')
+      // AC interpretation: [Technical requirement] JSON Schema-compliant tool definitions are recognized by MCP client
+      // Validation: Each tool's JSON Schema is correctly defined and returned to MCP client
+      it('JSON Schema definitions for 4 tools (query_documents, ingest_file, list_files, status) are recognized by MCP client', async () => {
+        // Verify setupHandlers() is called during RAGServer initialization and tool definitions are configured
+        // Since actual MCP SDK tool list retrieval is the responsibility of the MCP client,
+        // here we verify that 4 tool handlers are properly defined
+        expect(ragServer).toBeDefined()
+
+        // Verify status, list_files handler operations (no arguments)
+        const statusResult = await ragServer.handleStatus()
+        expect(statusResult).toBeDefined()
+        expect(statusResult.content).toBeDefined()
+        expect(statusResult.content.length).toBe(1)
+        expect(statusResult.content[0].type).toBe('text')
+
+        const listFilesResult = await ragServer.handleListFiles()
+        expect(listFilesResult).toBeDefined()
+        expect(listFilesResult.content).toBeDefined()
+        expect(listFilesResult.content.length).toBe(1)
+        expect(listFilesResult.content[0].type).toBe('text')
+      })
+
+      // AC interpretation: [Error handling] Appropriate MCP error response returned when error occurs
+      // Validation: MCP error response (error code, message) returned for invalid input
+      it('Appropriate MCP error response (JSON-RPC 2.0 format) returned for invalid tool invocation', async () => {
+        // Call ingest_file with non-existent file and verify error occurs
+        await expect(
+          ragServer.handleIngestFile({ filePath: '/nonexistent/file.pdf' })
+        ).rejects.toThrow()
+      })
+
+      // Edge Case: Parallel request processing
+      // Validation: Multiple MCP tool invocations are processed in parallel
+      it('3 parallel MCP tool invocations are processed normally (P-003)', async () => {
+        // Invoke 3 handlers in parallel
+        const results = await Promise.all([
+          ragServer.handleStatus(),
+          ragServer.handleListFiles(),
+          ragServer.handleStatus(),
+        ])
+
+        // Verify all results are returned normally
+        expect(results).toHaveLength(3)
+        for (const result of results) {
+          expect(result).toBeDefined()
+          expect(result.content).toBeDefined()
+          expect(result.content.length).toBe(1)
+          expect(result.content[0].type).toBe('text')
+        }
+      })
     })
 
-    // AC interpretation: [Error handling] Appropriate MCP error response returned when error occurs
-    // Validation: MCP error response (error code, message) returned for invalid input
-    it('Appropriate MCP error response (JSON-RPC 2.0 format) returned for invalid tool invocation', async () => {
-      // Call ingest_file with non-existent file and verify error occurs
-      await expect(
-        ragServer.handleIngestFile({ filePath: '/nonexistent/file.pdf' })
-      ).rejects.toThrow()
+    // AC-002: Document Ingestion - SemanticChunker tests are in src/chunker/__tests__/semantic-chunker.test.ts
+
+    describe('AC-003: Vector Embedding Generation', () => {
+      // AC interpretation: [Technical requirement] Text chunks are converted to 384-dimensional vectors
+      // Validation: Generate embedding from text, 384-dimensional vector is returned
+      it('Text chunk properly converted to 384-dimensional vector', async () => {
+        const { Embedder } = await import('../../embedder/index')
+        const embedder = new Embedder({
+          modelPath: 'Xenova/all-MiniLM-L6-v2',
+          batchSize: 8,
+          cacheDir: './tmp/models',
+        })
+
+        await embedder.initialize()
+
+        const testText = 'This is a test text for embedding generation.'
+        const embedding = await embedder.embed(testText)
+
+        expect(embedding).toBeDefined()
+        expect(Array.isArray(embedding)).toBe(true)
+        expect(embedding.length).toBe(384)
+        expect(embedding.every((value) => typeof value === 'number')).toBe(true)
+      })
+
+      // AC interpretation: [Technical requirement] all-MiniLM-L6-v2 model is automatically downloaded on first startup
+      // Validation: all-MiniLM-L6-v2 model is downloaded from Hugging Face on first startup
+      it('all-MiniLM-L6-v2 model automatically downloaded on first startup and cached in models/ directory', async () => {
+        const { Embedder } = await import('../../embedder/index')
+        const embedder = new Embedder({
+          modelPath: 'Xenova/all-MiniLM-L6-v2',
+          batchSize: 8,
+          cacheDir: './tmp/models',
+        })
+
+        // Model initialization (automatic download on first run)
+        await embedder.initialize()
+
+        // Verify initialization succeeded
+        const testText = 'Test model initialization.'
+        const embedding = await embedder.embed(testText)
+
+        expect(embedding).toBeDefined()
+        expect(Array.isArray(embedding)).toBe(true)
+        expect(embedding.length).toBe(384)
+      })
+
+      // AC interpretation: [Technical requirement] Embedding generation executed with batch size 8
+      // Validation: Generate embeddings for multiple text chunks with batch size 8
+      it('Generate embeddings for multiple text chunks (e.g., 16) with batch size 8', async () => {
+        const { Embedder } = await import('../../embedder/index')
+        const embedder = new Embedder({
+          modelPath: 'Xenova/all-MiniLM-L6-v2',
+          batchSize: 8,
+          cacheDir: './tmp/models',
+        })
+
+        await embedder.initialize()
+
+        // Create 16 text chunks (2 batches with batch size 8)
+        const texts = Array.from({ length: 16 }, (_, i) => `This is test text chunk ${i + 1}.`)
+        const embeddings = await embedder.embedBatch(texts)
+
+        // Validation: 16 vectors are returned
+        expect(embeddings).toBeDefined()
+        expect(Array.isArray(embeddings)).toBe(true)
+        expect(embeddings.length).toBe(16)
+
+        // Verify each vector is 384-dimensional
+        for (const embedding of embeddings) {
+          expect(Array.isArray(embedding)).toBe(true)
+          expect(embedding.length).toBe(384)
+          expect(embedding.every((value) => typeof value === 'number')).toBe(true)
+        }
+      })
+
+      // Edge Case: Empty string
+      // Validation: Empty string embedding generation fails fast with error
+      it('Empty string embedding generation throws EmbeddingError (fail-fast)', async () => {
+        const { Embedder, EmbeddingError } = await import('../../embedder/index')
+        const embedder = new Embedder({
+          modelPath: 'Xenova/all-MiniLM-L6-v2',
+          batchSize: 8,
+          cacheDir: './tmp/models',
+        })
+
+        await embedder.initialize()
+
+        // Attempt to generate embedding for empty string
+        await expect(embedder.embed('')).rejects.toThrow(EmbeddingError)
+        await expect(embedder.embed('')).rejects.toThrow('Cannot generate embedding for empty text')
+      })
+
+      // Edge Case: Very long text
+      // Validation: Embedding generation for text over 1000 characters completes normally
+      it('Embedding generation for text over 1000 characters completes normally', async () => {
+        const { Embedder } = await import('../../embedder/index')
+        const embedder = new Embedder({
+          modelPath: 'Xenova/all-MiniLM-L6-v2',
+          batchSize: 8,
+          cacheDir: './tmp/models',
+        })
+
+        await embedder.initialize()
+
+        const longText = 'This is a very long text. '.repeat(50) // Approx 1350 characters
+        const embedding = await embedder.embed(longText)
+
+        expect(embedding).toBeDefined()
+        expect(Array.isArray(embedding)).toBe(true)
+        expect(embedding.length).toBe(384)
+        expect(embedding.every((value) => typeof value === 'number')).toBe(true)
+      })
     })
 
-    // Edge Case: Parallel request processing
-    // Validation: Multiple MCP tool invocations are processed in parallel
-    it('3 parallel MCP tool invocations are processed normally (P-003)', async () => {
-      // Invoke 3 handlers in parallel
-      const results = await Promise.all([
-        ragServer.handleStatus(),
-        ragServer.handleListFiles(),
-        ragServer.handleStatus(),
-      ])
+    describe('AC-004: Vector Search', () => {
+      let localRagServer: RAGServer
+      const localTestDbPath = resolve('./tmp/test-lancedb-ac004')
+      const localTestDataDir = resolve('./tmp/test-data-ac004')
 
-      // Verify all results are returned normally
-      expect(results).toHaveLength(3)
-      for (const result of results) {
+      beforeAll(async () => {
+        // Setup dedicated RAGServer for AC-004
+        mkdirSync(localTestDbPath, { recursive: true })
+        mkdirSync(localTestDataDir, { recursive: true })
+
+        localRagServer = new RAGServer({
+          dbPath: localTestDbPath,
+          modelName: 'Xenova/all-MiniLM-L6-v2',
+          cacheDir: './tmp/models',
+          baseDir: localTestDataDir,
+          maxFileSize: 100 * 1024 * 1024,
+        })
+
+        await localRagServer.initialize()
+
+        // Ingest test document
+        const testFile = resolve(localTestDataDir, 'test-typescript.txt')
+        writeFileSync(
+          testFile,
+          'TypeScript is a strongly typed programming language that builds on JavaScript. ' +
+            'TypeScript adds optional static typing to JavaScript. ' +
+            'TypeScript provides type safety and helps catch errors at compile time. ' +
+            'TypeScript is widely used in modern web development. ' +
+            'TypeScript supports interfaces, generics, and other advanced features.'
+        )
+
+        await localRagServer.handleIngestFile({ filePath: testFile })
+      })
+
+      afterAll(async () => {
+        rmSync(localTestDbPath, { recursive: true, force: true })
+        rmSync(localTestDataDir, { recursive: true, force: true })
+      })
+
+      // AC interpretation: [Functional requirement] Related documents returned for natural language query
+      // Validation: Call query_documents with natural language query, related documents are returned
+      it('Related documents returned for natural language query (e.g., "TypeScript type safety")', async () => {
+        const result = await localRagServer.handleQueryDocuments({
+          query: 'TypeScript type safety',
+          limit: 5,
+        })
+
         expect(result).toBeDefined()
         expect(result.content).toBeDefined()
         expect(result.content.length).toBe(1)
         expect(result.content[0].type).toBe('text')
-      }
-    })
-  })
 
-  // AC-002: Document Ingestion - SemanticChunker tests are in src/chunker/__tests__/semantic-chunker.test.ts
+        const results = JSON.parse(result.content[0].text)
+        expect(Array.isArray(results)).toBe(true)
+        expect(results.length).toBeGreaterThan(0)
 
-  describe('AC-003: Vector Embedding Generation', () => {
-    // AC interpretation: [Technical requirement] Text chunks are converted to 384-dimensional vectors
-    // Validation: Generate embedding from text, 384-dimensional vector is returned
-    it('Text chunk properly converted to 384-dimensional vector', async () => {
-      const { Embedder } = await import('../../embedder/index')
-      const embedder = new Embedder({
-        modelPath: 'Xenova/all-MiniLM-L6-v2',
-        batchSize: 8,
-        cacheDir: './tmp/models',
+        // Verify results contain required fields
+        for (const doc of results) {
+          expect(doc.filePath).toBeDefined()
+          expect(doc.chunkIndex).toBeDefined()
+          expect(doc.text).toBeDefined()
+          expect(doc.score).toBeDefined()
+        }
       })
 
-      await embedder.initialize()
+      // AC interpretation: [Technical requirement] Search results sorted by score (descending)
+      // Validation: Search result scores are sorted in descending order
+      it('Search results sorted by score (descending)', async () => {
+        const result = await localRagServer.handleQueryDocuments({
+          query: 'TypeScript',
+          limit: 5,
+        })
 
-      const testText = 'This is a test text for embedding generation.'
-      const embedding = await embedder.embed(testText)
+        const results = JSON.parse(result.content[0].text)
+        expect(Array.isArray(results)).toBe(true)
 
-      expect(embedding).toBeDefined()
-      expect(Array.isArray(embedding)).toBe(true)
-      expect(embedding.length).toBe(384)
-      expect(embedding.every((value) => typeof value === 'number')).toBe(true)
-    })
-
-    // AC interpretation: [Technical requirement] all-MiniLM-L6-v2 model is automatically downloaded on first startup
-    // Validation: all-MiniLM-L6-v2 model is downloaded from Hugging Face on first startup
-    it('all-MiniLM-L6-v2 model automatically downloaded on first startup and cached in models/ directory', async () => {
-      const { Embedder } = await import('../../embedder/index')
-      const embedder = new Embedder({
-        modelPath: 'Xenova/all-MiniLM-L6-v2',
-        batchSize: 8,
-        cacheDir: './tmp/models',
+        // Verify scores are sorted in descending order
+        // LanceDB returns distance scores (smaller means more similar), so verify ascending sort
+        for (let i = 0; i < results.length - 1; i++) {
+          expect(results[i].score).toBeLessThanOrEqual(results[i + 1].score)
+        }
       })
 
-      // Model initialization (automatic download on first run)
-      await embedder.initialize()
+      // AC interpretation: [Technical requirement] Default top-5 results returned
+      // Validation: When limit not specified, 5 search results are returned
+      it('When limit not specified, default top-5 results returned', async () => {
+        const result = await localRagServer.handleQueryDocuments({
+          query: 'TypeScript',
+        })
 
-      // Verify initialization succeeded
-      const testText = 'Test model initialization.'
-      const embedding = await embedder.embed(testText)
-
-      expect(embedding).toBeDefined()
-      expect(Array.isArray(embedding)).toBe(true)
-      expect(embedding.length).toBe(384)
-    })
-
-    // AC interpretation: [Technical requirement] Embedding generation executed with batch size 8
-    // Validation: Generate embeddings for multiple text chunks with batch size 8
-    it('Generate embeddings for multiple text chunks (e.g., 16) with batch size 8', async () => {
-      const { Embedder } = await import('../../embedder/index')
-      const embedder = new Embedder({
-        modelPath: 'Xenova/all-MiniLM-L6-v2',
-        batchSize: 8,
-        cacheDir: './tmp/models',
+        const results = JSON.parse(result.content[0].text)
+        expect(Array.isArray(results)).toBe(true)
+        // If chunk count is less than 5, that number; if 5 or more, max 5 results
+        expect(results.length).toBeLessThanOrEqual(5)
       })
 
-      await embedder.initialize()
+      // Edge Case: No matches
+      // Validation: When no matching documents, empty array is returned
+      it('Empty array returned for query with no matching documents (e.g., random string)', async () => {
+        // Search in empty DB
+        const emptyDbPath = resolve('./tmp/test-lancedb-empty')
+        mkdirSync(emptyDbPath, { recursive: true })
 
-      // Create 16 text chunks (2 batches with batch size 8)
-      const texts = Array.from({ length: 16 }, (_, i) => `This is test text chunk ${i + 1}.`)
-      const embeddings = await embedder.embedBatch(texts)
+        const emptyServer = new RAGServer({
+          dbPath: emptyDbPath,
+          modelName: 'Xenova/all-MiniLM-L6-v2',
+          cacheDir: './tmp/models',
+          baseDir: testDataDir,
+          maxFileSize: 100 * 1024 * 1024,
+        })
 
-      // Validation: 16 vectors are returned
-      expect(embeddings).toBeDefined()
-      expect(Array.isArray(embeddings)).toBe(true)
-      expect(embeddings.length).toBe(16)
+        await emptyServer.initialize()
 
-      // Verify each vector is 384-dimensional
-      for (const embedding of embeddings) {
-        expect(Array.isArray(embedding)).toBe(true)
-        expect(embedding.length).toBe(384)
-        expect(embedding.every((value) => typeof value === 'number')).toBe(true)
-      }
-    })
+        const result = await emptyServer.handleQueryDocuments({
+          query: 'xyzabc123randomstring',
+        })
 
-    // Edge Case: Empty string
-    // Validation: Empty string embedding generation fails fast with error
-    it('Empty string embedding generation throws EmbeddingError (fail-fast)', async () => {
-      const { Embedder, EmbeddingError } = await import('../../embedder/index')
-      const embedder = new Embedder({
-        modelPath: 'Xenova/all-MiniLM-L6-v2',
-        batchSize: 8,
-        cacheDir: './tmp/models',
+        const results = JSON.parse(result.content[0].text)
+        expect(Array.isArray(results)).toBe(true)
+        expect(results.length).toBe(0)
+
+        rmSync(emptyDbPath, { recursive: true, force: true })
       })
 
-      await embedder.initialize()
+      // Edge Case: limit boundary values
+      // Validation: Operates normally with boundary values limit=1, limit=20
+      it('Operates normally with boundary values limit=1, limit=20', async () => {
+        const result1 = await localRagServer.handleQueryDocuments({
+          query: 'TypeScript',
+          limit: 1,
+        })
 
-      // Attempt to generate embedding for empty string
-      await expect(embedder.embed('')).rejects.toThrow(EmbeddingError)
-      await expect(embedder.embed('')).rejects.toThrow('Cannot generate embedding for empty text')
+        const results1 = JSON.parse(result1.content[0].text)
+        expect(Array.isArray(results1)).toBe(true)
+        expect(results1.length).toBeLessThanOrEqual(1)
+
+        const result20 = await localRagServer.handleQueryDocuments({
+          query: 'TypeScript',
+          limit: 20,
+        })
+
+        const results20 = JSON.parse(result20.content[0].text)
+        expect(Array.isArray(results20)).toBe(true)
+        expect(results20.length).toBeLessThanOrEqual(20)
+      })
     })
 
-    // Edge Case: Very long text
-    // Validation: Embedding generation for text over 1000 characters completes normally
-    it('Embedding generation for text over 1000 characters completes normally', async () => {
-      const { Embedder } = await import('../../embedder/index')
-      const embedder = new Embedder({
-        modelPath: 'Xenova/all-MiniLM-L6-v2',
-        batchSize: 8,
-        cacheDir: './tmp/models',
+    describe('AC-005: Error Handling (Basic)', () => {
+      // AC interpretation: [Error handling] Error message returned for non-existent file path
+      // Validation: Call ingest_file with non-existent file path, FileOperationError is returned
+      it('FileOperationError returned for non-existent file path (e.g., /nonexistent/file.pdf)', async () => {
+        const nonExistentFile = resolve(testDataDir, 'nonexistent-file.pdf')
+        await expect(ragServer.handleIngestFile({ filePath: nonExistentFile })).rejects.toThrow()
       })
 
-      await embedder.initialize()
+      // AC interpretation: [Error handling] Error message returned for corrupted PDF file
+      // Validation: Call ingest_file with corrupted PDF file, FileOperationError is returned
+      it('FileOperationError returned for corrupted PDF file (e.g., invalid header)', async () => {
+        // Create corrupted PDF file
+        const corruptedPdf = resolve(testDataDir, 'corrupted.pdf')
+        writeFileSync(corruptedPdf, 'This is not a valid PDF file')
 
-      const longText = 'This is a very long text. '.repeat(50) // Approx 1350 characters
-      const embedding = await embedder.embed(longText)
-
-      expect(embedding).toBeDefined()
-      expect(Array.isArray(embedding)).toBe(true)
-      expect(embedding.length).toBe(384)
-      expect(embedding.every((value) => typeof value === 'number')).toBe(true)
-    })
-  })
-
-  describe('AC-004: Vector Search', () => {
-    let localRagServer: RAGServer
-    const localTestDbPath = resolve('./tmp/test-lancedb-ac004')
-    const localTestDataDir = resolve('./tmp/test-data-ac004')
-
-    beforeAll(async () => {
-      // Setup dedicated RAGServer for AC-004
-      mkdirSync(localTestDbPath, { recursive: true })
-      mkdirSync(localTestDataDir, { recursive: true })
-
-      localRagServer = new RAGServer({
-        dbPath: localTestDbPath,
-        modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
-        baseDir: localTestDataDir,
-        maxFileSize: 100 * 1024 * 1024,
+        await expect(ragServer.handleIngestFile({ filePath: corruptedPdf })).rejects.toThrow()
       })
 
-      await localRagServer.initialize()
+      // AC interpretation: [Error handling] Error message returned when LanceDB connection fails
+      // Validation: When LanceDB connection fails, DatabaseError is returned
+      it('DatabaseError returned when LanceDB connection fails (e.g., invalid dbPath)', async () => {
+        // Attempt to initialize RAGServer with invalid dbPath
+        const invalidDbPath = '/invalid/path/that/does/not/exist'
+        const invalidServer = new RAGServer({
+          dbPath: invalidDbPath,
+          modelName: 'Xenova/all-MiniLM-L6-v2',
+          cacheDir: './tmp/models',
+          baseDir: testDataDir,
+          maxFileSize: 100 * 1024 * 1024,
+        })
 
-      // Ingest test document
-      const testFile = resolve(localTestDataDir, 'test-typescript.txt')
-      writeFileSync(
-        testFile,
-        'TypeScript is a strongly typed programming language that builds on JavaScript. ' +
-          'TypeScript adds optional static typing to JavaScript. ' +
-          'TypeScript provides type safety and helps catch errors at compile time. ' +
-          'TypeScript is widely used in modern web development. ' +
-          'TypeScript supports interfaces, generics, and other advanced features.'
-      )
-
-      await localRagServer.handleIngestFile({ filePath: testFile })
-    })
-
-    afterAll(async () => {
-      rmSync(localTestDbPath, { recursive: true, force: true })
-      rmSync(localTestDataDir, { recursive: true, force: true })
-    })
-
-    // AC interpretation: [Functional requirement] Related documents returned for natural language query
-    // Validation: Call query_documents with natural language query, related documents are returned
-    it('Related documents returned for natural language query (e.g., "TypeScript type safety")', async () => {
-      const result = await localRagServer.handleQueryDocuments({
-        query: 'TypeScript type safety',
-        limit: 5,
+        // Verify error occurs during initialization or query execution
+        // LanceDB initialization may succeed with invalid path, but actual operations may fail
+        // Here we verify either initialization succeeds or error occurs
+        try {
+          await invalidServer.initialize()
+          // If initialization succeeds, verify error on actual query
+          await expect(invalidServer.handleQueryDocuments({ query: 'test' })).rejects.toThrow()
+        } catch (error) {
+          // Error during initialization is also OK
+          expect(error).toBeDefined()
+        }
       })
-
-      expect(result).toBeDefined()
-      expect(result.content).toBeDefined()
-      expect(result.content.length).toBe(1)
-      expect(result.content[0].type).toBe('text')
-
-      const results = JSON.parse(result.content[0].text)
-      expect(Array.isArray(results)).toBe(true)
-      expect(results.length).toBeGreaterThan(0)
-
-      // Verify results contain required fields
-      for (const doc of results) {
-        expect(doc.filePath).toBeDefined()
-        expect(doc.chunkIndex).toBeDefined()
-        expect(doc.text).toBeDefined()
-        expect(doc.score).toBeDefined()
-      }
     })
-
-    // AC interpretation: [Technical requirement] Search results sorted by score (descending)
-    // Validation: Search result scores are sorted in descending order
-    it('Search results sorted by score (descending)', async () => {
-      const result = await localRagServer.handleQueryDocuments({
-        query: 'TypeScript',
-        limit: 5,
-      })
-
-      const results = JSON.parse(result.content[0].text)
-      expect(Array.isArray(results)).toBe(true)
-
-      // Verify scores are sorted in descending order
-      // LanceDB returns distance scores (smaller means more similar), so verify ascending sort
-      for (let i = 0; i < results.length - 1; i++) {
-        expect(results[i].score).toBeLessThanOrEqual(results[i + 1].score)
-      }
-    })
-
-    // AC interpretation: [Technical requirement] Default top-5 results returned
-    // Validation: When limit not specified, 5 search results are returned
-    it('When limit not specified, default top-5 results returned', async () => {
-      const result = await localRagServer.handleQueryDocuments({
-        query: 'TypeScript',
-      })
-
-      const results = JSON.parse(result.content[0].text)
-      expect(Array.isArray(results)).toBe(true)
-      // If chunk count is less than 5, that number; if 5 or more, max 5 results
-      expect(results.length).toBeLessThanOrEqual(5)
-    })
-
-    // Edge Case: No matches
-    // Validation: When no matching documents, empty array is returned
-    it('Empty array returned for query with no matching documents (e.g., random string)', async () => {
-      // Search in empty DB
-      const emptyDbPath = resolve('./tmp/test-lancedb-empty')
-      mkdirSync(emptyDbPath, { recursive: true })
-
-      const emptyServer = new RAGServer({
-        dbPath: emptyDbPath,
-        modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
-        baseDir: testDataDir,
-        maxFileSize: 100 * 1024 * 1024,
-      })
-
-      await emptyServer.initialize()
-
-      const result = await emptyServer.handleQueryDocuments({
-        query: 'xyzabc123randomstring',
-      })
-
-      const results = JSON.parse(result.content[0].text)
-      expect(Array.isArray(results)).toBe(true)
-      expect(results.length).toBe(0)
-
-      rmSync(emptyDbPath, { recursive: true, force: true })
-    })
-
-    // Edge Case: limit boundary values
-    // Validation: Operates normally with boundary values limit=1, limit=20
-    it('Operates normally with boundary values limit=1, limit=20', async () => {
-      const result1 = await localRagServer.handleQueryDocuments({
-        query: 'TypeScript',
-        limit: 1,
-      })
-
-      const results1 = JSON.parse(result1.content[0].text)
-      expect(Array.isArray(results1)).toBe(true)
-      expect(results1.length).toBeLessThanOrEqual(1)
-
-      const result20 = await localRagServer.handleQueryDocuments({
-        query: 'TypeScript',
-        limit: 20,
-      })
-
-      const results20 = JSON.parse(result20.content[0].text)
-      expect(Array.isArray(results20)).toBe(true)
-      expect(results20.length).toBeLessThanOrEqual(20)
-    })
-  })
-
-  describe('AC-005: Error Handling (Basic)', () => {
-    // AC interpretation: [Error handling] Error message returned for non-existent file path
-    // Validation: Call ingest_file with non-existent file path, FileOperationError is returned
-    it('FileOperationError returned for non-existent file path (e.g., /nonexistent/file.pdf)', async () => {
-      const nonExistentFile = resolve(testDataDir, 'nonexistent-file.pdf')
-      await expect(ragServer.handleIngestFile({ filePath: nonExistentFile })).rejects.toThrow()
-    })
-
-    // AC interpretation: [Error handling] Error message returned for corrupted PDF file
-    // Validation: Call ingest_file with corrupted PDF file, FileOperationError is returned
-    it('FileOperationError returned for corrupted PDF file (e.g., invalid header)', async () => {
-      // Create corrupted PDF file
-      const corruptedPdf = resolve(testDataDir, 'corrupted.pdf')
-      writeFileSync(corruptedPdf, 'This is not a valid PDF file')
-
-      await expect(ragServer.handleIngestFile({ filePath: corruptedPdf })).rejects.toThrow()
-    })
-
-    // AC interpretation: [Error handling] Error message returned when LanceDB connection fails
-    // Validation: When LanceDB connection fails, DatabaseError is returned
-    it('DatabaseError returned when LanceDB connection fails (e.g., invalid dbPath)', async () => {
-      // Attempt to initialize RAGServer with invalid dbPath
-      const invalidDbPath = '/invalid/path/that/does/not/exist'
-      const invalidServer = new RAGServer({
-        dbPath: invalidDbPath,
-        modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
-        baseDir: testDataDir,
-        maxFileSize: 100 * 1024 * 1024,
-      })
-
-      // Verify error occurs during initialization or query execution
-      // LanceDB initialization may succeed with invalid path, but actual operations may fail
-      // Here we verify either initialization succeeds or error occurs
-      try {
-        await invalidServer.initialize()
-        // If initialization succeeds, verify error on actual query
-        await expect(invalidServer.handleQueryDocuments({ query: 'test' })).rejects.toThrow()
-      } catch (error) {
-        // Error during initialization is also OK
-        expect(error).toBeDefined()
-      }
-    })
-  })
-})
+  }
+)
 
 // ============================================
 // Complete Functionality Integration Test

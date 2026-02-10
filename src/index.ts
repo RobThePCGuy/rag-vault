@@ -4,7 +4,11 @@
 import { run as runSkillsInstall } from './bin/install-skills.js'
 import { RAGServer } from './server/index.js'
 import { buildRAGConfig, validateRAGConfig } from './utils/config.js'
-import { setupProcessHandlers, setupGracefulShutdown, onShutdown } from './utils/process-handlers.js'
+import {
+  setupProcessHandlers,
+  setupGracefulShutdown,
+  onShutdown,
+} from './utils/process-handlers.js'
 
 // ============================================
 // Subcommand Routing

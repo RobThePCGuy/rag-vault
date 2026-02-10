@@ -12,7 +12,11 @@ describe('File Utilities', () => {
 
     beforeEach(async () => {
       // Create a unique temp directory for each test
-      tmpDir = path.join(process.cwd(), '.test-tmp', `file-utils-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      tmpDir = path.join(
+        process.cwd(),
+        '.test-tmp',
+        `file-utils-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      )
       await mkdir(tmpDir, { recursive: true })
     })
 

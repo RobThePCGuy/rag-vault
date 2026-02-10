@@ -28,7 +28,9 @@ export const QueryDocumentsSchema = z.object({
   explain: z
     .boolean()
     .optional()
-    .describe('Include explanation of why each result matched (shared keywords, phrases, match type).'),
+    .describe(
+      'Include explanation of why each result matched (shared keywords, phrases, match type).'
+    ),
 })
 
 /**
@@ -41,7 +43,9 @@ export const CustomMetadataSchema = z
     z.string().max(1000, 'Metadata value must be at most 1000 characters')
   )
   .optional()
-  .describe('Optional custom metadata fields (e.g., {"author": "John", "domain": "legal", "tags": "contract,review"})')
+  .describe(
+    'Optional custom metadata fields (e.g., {"author": "John", "domain": "legal", "tags": "contract,review"})'
+  )
 
 /**
  * ingest_file tool input schema

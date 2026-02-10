@@ -1,0 +1,56 @@
+name: Quality Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+      - name: Type check
+        run: pnpm type-check
+      - name: Lint
+        run: pnpm lint
+      - name: Format check
+        run: pnpm format:check
+      - name: Dependency cycle check
+        run: pnpm check:deps
+      - name: Unused export check
+        run: pnpm check:unused
+      - name: Unit test suite
+        run: pnpm test:unit
+      - name: Coverage (unit)
+        run: vitest run --coverage --project backend-unit --project web-ui
+
+  integration-nightly:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+      - name: Integration and E2E suite
+        run: pnpm test:integration

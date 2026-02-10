@@ -6,6 +6,10 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const backendAlias = {
+  src: path.resolve(__dirname, './src'),
+}
+
 export default defineConfig({
   test: {
     projects: [
@@ -23,9 +27,31 @@ export default defineConfig({
           pool: 'forks',
         },
         resolve: {
-          alias: {
-            src: path.resolve(__dirname, './src'),
-          },
+          alias: backendAlias,
+        },
+      },
+      // Backend unit tests (CI/local fast quality gate)
+      {
+        test: {
+          name: 'backend-unit',
+          globals: true,
+          environment: 'node',
+          include: ['src/**/*.{test,spec}.ts'],
+          exclude: [
+            'web-ui/**',
+            'src/**/e2e/**',
+            'src/**/*.integration.test.ts',
+            'src/embedder/__tests__/lazy-initialization.test.ts',
+            'src/**/server/ingest-data.test.ts',
+            'src/**/security/security.test.ts',
+          ],
+          testTimeout: 10000,
+          hookTimeout: 10000,
+          teardownTimeout: 5000,
+          pool: 'forks',
+        },
+        resolve: {
+          alias: backendAlias,
         },
       },
       // Frontend tests (jsdom environment)
@@ -48,6 +74,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      thresholds: {
+        lines: 70,
+        statements: 70,
+        functions: 70,
+        branches: 60,
+      },
       exclude: [
         'node_modules/**',
         'dist/**',

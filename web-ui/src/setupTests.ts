@@ -1,6 +1,4 @@
 // Test setup file for Vitest + React Testing Library
-/// <reference types="@testing-library/jest-dom" />
-import '@testing-library/jest-dom'
 import { beforeEach } from 'vitest'
 
 // Mock window.matchMedia for components that use media queries

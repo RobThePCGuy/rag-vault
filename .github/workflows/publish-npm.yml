@@ -1,0 +1,107 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run publish in dry-run mode"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-npm-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          registry-url: https://registry.npmjs.org
+
+      - name: Read package metadata
+        id: pkg
+        run: |
+          echo "name=$(node -p \"require('./package.json').name\")" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate release tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          expected_tag="v${{ steps.pkg.outputs.version }}"
+          actual_tag="${{ github.event.release.tag_name }}"
+
+          if [[ "$actual_tag" != "$expected_tag" ]]; then
+            echo "Release tag ($actual_tag) does not match package.json version ($expected_tag)."
+            exit 1
+          fi
+
+      - name: Check npm for existing version
+        id: npm_version
+        run: |
+          if npm view "${{ steps.pkg.outputs.name }}@${{ steps.pkg.outputs.version }}" version > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Version already published to npm."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Version not found on npm; publish can proceed."
+          fi
+
+      - name: Block duplicate publish
+        if: steps.npm_version.outputs.exists == 'true' && (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run))
+        run: |
+          echo "${{ steps.pkg.outputs.name }}@${{ steps.pkg.outputs.version }} already exists on npm."
+          exit 1
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Pack tarball (sanity check)
+        run: pnpm pack --pack-destination ./.artifacts
+
+      - name: Publish package (dry run)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        run: pnpm publish --access public --no-git-checks --dry-run
+
+      - name: Verify npm authentication
+        if: steps.npm_version.outputs.exists == 'false' && (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run))
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish package
+        if: steps.npm_version.outputs.exists == 'false' && (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run))
+        run: pnpm publish --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

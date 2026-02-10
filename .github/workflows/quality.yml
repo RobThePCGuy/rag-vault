@@ -35,7 +35,7 @@ jobs:
       - name: Unit test suite
         run: pnpm test:unit
       - name: Coverage (unit)
-        run: vitest run --coverage --project backend-unit --project web-ui
+        run: pnpm exec vitest run --coverage --project backend-unit --project web-ui
 
   integration-nightly:
     if: github.event_name == 'schedule'

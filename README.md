@@ -426,7 +426,7 @@ Use `RUN_EMBEDDING_INTEGRATION=1` to explicitly opt into network/model-dependent
 
 - `quality.yml` runs on PRs and pushes and enforces type-checking, linting, formatting, dependency checks, unused exports, and unit tests.
 - A nightly scheduled job runs the integration/E2E suite so model-dependent workflows stay healthy without blocking every PR.
-- `publish-npm.yml` publishes to npm on GitHub Releases, validates tag/version alignment, blocks duplicate npm versions, and supports a manual dry-run dispatch before a real publish (`NPM_TOKEN` required for real publish).
+- `publish-npm.yml` publishes to npm on GitHub Releases, validates tag/version alignment, blocks duplicate npm versions, and supports a manual dry-run, while a real publish requires `NPM_TOKEN`.
 
 ### Project Structure
 

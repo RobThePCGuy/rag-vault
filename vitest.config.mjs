@@ -54,6 +54,28 @@ export default defineConfig({
           alias: backendAlias,
         },
       },
+      // Backend integration tests (opt-in, slower/network-dependent)
+      {
+        test: {
+          name: 'backend-integration',
+          globals: true,
+          environment: 'node',
+          include: [
+            'src/**/e2e/**',
+            'src/**/*.integration.test.ts',
+            'src/embedder/__tests__/lazy-initialization.test.ts',
+            'src/**/server/ingest-data.test.ts',
+            'src/**/security/security.test.ts',
+          ],
+          testTimeout: 60000,
+          hookTimeout: 60000,
+          teardownTimeout: 10000,
+          pool: 'forks',
+        },
+        resolve: {
+          alias: backendAlias,
+        },
+      },
       // Frontend tests (jsdom environment)
       {
         plugins: [react()],

@@ -72,7 +72,7 @@
     "web:watch": "tsx watch src/web/index.ts",
     "web": "tsx src/web/index.ts",
     "test:unit": "vitest run --project backend-unit --project web-ui",
-    "test:integration": "RUN_EMBEDDING_INTEGRATION=1 vitest run src/server/__tests__/rag-server.integration.test.ts src/embedder/__tests__/lazy-initialization.test.ts src/__tests__/e2e/*.test.ts",
+    "test:integration": "RUN_EMBEDDING_INTEGRATION=1 vitest run --project backend-integration",
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "dependencies": {

@@ -6,28 +6,39 @@
 
 **Your documents. Your machine. Your control.**
 
-RAG Vault gives AI coding assistants instant access to your private documents—API specs, research papers, internal docs—without ever sending data to the cloud. One command, zero configuration, complete privacy.
+RAG Vault gives AI coding assistants fast access to your private documents such as API specs, research papers, and internal docs. Indexing and search run locally, and your data stays on your machine unless you explicitly ingest content from a remote URL.
+
+One command to run, minimal setup, privacy by default.
 
 ## Why RAG Vault?
 
 | Pain Point | RAG Vault Solution |
 |------------|-------------------|
-| "I don't want my docs on someone else's server" | Everything stays local. No API calls after setup. |
+| "I don't want my docs on someone else's server" | Everything stays local by default. No background cloud calls for indexing or search. |
 | "Semantic search misses exact code terms" | Hybrid search: meaning + exact matches like `useEffect` |
-| "Setup requires Docker, Python, databases..." | One `npx` command. Done. |
+| "Setup requires Docker, Python, databases..." | One `npx` command plus a small MCP config block. |
 | "Cloud APIs charge per query" | Free forever. No subscriptions. |
 
 ## Security
 
 RAG Vault includes security features for production deployment:
-- **API Authentication** — Optional API key via `RAG_API_KEY`
-- **Rate Limiting** — Configurable request throttling
-- **CORS Control** — Restrict allowed origins
-- **Security Headers** — Helmet.js protection
+- **API Authentication**: Optional API key via `RAG_API_KEY`
+- **Rate Limiting**: Configurable request throttling
+- **CORS Control**: Restrict allowed origins
+- **Security Headers**: Helmet.js protection
 
 See [SECURITY.md](SECURITY.md) for complete documentation.
 
-## Get Started in 30 Seconds
+## First-Time Setup Checklist
+
+Before adding MCP config:
+
+1. Install Node.js 20 or newer.
+2. Pick a documents directory and set `BASE_DIR` to that path.
+3. Make sure your AI tool process can read `BASE_DIR`.
+4. Restart your AI tool after editing config.
+
+## Get Started Quickly
 
 ### For Cursor
 
@@ -47,6 +58,8 @@ Add to `~/.cursor/mcp.json`:
   }
 }
 ```
+
+Replace `/path/to/your/documents` with your real absolute path.
 
 ### For Claude Code
 
@@ -124,7 +137,7 @@ You: "How does authentication work?"
 AI:  Based on section 3.2, authentication uses OAuth 2.0 with JWT tokens...
 ```
 
-That's it. No Docker. No Python. No servers.
+That's it. No Docker. No Python. No server infrastructure to manage.
 
 ## Web Interface
 
@@ -140,15 +153,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### What You Can Do
 
-- **Upload documents** — Drag and drop PDFs, Word docs, Markdown, text files
-- **Search instantly** — Type queries and see results with relevance scores
-- **Preview content** — Click any result to see the full chunk in context
-- **Manage files** — View all indexed documents, delete what you don't need
-- **Switch databases** — Create and switch between multiple knowledge bases
-- **Monitor status** — See document counts, memory usage, and search mode
-- **Export/Import settings** — Back up and restore your vault configuration
-- **Theme preferences** — Switch between light, dark, or system theme
-- **Folder browser** — Navigate directories to select documents
+- **Upload documents**: Drag and drop PDF, DOCX, Markdown, TXT, JSON, JSONL, and NDJSON files
+- **Search instantly**: Type queries and see results with relevance scores
+- **Preview content**: Click any result to see the full chunk in context
+- **Manage files**: View all indexed documents and delete what you do not need
+- **Switch databases**: Create and switch between multiple knowledge bases
+- **Monitor status**: See document counts, memory usage, and search mode
+- **Export/Import settings**: Back up and restore your vault configuration
+- **Theme preferences**: Switch between light, dark, or system theme
+- **Folder browser**: Navigate directories to select documents
 
 ### REST API
 
@@ -262,7 +275,9 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 
 **Quality filtering**: Groups results by relevance gaps instead of arbitrary top-K cutoffs.
 
-**Local everything**: Embeddings via Transformers.js. Storage via LanceDB. No network after model download.
+**Local by default**: Embeddings via Transformers.js. Storage via LanceDB. Network is only needed for initial model download or if you explicitly ingest remote URLs.
+
+**MCP tools included**: `ingest_file`, `ingest_data`, `query_documents`, `list_files`, and `delete_file`.
 
 ## Supported Formats
 
@@ -273,6 +288,7 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 | Markdown | `.md` | Code blocks kept intact |
 | Text | `.txt` | Plain text |
 | JSON | `.json` | Converted to searchable key-value text |
+| JSONL / NDJSON | `.jsonl`, `.ndjson` | Parsed line-by-line for logs and structured records |
 | HTML | via `ingest_data` | Auto-cleaned with Readability |
 
 ## Configuration
@@ -291,14 +307,14 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 | Variable | Default | What it does |
 |----------|---------|--------------|
 | `RAG_HYBRID_WEIGHT` | `0.6` | Keyword boost strength. 0 = semantic-only, higher = stronger boost for exact keyword matches |
-| `RAG_GROUPING` | — | `similar` = top group only, `related` = top 2 groups |
-| `RAG_MAX_DISTANCE` | — | Filter out results below this relevance threshold |
+| `RAG_GROUPING` | unset | `similar` = top group only, `related` = top 2 groups |
+| `RAG_MAX_DISTANCE` | unset | Filter out results below this relevance threshold |
 
 ### Security (optional)
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `RAG_API_KEY` | — | API key for authentication |
+| `RAG_API_KEY` | unset | API key for authentication |
 | `CORS_ORIGINS` | localhost | Allowed origins (comma-separated, or `*`) |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit time window (ms) |
 | `RATE_LIMIT_MAX_REQUESTS` | `100` | Max requests per window |
@@ -328,7 +344,7 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 <details>
 <summary><strong>Is my data really private?</strong></summary>
 
-Yes. After the embedding model downloads (~90MB), RAG Vault makes zero network requests. Everything runs on your machine. Verify with network monitoring.
+For local files, yes. Indexing and search run on your machine after the embedding model downloads (~90MB). RAG Vault only uses network if you choose remote URL ingestion or need to download a model.
 
 </details>
 
@@ -342,14 +358,14 @@ Yes, after the first run. The model caches locally.
 <details>
 <summary><strong>What about GPU acceleration?</strong></summary>
 
-Transformers.js runs on CPU. GPU support is experimental but unnecessary for most use cases—queries return in ~1 second even with 10,000 chunks.
+Transformers.js runs on CPU. GPU support is experimental, and CPU performance is solid for typical local vault sizes.
 
 </details>
 
 <details>
 <summary><strong>Can I change the embedding model?</strong></summary>
 
-Yes. Set `MODEL_NAME` to any compatible HuggingFace model. But you must delete `DB_PATH` and re-ingest—different models produce incompatible vectors.
+Yes. Set `MODEL_NAME` to any compatible HuggingFace model. You must delete `DB_PATH` and re-ingest because different models produce incompatible vectors.
 
 **Recommended upgrade:** For better quality and multilingual support, use [EmbeddingGemma](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX):
 
@@ -357,7 +373,7 @@ Yes. Set `MODEL_NAME` to any compatible HuggingFace model. But you must delete `
 "MODEL_NAME": "onnx-community/embeddinggemma-300m-ONNX"
 ```
 
-This 300M parameter model scores 68.36 on MTEB benchmarks and supports 100+ languages, making it ideal for mixed-language or high-quality retrieval needs.
+This model is a strong option for multilingual and higher-quality retrieval use cases.
 
 **Other specialized models:**
 - Scientific: `sentence-transformers/allenai-specter`
@@ -446,12 +462,12 @@ web-ui/          # React frontend
 
 ## Documentation
 
-- [SECURITY.md](SECURITY.md) — Security configuration and best practices
-- [.env.example](.env.example) — Complete environment variable template
+- [SECURITY.md](SECURITY.md): Security configuration and best practices
+- [.env.example](.env.example): Complete environment variable template
 
 ## License
 
-MIT — free for personal and commercial use.
+MIT: free for personal and commercial use.
 
 ## Acknowledgments
 

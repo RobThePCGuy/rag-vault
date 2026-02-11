@@ -3,6 +3,7 @@
 // Tests handleIngestData functionality including HTML parsing and raw-data storage
 
 import { mkdir, readFile, rm } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { getIntegrationCacheDir } from '../utils/integration-cache.js'
 import { RAGServer } from '../../server/index.js'
@@ -11,7 +12,8 @@ import { RAGServer } from '../../server/index.js'
 // Test Configuration
 // ============================================
 
-const testDbPath = './tmp/test-ingest-data-db'
+const testWorkerId = process.env['VITEST_WORKER_ID'] ?? process.env['VITEST_POOL_ID'] ?? '0'
+const testDbPath = resolve('./tmp', `test-ingest-data-db-w${testWorkerId}-p${process.pid}`)
 const testCacheDir = getIntegrationCacheDir('server-ingest-data')
 const testConfig = {
   dbPath: testDbPath,

@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { type VectorChunk, VectorStore } from '../index.js'
 
 describe('VectorStore', () => {
-  const testDbPath = './tmp/test-vectordb'
+  const testRunId = randomUUID()
+  const makeTestDbPath = (name: string): string => `./tmp/${name}-${testRunId}`
+  const testDbPath = makeTestDbPath('test-vectordb')
 
   beforeEach(() => {
     // Clean up test database before each test
@@ -297,7 +299,7 @@ describe('VectorStore', () => {
      */
 
     it('should use vector similarity order when hybridWeight=0', async () => {
-      const vectorOnlyDbPath = './tmp/test-vectordb-vector-only'
+      const vectorOnlyDbPath = makeTestDbPath('test-vectordb-vector-only')
       const fs = await import('node:fs')
       if (fs.existsSync(vectorOnlyDbPath)) {
         fs.rmSync(vectorOnlyDbPath, { recursive: true })
@@ -349,7 +351,7 @@ describe('VectorStore', () => {
     })
 
     it('should boost keyword matches when hybridWeight=1', async () => {
-      const ftsOnlyDbPath = './tmp/test-vectordb-fts-only'
+      const ftsOnlyDbPath = makeTestDbPath('test-vectordb-fts-only')
       const fs = await import('node:fs')
       if (fs.existsSync(ftsOnlyDbPath)) {
         fs.rmSync(ftsOnlyDbPath, { recursive: true })
@@ -399,7 +401,7 @@ describe('VectorStore', () => {
     })
 
     it('should apply keyword boost with default hybridWeight=0.6', async () => {
-      const hybridDbPath = './tmp/test-vectordb-hybrid'
+      const hybridDbPath = makeTestDbPath('test-vectordb-hybrid')
       const fs = await import('node:fs')
       if (fs.existsSync(hybridDbPath)) {
         fs.rmSync(hybridDbPath, { recursive: true })
@@ -471,7 +473,7 @@ describe('VectorStore', () => {
   describe('Grouping algorithm (statistical threshold)', () => {
     describe('Contract guarantees', () => {
       it('returns single result as-is without grouping', async () => {
-        const contractDbPath1 = './tmp/test-vectordb-contract-single'
+        const contractDbPath1 = makeTestDbPath('test-vectordb-contract-single')
         if (fs.existsSync(contractDbPath1)) {
           fs.rmSync(contractDbPath1, { recursive: true })
         }
@@ -505,7 +507,7 @@ describe('VectorStore', () => {
       })
 
       it('returns all results when no significant gaps exist', async () => {
-        const contractDbPath2 = './tmp/test-vectordb-contract-no-gaps'
+        const contractDbPath2 = makeTestDbPath('test-vectordb-contract-no-gaps')
         if (fs.existsSync(contractDbPath2)) {
           fs.rmSync(contractDbPath2, { recursive: true })
         }
@@ -540,7 +542,7 @@ describe('VectorStore', () => {
 
     describe('Similar mode behavior', () => {
       it('returns first group only when clear boundary exists', async () => {
-        const similarDbPath = './tmp/test-vectordb-similar-boundary'
+        const similarDbPath = makeTestDbPath('test-vectordb-similar-boundary')
         if (fs.existsSync(similarDbPath)) {
           fs.rmSync(similarDbPath, { recursive: true })
         }
@@ -585,7 +587,7 @@ describe('VectorStore', () => {
 
     describe('Related mode behavior', () => {
       it('returns all results when only one boundary exists', async () => {
-        const relatedDbPath = './tmp/test-vectordb-related-one-boundary'
+        const relatedDbPath = makeTestDbPath('test-vectordb-related-one-boundary')
         if (fs.existsSync(relatedDbPath)) {
           fs.rmSync(relatedDbPath, { recursive: true })
         }
@@ -627,7 +629,7 @@ describe('VectorStore', () => {
       })
 
       it('returns first two groups when multiple boundaries exist', async () => {
-        const relatedDbPath = './tmp/test-vectordb-related-multi-boundary'
+        const relatedDbPath = makeTestDbPath('test-vectordb-related-multi-boundary')
         if (fs.existsSync(relatedDbPath)) {
           fs.rmSync(relatedDbPath, { recursive: true })
         }
@@ -699,8 +701,8 @@ describe('VectorStore', () => {
 
     describe('Similar vs Related comparison', () => {
       it('related mode returns same or more results than similar mode with identical data', async () => {
-        const similarDbPath = './tmp/test-vectordb-similar-compare'
-        const relatedDbPath = './tmp/test-vectordb-related-compare'
+        const similarDbPath = makeTestDbPath('test-vectordb-similar-compare')
+        const relatedDbPath = makeTestDbPath('test-vectordb-related-compare')
 
         if (fs.existsSync(similarDbPath)) {
           fs.rmSync(similarDbPath, { recursive: true })
@@ -797,7 +799,7 @@ describe('VectorStore', () => {
     }
 
     it('should return lower distance for more similar vectors (ascending sort)', async () => {
-      const distanceDbPath = './tmp/test-vectordb-distance-sort'
+      const distanceDbPath = makeTestDbPath('test-vectordb-distance-sort')
       if (fs.existsSync(distanceDbPath)) {
         fs.rmSync(distanceDbPath, { recursive: true })
       }
@@ -851,7 +853,7 @@ describe('VectorStore', () => {
     })
 
     it('should return distance ~0 for identical vectors', async () => {
-      const identicalDbPath = './tmp/test-vectordb-identical'
+      const identicalDbPath = makeTestDbPath('test-vectordb-identical')
       if (fs.existsSync(identicalDbPath)) {
         fs.rmSync(identicalDbPath, { recursive: true })
       }
@@ -889,7 +891,7 @@ describe('VectorStore', () => {
     })
 
     it('should return distance ~2 for opposite vectors', async () => {
-      const oppositeDbPath = './tmp/test-vectordb-opposite'
+      const oppositeDbPath = makeTestDbPath('test-vectordb-opposite')
       if (fs.existsSync(oppositeDbPath)) {
         fs.rmSync(oppositeDbPath, { recursive: true })
       }
@@ -933,7 +935,7 @@ describe('VectorStore', () => {
     })
 
     it('should have distance in range [0, 2]', async () => {
-      const rangeDbPath = './tmp/test-vectordb-range'
+      const rangeDbPath = makeTestDbPath('test-vectordb-range')
       if (fs.existsSync(rangeDbPath)) {
         fs.rmSync(rangeDbPath, { recursive: true })
       }

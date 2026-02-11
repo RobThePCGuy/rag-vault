@@ -113,10 +113,27 @@ class DocumentParser {
         if (!(0, node_path_1.isAbsolute)(filePath)) {
             throw new index_js_1.ParserValidationError(`File path must be absolute path (received: ${filePath}). Please provide an absolute path within BASE_DIR.`);
         }
-        // Check if path is within BASE_DIR
-        const baseDir = (0, node_path_1.resolve)(this.config.baseDir);
-        const normalizedPath = (0, node_path_1.resolve)(filePath);
-        if (!normalizedPath.startsWith(baseDir)) {
+        // Resolve symlinks for both base and target to prevent symlink escape attacks.
+        // Fall back to resolve() only when path does not exist yet.
+        const resolveCanonicalPath = (targetPath) => {
+            try {
+                return (0, node_fs_1.realpathSync)(targetPath);
+            }
+            catch (error) {
+                const nodeError = error;
+                if (nodeError.code === 'ENOENT') {
+                    return (0, node_path_1.resolve)(targetPath);
+                }
+                throw new index_js_1.ParserValidationError(`Failed to resolve path for security validation: ${targetPath}`);
+            }
+        };
+        // Check if path is within BASE_DIR using relative-path boundary check.
+        // This avoids prefix bypasses such as /base matching /base2.
+        const baseDir = resolveCanonicalPath(this.config.baseDir);
+        const normalizedPath = resolveCanonicalPath(filePath);
+        const relativePath = (0, node_path_1.relative)(baseDir, normalizedPath);
+        const isOutsideBaseDir = relativePath.startsWith('..') || relativePath === '..' || (0, node_path_1.isAbsolute)(relativePath);
+        if (isOutsideBaseDir) {
             throw new index_js_1.ParserValidationError(`File path must be within BASE_DIR (${baseDir}). Received path outside BASE_DIR: ${filePath}`);
         }
     }

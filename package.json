@@ -7,7 +7,8 @@
     "rag-vault": "dist/index.js"
   },
   "files": [
-    "dist",
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
     "skills",
     "web-ui/dist"
   ],
@@ -43,9 +44,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "check": "pnpm type-check && pnpm lint && pnpm format:check",
-    "check:all": "pnpm check && pnpm check:unused && pnpm check:deps && pnpm build && pnpm test:unit",
+    "check:all": "pnpm check && pnpm check:web-ui && pnpm check:unused && pnpm check:deps && pnpm build && pnpm test:unit",
     "check:deps": "madge --circular --extensions ts src",
     "check:deps:graph": "madge --extensions ts --image graph.svg src",
+    "check:web-ui": "pnpm --prefix web-ui check",
     "check:unused": "node scripts/check-unused-exports.js",
     "check:unused:all": "knip",
     "cleanup:processes": "bash ./scripts/cleanup-test-processes.sh",
@@ -78,17 +80,17 @@
   "dependencies": {
     "@huggingface/transformers": "^3.7.6",
     "@lancedb/lancedb": "^0.23.0",
-    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@mozilla/readability": "^0.6.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "file-type": "^21.3.0",
     "helmet": "^8.1.0",
+    "jsdom": "^27.4.0",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
     "pdfjs-dist": "^5.4.530",
-    "jsdom": "^27.4.0",
     "turndown": "^7.2.2",
     "zod": "^3.25.76"
   },

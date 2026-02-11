@@ -1,6 +1,7 @@
 // Lazy initialization tests for Embedder
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getIntegrationCacheDir } from '../../__tests__/utils/integration-cache.js'
 import { Embedder, EmbeddingError } from '../index.js'
 import type { EmbedderConfig } from '../index.js'
 
@@ -10,13 +11,14 @@ const MODEL_TIMEOUT = process.env['CI'] ? 120000 : 60000
 describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
   'Embedder - Lazy Initialization',
   () => {
+    const testCacheDir = getIntegrationCacheDir('embedder-lazy-initialization')
     let testConfig: EmbedderConfig
 
     beforeEach(() => {
       testConfig = {
         modelPath: 'Xenova/all-MiniLM-L6-v2',
         batchSize: 8,
-        cacheDir: './tmp/models-lazy-test',
+        cacheDir: testCacheDir,
       }
     })
 

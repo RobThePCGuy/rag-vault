@@ -135,7 +135,8 @@ describe('DatabaseManager', () => {
 
       await dbManager.initialize(testDbPath)
 
-      await expect(dbManager.switchDatabase('/nonexistent/path')).rejects.toThrow(
+      const missingPath = path.join(testDir, 'missing-db')
+      await expect(dbManager.switchDatabase(missingPath)).rejects.toThrow(
         'Database path does not exist'
       )
     })
@@ -260,6 +261,66 @@ describe('DatabaseManager', () => {
       await expect(dbManager.scanForDatabases(outsidePath)).rejects.toThrow('outside allowed roots')
 
       // Cleanup
+      process.env['ALLOWED_SCAN_ROOTS'] = originalRoots ?? ''
+      if (originalRoots === undefined) {
+        delete process.env['ALLOWED_SCAN_ROOTS']
+      }
+    })
+  })
+
+  describe('mutation path policy', () => {
+    it('should reject switchDatabase outside allowed roots', async () => {
+      const originalRoots = process.env['ALLOWED_SCAN_ROOTS']
+      process.env['ALLOWED_SCAN_ROOTS'] = '/some/restricted/path'
+
+      const mockServer = createMockServer()
+      const mockServerFactory = vi.fn().mockReturnValue(mockServer)
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
+
+      await dbManager.initialize(testDbPath)
+
+      await expect(dbManager.switchDatabase('/var/log')).rejects.toThrow('outside allowed roots')
+
+      process.env['ALLOWED_SCAN_ROOTS'] = originalRoots ?? ''
+      if (originalRoots === undefined) {
+        delete process.env['ALLOWED_SCAN_ROOTS']
+      }
+    })
+
+    it('should reject createDatabase outside allowed roots', async () => {
+      const originalRoots = process.env['ALLOWED_SCAN_ROOTS']
+      process.env['ALLOWED_SCAN_ROOTS'] = '/some/restricted/path'
+
+      const mockServer = createMockServer()
+      const mockServerFactory = vi.fn().mockReturnValue(mockServer)
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
+
+      await dbManager.initialize(testDbPath)
+
+      await expect(dbManager.createDatabase({ dbPath: '/var/log/new-db' })).rejects.toThrow(
+        'outside allowed roots'
+      )
+
+      process.env['ALLOWED_SCAN_ROOTS'] = originalRoots ?? ''
+      if (originalRoots === undefined) {
+        delete process.env['ALLOWED_SCAN_ROOTS']
+      }
+    })
+
+    it('should reject deleteDatabase outside allowed roots', async () => {
+      const originalRoots = process.env['ALLOWED_SCAN_ROOTS']
+      process.env['ALLOWED_SCAN_ROOTS'] = '/some/restricted/path'
+
+      const mockServer = createMockServer()
+      const mockServerFactory = vi.fn().mockReturnValue(mockServer)
+      const dbManager = new DatabaseManager(mockServerFactory, testConfig)
+
+      await dbManager.initialize(testDbPath)
+
+      await expect(dbManager.deleteDatabase('/var/log/nonexistent-db')).rejects.toThrow(
+        'outside allowed roots'
+      )
+
       process.env['ALLOWED_SCAN_ROOTS'] = originalRoots ?? ''
       if (originalRoots === undefined) {
         delete process.env['ALLOWED_SCAN_ROOTS']

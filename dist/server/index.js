@@ -309,7 +309,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                 score: result.score,
             };
             // Restore source for raw-data files (ingested via ingest_data)
-            if ((0, raw_data_utils_js_1.isRawDataPath)(result.filePath)) {
+            if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, result.filePath)) {
                 const source = (0, raw_data_utils_js_1.extractSourceFromPath)(result.filePath);
                 if (source) {
                     queryResult.source = source;
@@ -357,7 +357,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         // since the path is internally generated and content is already processed
         const isPdf = args.filePath.toLowerCase().endsWith('.pdf');
         let text;
-        if ((0, raw_data_utils_js_1.isRawDataPath)(args.filePath)) {
+        if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, args.filePath)) {
             // Raw-data files: skip validation, read directly
             text = await (0, promises_1.readFile)(args.filePath, 'utf-8');
             console.error(`Read raw-data file: ${args.filePath} (${text.length} characters)`);
@@ -526,7 +526,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         const files = await this.vectorStore.listFiles();
         // Enrich raw-data files with source information
         return files.map((file) => {
-            if ((0, raw_data_utils_js_1.isRawDataPath)(file.filePath)) {
+            if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, file.filePath)) {
                 const source = (0, raw_data_utils_js_1.extractSourceFromPath)(file.filePath);
                 if (source) {
                     return { ...file, source };
@@ -669,7 +669,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         // Delete chunks from vector database
         await this.vectorStore.deleteChunks(targetPath);
         // Also delete physical raw-data file if applicable
-        if ((0, raw_data_utils_js_1.isRawDataPath)(targetPath)) {
+        if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, targetPath)) {
             try {
                 await (0, promises_1.unlink)(targetPath);
                 console.error(`Deleted raw-data file: ${targetPath}`);
@@ -714,7 +714,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             const chunks = await this.vectorStore.getDocumentChunks(filePath);
             // Enrich with source information for raw-data files
             const enrichedChunks = chunks.map((chunk) => {
-                if ((0, raw_data_utils_js_1.isRawDataPath)(chunk.filePath)) {
+                if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, chunk.filePath)) {
                     const source = (0, raw_data_utils_js_1.extractSourceFromPath)(chunk.filePath);
                     if (source) {
                         return { ...chunk, source };
@@ -745,7 +745,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             const relatedChunks = await this.vectorStore.findRelatedChunks(filePath, chunkIndex, limit ?? 5, excludeSameDocument ?? true);
             // Enrich with source information for raw-data files
             const enrichedChunks = relatedChunks.map((chunk) => {
-                if ((0, raw_data_utils_js_1.isRawDataPath)(chunk.filePath)) {
+                if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, chunk.filePath)) {
                     const source = (0, raw_data_utils_js_1.extractSourceFromPath)(chunk.filePath);
                     if (source) {
                         return { ...chunk, source };
@@ -781,7 +781,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                 );
                 // Enrich with source information
                 results[key] = relatedChunks.map((related) => {
-                    if ((0, raw_data_utils_js_1.isRawDataPath)(related.filePath)) {
+                    if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, related.filePath)) {
                         const source = (0, raw_data_utils_js_1.extractSourceFromPath)(related.filePath);
                         if (source) {
                             return { ...related, source };

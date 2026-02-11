@@ -485,7 +485,9 @@ describe('API Client', () => {
       ]
       const mockResults = {
         '/doc1.txt:0': [{ filePath: '/other.txt', chunkIndex: 2, text: 'related', score: 0.3 }],
-        '/doc2.txt:1': [{ filePath: '/another.txt', chunkIndex: 0, text: 'also related', score: 0.4 }],
+        '/doc2.txt:1': [
+          { filePath: '/another.txt', chunkIndex: 0, text: 'also related', score: 0.4 },
+        ],
       }
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -602,7 +604,11 @@ describe('API Client', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/feedback',
         expect.objectContaining({
-          body: JSON.stringify({ type: 'dismiss_inferred', source: sourceChunk, target: targetChunk }),
+          body: JSON.stringify({
+            type: 'dismiss_inferred',
+            source: sourceChunk,
+            target: targetChunk,
+          }),
         })
       )
     })

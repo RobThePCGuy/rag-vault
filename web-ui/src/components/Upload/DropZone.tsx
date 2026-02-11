@@ -12,7 +12,10 @@ const ACCEPTED_TYPES = {
   'text/plain': ['.txt'],
   'text/markdown': ['.md'],
   'text/html': ['.html'],
-  'application/json': ['.json'],
+  'application/json': ['.json', '.jsonl'],
+  'application/x-ndjson': ['.ndjson'],
+  'application/ndjson': ['.ndjson'],
+  'application/jsonl': ['.jsonl'],
 }
 
 export function DropZone({ onFilesSelect, isUploading }: DropZoneProps) {
@@ -52,7 +55,7 @@ export function DropZone({ onFilesSelect, isUploading }: DropZoneProps) {
             Drag and drop files here, or click to select
           </p>
           <p className="text-sm text-gray-400 dark:text-gray-500">
-            Supports PDF, DOCX, TXT, MD, HTML, JSON (max 100MB each)
+            Supports PDF, DOCX, TXT, MD, HTML, JSON, JSONL, NDJSON (max 100MB each)
           </p>
         </>
       )}

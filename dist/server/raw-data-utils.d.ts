@@ -71,6 +71,15 @@ export declare function saveRawData(dbPath: string, source: string, content: str
  */
 export declare function isRawDataPath(filePath: string): boolean;
 /**
+ * Check whether a path belongs to this database's managed raw-data directory.
+ * This is stricter than isRawDataPath() and should be used for trust decisions.
+ *
+ * @param dbPath - LanceDB database path for the current server
+ * @param filePath - File path to validate
+ * @returns True only if filePath is inside <dbPath>/raw-data
+ */
+export declare function isManagedRawDataPath(dbPath: string, filePath: string): boolean;
+/**
  * Extract original source from raw-data file path
  * Returns null if not a raw-data path
  *

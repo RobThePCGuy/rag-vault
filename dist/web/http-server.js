@@ -96,6 +96,9 @@ const ALLOWED_MIME_TYPES = [
     'text/markdown',
     'text/html',
     'application/json',
+    'application/x-ndjson',
+    'application/ndjson',
+    'application/jsonl',
 ];
 /**
  * Create and configure Express app with DatabaseManager
@@ -252,7 +255,16 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
         },
         fileFilter: (_req, file, cb) => {
             // Allow common document types by MIME type or extension
-            const allowedExtensions = ['.pdf', '.docx', '.txt', '.md', '.html', '.json'];
+            const allowedExtensions = [
+                '.pdf',
+                '.docx',
+                '.txt',
+                '.md',
+                '.html',
+                '.json',
+                '.jsonl',
+                '.ndjson',
+            ];
             const ext = node_path_1.default.extname(file.originalname).toLowerCase();
             if (ALLOWED_MIME_TYPES.includes(file.mimetype) || allowedExtensions.includes(ext)) {
                 cb(null, true);

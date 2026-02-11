@@ -14,13 +14,18 @@ import { RAGServer } from '../index.js'
 // ============================================
 
 const testCacheDir = getIntegrationCacheDir('rag-server-integration')
+const testWorkerId = process.env['VITEST_WORKER_ID'] ?? process.env['VITEST_POOL_ID'] ?? '0'
+
+function getIsolatedTmpDir(prefix: string): string {
+  return resolve('./tmp', `${prefix}-w${testWorkerId}-p${process.pid}`)
+}
 
 describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
   'RAG MCP Server Integration Test',
   () => {
     let ragServer: RAGServer
-    const testDbPath = resolve('./tmp/test-lancedb')
-    const testDataDir = resolve('./tmp/test-data')
+    const testDbPath = getIsolatedTmpDir('test-lancedb')
+    const testDataDir = getIsolatedTmpDir('test-data')
 
     beforeAll(async () => {
       // Setup: LanceDB initialization, Transformers.js model load
@@ -226,8 +231,8 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
 
     describe('AC-004: Vector Search', () => {
       let localRagServer: RAGServer
-      const localTestDbPath = resolve('./tmp/test-lancedb-ac004')
-      const localTestDataDir = resolve('./tmp/test-data-ac004')
+      const localTestDbPath = getIsolatedTmpDir('test-lancedb-ac004')
+      const localTestDataDir = getIsolatedTmpDir('test-data-ac004')
 
       beforeAll(async () => {
         // Setup dedicated RAGServer for AC-004
@@ -324,7 +329,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
       // Validation: When no matching documents, empty array is returned
       it('Empty array returned for query with no matching documents (e.g., random string)', async () => {
         // Search in empty DB
-        const emptyDbPath = resolve('./tmp/test-lancedb-empty')
+        const emptyDbPath = getIsolatedTmpDir('test-lancedb-empty')
         mkdirSync(emptyDbPath, { recursive: true })
 
         const emptyServer = new RAGServer({
@@ -425,8 +430,8 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
 describe('RAG MCP Server Integration Test - Extended', () => {
   describe('AC-006: Additional Format Support', () => {
     let localRagServer: RAGServer
-    const localTestDbPath = resolve('./tmp/test-lancedb-ac006')
-    const localTestDataDir = resolve('./tmp/test-data-ac006')
+    const localTestDbPath = getIsolatedTmpDir('test-lancedb-ac006')
+    const localTestDataDir = getIsolatedTmpDir('test-data-ac006')
 
     beforeAll(async () => {
       // Setup dedicated RAGServer for AC-006
@@ -557,8 +562,8 @@ describe('RAG MCP Server Integration Test - Extended', () => {
 
   describe('AC-007: File Management', () => {
     let localRagServer: RAGServer
-    const localTestDbPath = resolve('./tmp/test-lancedb-ac007')
-    const localTestDataDir = resolve('./tmp/test-data-ac007')
+    const localTestDbPath = getIsolatedTmpDir('test-lancedb-ac007')
+    const localTestDataDir = getIsolatedTmpDir('test-data-ac007')
 
     beforeAll(async () => {
       // Setup dedicated RAGServer for AC-007
@@ -664,8 +669,8 @@ describe('RAG MCP Server Integration Test - Extended', () => {
 
   describe('AC-008: File Re-ingestion', () => {
     let localRagServer: RAGServer
-    const localTestDbPath = resolve('./tmp/test-lancedb-ac008')
-    const localTestDataDir = resolve('./tmp/test-data-ac008')
+    const localTestDbPath = getIsolatedTmpDir('test-lancedb-ac008')
+    const localTestDataDir = getIsolatedTmpDir('test-data-ac008')
 
     beforeAll(async () => {
       // Setup dedicated RAGServer for AC-008
@@ -804,8 +809,8 @@ describe('RAG MCP Server Integration Test - Extended', () => {
 
   describe('AC-009: Error Handling (Complete)', () => {
     let localRagServer: RAGServer
-    const localTestDbPath = resolve('./tmp/test-lancedb-ac009')
-    const localTestDataDir = resolve('./tmp/test-data-ac009')
+    const localTestDbPath = getIsolatedTmpDir('test-lancedb-ac009')
+    const localTestDataDir = getIsolatedTmpDir('test-data-ac009')
 
     beforeAll(async () => {
       // Setup dedicated RAGServer for AC-009
@@ -903,8 +908,8 @@ describe('RAG MCP Server Integration Test - Extended', () => {
 
   describe('AC-010: File Deletion', () => {
     let localRagServer: RAGServer
-    const localTestDbPath = resolve('./tmp/test-lancedb-ac010')
-    const localTestDataDir = resolve('./tmp/test-data-ac010')
+    const localTestDbPath = getIsolatedTmpDir('test-lancedb-ac010')
+    const localTestDataDir = getIsolatedTmpDir('test-data-ac010')
 
     beforeAll(async () => {
       // Setup dedicated RAGServer for AC-010

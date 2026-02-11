@@ -1,6 +1,7 @@
 import { copyFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { getIntegrationCacheDir } from '../utils/integration-cache.js'
 import { RAGServer } from '../../server/index.js'
 
 // ============================================
@@ -8,6 +9,7 @@ import { RAGServer } from '../../server/index.js'
 // ============================================
 
 describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')('RAG MCP Server E2E Test', () => {
+  const testCacheDir = getIntegrationCacheDir('e2e-rag-workflow')
   // Note: Each test case uses independent RAGServer instance (to prevent inter-test interference)
 
   // --------------------------------------------
@@ -25,7 +27,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')('RAG MCP Server
       const ragServer = new RAGServer({
         dbPath: testDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: testDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })
@@ -91,7 +93,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')('RAG MCP Server
       const ragServer = new RAGServer({
         dbPath: testDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: testDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })
@@ -140,7 +142,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')('RAG MCP Server
       const ragServer = new RAGServer({
         dbPath: testDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: testDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })

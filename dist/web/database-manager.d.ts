@@ -246,5 +246,9 @@ export declare class DatabaseManager {
      * Ensure config directory exists
      */
     private ensureConfigDir;
+    /**
+     * Enforce allowed-roots policy for database mutation operations.
+     */
+    private assertPathAllowedForMutation;
 }
 //# sourceMappingURL=database-manager.d.ts.map

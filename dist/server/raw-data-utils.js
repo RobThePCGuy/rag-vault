@@ -10,6 +10,7 @@ exports.getRawDataDir = getRawDataDir;
 exports.generateRawDataPath = generateRawDataPath;
 exports.saveRawData = saveRawData;
 exports.isRawDataPath = isRawDataPath;
+exports.isManagedRawDataPath = isManagedRawDataPath;
 exports.extractSourceFromPath = extractSourceFromPath;
 const promises_1 = require("node:fs/promises");
 const node_path_1 = require("node:path");
@@ -166,6 +167,20 @@ const RAW_DATA_NATIVE = `${node_path_1.sep}raw-data${node_path_1.sep}`;
  */
 function isRawDataPath(filePath) {
     return filePath.includes(RAW_DATA_NATIVE) || filePath.includes(RAW_DATA_POSIX);
+}
+/**
+ * Check whether a path belongs to this database's managed raw-data directory.
+ * This is stricter than isRawDataPath() and should be used for trust decisions.
+ *
+ * @param dbPath - LanceDB database path for the current server
+ * @param filePath - File path to validate
+ * @returns True only if filePath is inside <dbPath>/raw-data
+ */
+function isManagedRawDataPath(dbPath, filePath) {
+    const rawDataDir = (0, node_path_1.resolve)(getRawDataDir(dbPath));
+    const resolvedPath = (0, node_path_1.resolve)(filePath);
+    const rel = (0, node_path_1.relative)(rawDataDir, resolvedPath);
+    return rel === '' || (!rel.startsWith('..') && !(0, node_path_1.isAbsolute)(rel));
 }
 /**
  * Extract original source from raw-data file path

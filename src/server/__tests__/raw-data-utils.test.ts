@@ -12,6 +12,7 @@ import {
   generateRawDataPath,
   saveRawData,
   isRawDataPath,
+  isManagedRawDataPath,
   extractSourceFromPath,
   getRawDataDir,
 } from '../raw-data-utils.js'
@@ -250,6 +251,26 @@ describe('Raw Data Utils', () => {
     it('should return false for paths containing raw-data not as directory', () => {
       // raw-data-backup is different from /raw-data/
       expect(isRawDataPath('/path/to/raw-data-backup/file.md')).toBe(false)
+    })
+  })
+
+  describe('isManagedRawDataPath', () => {
+    it('should return true for path inside current db raw-data directory', () => {
+      const dbPath = '/path/to/db'
+      const filePath = '/path/to/db/raw-data/file.md'
+      expect(isManagedRawDataPath(dbPath, filePath)).toBe(true)
+    })
+
+    it('should return false for path containing raw-data outside current db', () => {
+      const dbPath = '/path/to/db'
+      const filePath = '/other/location/raw-data/file.md'
+      expect(isManagedRawDataPath(dbPath, filePath)).toBe(false)
+    })
+
+    it('should return false for sibling path with common prefix', () => {
+      const dbPath = '/path/to/db'
+      const filePath = '/path/to/db2/raw-data/file.md'
+      expect(isManagedRawDataPath(dbPath, filePath)).toBe(false)
     })
   })
 

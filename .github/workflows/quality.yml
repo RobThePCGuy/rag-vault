@@ -24,18 +24,8 @@ jobs:
         run: pnpm install --ignore-scripts
       - name: Install web-ui dependencies
         run: pnpm --prefix web-ui install --ignore-scripts
-      - name: Type check
-        run: pnpm type-check
-      - name: Lint
-        run: pnpm lint
-      - name: Format check
-        run: pnpm format:check
-      - name: Dependency cycle check
-        run: pnpm check:deps
-      - name: Unused export check
-        run: pnpm check:unused
-      - name: Unit test suite
-        run: pnpm test:unit
+      - name: Root quality gate
+        run: pnpm check:all
       - name: Coverage (unit)
         run: pnpm exec vitest run --coverage --project backend-unit --project web-ui
 

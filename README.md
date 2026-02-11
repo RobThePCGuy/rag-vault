@@ -391,11 +391,12 @@ Copy the `DB_PATH` directory (default: `./lancedb/`).
 git clone https://github.com/RobThePCGuy/rag-vault.git
 cd rag-vault
 pnpm install
+pnpm --prefix web-ui install
 
 # Install local git hooks (recommended, even for solo dev)
 pnpm hooks:install
 
-# Fast local quality gate (type + lint + format + deps + unused + build + unit tests)
+# Fast local quality gate (backend + web-ui type/lint/format, deps, unused, build, unit tests)
 pnpm check:all
 
 # Unit tests only (no model download required)
@@ -424,7 +425,7 @@ Use `RUN_EMBEDDING_INTEGRATION=1` to explicitly opt into network/model-dependent
 
 ### CI Strategy
 
-- `quality.yml` runs on PRs and pushes and enforces type-checking, linting, formatting, dependency checks, unused exports, and unit tests.
+- `quality.yml` runs on PRs and pushes and enforces the root quality gate (`pnpm check:all`), which includes backend checks and web-ui type/lint/format checks plus unit tests.
 - A nightly scheduled job runs the integration/E2E suite so model-dependent workflows stay healthy without blocking every PR.
 - `publish-npm.yml` publishes to npm on GitHub Releases, validates tag/version alignment, blocks duplicate npm versions, and supports a manual dry-run, while a real publish requires `NPM_TOKEN`.
 

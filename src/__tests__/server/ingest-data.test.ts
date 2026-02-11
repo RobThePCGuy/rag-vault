@@ -4,6 +4,7 @@
 
 import { mkdir, readFile, rm } from 'node:fs/promises'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { getIntegrationCacheDir } from '../utils/integration-cache.js'
 import { RAGServer } from '../../server/index.js'
 
 // ============================================
@@ -11,10 +12,11 @@ import { RAGServer } from '../../server/index.js'
 // ============================================
 
 const testDbPath = './tmp/test-ingest-data-db'
+const testCacheDir = getIntegrationCacheDir('server-ingest-data')
 const testConfig = {
   dbPath: testDbPath,
   modelName: 'Xenova/all-MiniLM-L6-v2',
-  cacheDir: './tmp/test-model-cache',
+  cacheDir: testCacheDir,
   baseDir: '.',
   maxFileSize: 10 * 1024 * 1024,
 }

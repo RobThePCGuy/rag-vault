@@ -1,7 +1,7 @@
 // DocumentParser Unit Test
 
-import { mkdir, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DocumentParser, ParserFileOperationError, ParserValidationError } from '../index'
 
@@ -56,6 +56,28 @@ describe('DocumentParser', () => {
 
     it('should reject absolute path outside baseDir', () => {
       expect(() => parser.validateFilePath('/etc/passwd')).toThrow(
+        expect.objectContaining({
+          name: 'ParserValidationError',
+          message: expect.stringMatching(/outside BASE_DIR/),
+        })
+      )
+    })
+
+    it('should reject sibling absolute path with common prefix', () => {
+      const siblingPath = resolve(`${testDir}-sibling`, 'test.txt')
+      expect(() => parser.validateFilePath(siblingPath)).toThrow(
+        expect.objectContaining({
+          name: 'ParserValidationError',
+          message: expect.stringMatching(/outside BASE_DIR/),
+        })
+      )
+    })
+
+    it('should reject symlink path escaping baseDir', async () => {
+      const linkPath = join(testDir, 'escaped-link.txt')
+      await symlink('/etc/hosts', linkPath)
+
+      expect(() => parser.validateFilePath(linkPath)).toThrow(
         expect.objectContaining({
           name: 'ParserValidationError',
           message: expect.stringMatching(/outside BASE_DIR/),

@@ -6,11 +6,14 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { getIntegrationCacheDir } from '../../__tests__/utils/integration-cache.js'
 import { RAGServer } from '../index.js'
 
 // ============================================
 // Core Functionality Integration Test
 // ============================================
+
+const testCacheDir = getIntegrationCacheDir('rag-server-integration')
 
 describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
   'RAG MCP Server Integration Test',
@@ -27,7 +30,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
       ragServer = new RAGServer({
         dbPath: testDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: testDataDir,
         maxFileSize: 100 * 1024 * 1024, // 100MB
       })
@@ -117,7 +120,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const embedder = new Embedder({
           modelPath: 'Xenova/all-MiniLM-L6-v2',
           batchSize: 8,
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
         })
 
         await embedder.initialize()
@@ -138,7 +141,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const embedder = new Embedder({
           modelPath: 'Xenova/all-MiniLM-L6-v2',
           batchSize: 8,
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
         })
 
         // Model initialization (automatic download on first run)
@@ -160,7 +163,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const embedder = new Embedder({
           modelPath: 'Xenova/all-MiniLM-L6-v2',
           batchSize: 8,
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
         })
 
         await embedder.initialize()
@@ -189,7 +192,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const embedder = new Embedder({
           modelPath: 'Xenova/all-MiniLM-L6-v2',
           batchSize: 8,
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
         })
 
         await embedder.initialize()
@@ -206,7 +209,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const embedder = new Embedder({
           modelPath: 'Xenova/all-MiniLM-L6-v2',
           batchSize: 8,
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
         })
 
         await embedder.initialize()
@@ -234,7 +237,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         localRagServer = new RAGServer({
           dbPath: localTestDbPath,
           modelName: 'Xenova/all-MiniLM-L6-v2',
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
           baseDir: localTestDataDir,
           maxFileSize: 100 * 1024 * 1024,
         })
@@ -327,7 +330,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const emptyServer = new RAGServer({
           dbPath: emptyDbPath,
           modelName: 'Xenova/all-MiniLM-L6-v2',
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
           baseDir: testDataDir,
           maxFileSize: 100 * 1024 * 1024,
         })
@@ -394,7 +397,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const invalidServer = new RAGServer({
           dbPath: invalidDbPath,
           modelName: 'Xenova/all-MiniLM-L6-v2',
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
           baseDir: testDataDir,
           maxFileSize: 100 * 1024 * 1024,
         })
@@ -433,7 +436,7 @@ describe('RAG MCP Server Integration Test - Extended', () => {
       localRagServer = new RAGServer({
         dbPath: localTestDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: localTestDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })
@@ -565,7 +568,7 @@ describe('RAG MCP Server Integration Test - Extended', () => {
       localRagServer = new RAGServer({
         dbPath: localTestDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: localTestDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })
@@ -672,7 +675,7 @@ describe('RAG MCP Server Integration Test - Extended', () => {
       localRagServer = new RAGServer({
         dbPath: localTestDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: localTestDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })
@@ -812,7 +815,7 @@ describe('RAG MCP Server Integration Test - Extended', () => {
       localRagServer = new RAGServer({
         dbPath: localTestDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: localTestDataDir,
         maxFileSize: 100 * 1024 * 1024, // 100MB
       })
@@ -911,7 +914,7 @@ describe('RAG MCP Server Integration Test - Extended', () => {
       localRagServer = new RAGServer({
         dbPath: localTestDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: localTestDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })

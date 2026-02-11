@@ -1,6 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { getIntegrationCacheDir } from '../utils/integration-cache.js'
 import { RAGServer } from '../../server/index.js'
 
 // ============================================
@@ -10,6 +11,7 @@ import { RAGServer } from '../../server/index.js'
 describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
   'Database Switching E2E Workflow',
   () => {
+    const testCacheDir = getIntegrationCacheDir('e2e-database-switch')
     // User Scenario: Create multiple databases, switch between them, verify isolation
     // Validation: Database switching works correctly and data is isolated
 
@@ -27,7 +29,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const serverA = new RAGServer({
           dbPath: testDbPathA,
           modelName: 'Xenova/all-MiniLM-L6-v2',
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
           baseDir: testDataDir,
           maxFileSize: 100 * 1024 * 1024,
         })
@@ -54,7 +56,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const serverB = new RAGServer({
           dbPath: testDbPathB,
           modelName: 'Xenova/all-MiniLM-L6-v2',
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
           baseDir: testDataDir,
           maxFileSize: 100 * 1024 * 1024,
         })
@@ -145,7 +147,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
       const ragServer = new RAGServer({
         dbPath: testDbPath,
         modelName: 'Xenova/all-MiniLM-L6-v2',
-        cacheDir: './tmp/models',
+        cacheDir: testCacheDir,
         baseDir: testDataDir,
         maxFileSize: 100 * 1024 * 1024,
       })
@@ -195,7 +197,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const server1 = new RAGServer({
           dbPath: testDbPath1,
           modelName: 'Xenova/all-MiniLM-L6-v2',
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
           baseDir: testDataDir,
           maxFileSize: 100 * 1024 * 1024,
         })
@@ -212,7 +214,7 @@ describe.runIf(process.env['RUN_EMBEDDING_INTEGRATION'] === '1')(
         const server2 = new RAGServer({
           dbPath: testDbPath2,
           modelName: 'Xenova/all-MiniLM-L6-v2',
-          cacheDir: './tmp/models',
+          cacheDir: testCacheDir,
           baseDir: testDataDir,
           maxFileSize: 100 * 1024 * 1024,
         })

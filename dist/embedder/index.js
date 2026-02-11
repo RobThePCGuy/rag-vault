@@ -1,7 +1,12 @@
 "use strict";
 // Embedder implementation with Transformers.js
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Embedder = exports.EmbeddingError = void 0;
+const promises_1 = require("node:fs/promises");
+const node_path_1 = __importDefault(require("node:path"));
 const transformers_1 = require("@huggingface/transformers");
 const index_js_1 = require("../errors/index.js");
 // Re-export error class for backwards compatibility
@@ -49,6 +54,21 @@ class Embedder {
             console.error('Embedder: Model loaded successfully');
         }
         catch (error) {
+            // Some ONNX caches fail with "Protobuf parsing failed". Retry once with isolated cache path.
+            if (this.isRecoverableCacheError(error)) {
+                const recoveryCacheDir = this.getRecoveryCacheDir();
+                console.error(`Embedder: Detected corrupted model cache. Retrying with isolated cache: "${recoveryCacheDir}"`);
+                try {
+                    await (0, promises_1.mkdir)(recoveryCacheDir, { recursive: true });
+                    transformers_1.env.cacheDir = recoveryCacheDir;
+                    this.model = await (0, transformers_1.pipeline)('feature-extraction', this.config.modelPath);
+                    console.error('Embedder: Model loaded successfully via recovery cache');
+                    return;
+                }
+                catch (recoveryError) {
+                    throw new index_js_1.EmbeddingError(`Failed to initialize Embedder after cache recovery attempt: ${recoveryError.message}`, recoveryError);
+                }
+            }
             throw new index_js_1.EmbeddingError(`Failed to initialize Embedder: ${error.message}`, error);
         }
     }
@@ -140,6 +160,24 @@ class Embedder {
             const message = error instanceof Error ? error.message : String(error);
             throw new index_js_1.EmbeddingError(`Failed to generate batch embeddings: ${message}`, error instanceof Error ? error : undefined);
         }
+    }
+    /**
+     * Detect known cache-corruption signatures from ONNX/protobuf loaders.
+     */
+    isRecoverableCacheError(error) {
+        if (!(error instanceof Error)) {
+            return false;
+        }
+        const message = error.message.toLowerCase();
+        return (message.includes('protobuf parsing failed') ||
+            (message.includes('protobuf') && message.includes('failed to parse')));
+    }
+    /**
+     * Build a model-specific fallback cache path to avoid reusing corrupted artifacts.
+     */
+    getRecoveryCacheDir() {
+        const safeModelName = this.config.modelPath.replace(/[^a-z0-9_./-]/gi, '_').replace(/\//g, '__');
+        return node_path_1.default.join(this.config.cacheDir, '.recovery-cache', safeModelName);
     }
 }
 exports.Embedder = Embedder;

@@ -51,5 +51,13 @@ export declare class Embedder {
      * @returns Array of embedding vectors (dimension depends on model)
      */
     embedBatch(texts: string[], signal?: AbortSignal): Promise<number[][]>;
+    /**
+     * Detect known cache-corruption signatures from ONNX/protobuf loaders.
+     */
+    private isRecoverableCacheError;
+    /**
+     * Build a model-specific fallback cache path to avoid reusing corrupted artifacts.
+     */
+    private getRecoveryCacheDir;
 }
 //# sourceMappingURL=index.d.ts.map

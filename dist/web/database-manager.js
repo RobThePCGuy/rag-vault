@@ -226,6 +226,7 @@ class DatabaseManager {
         }
         // Expand tilde to home directory
         const resolvedPath = expandTilde(newDbPath);
+        await this.assertPathAllowedForMutation('Switch path', resolvedPath);
         // Validate the new path exists and is a valid database
         if (!(0, node_fs_1.existsSync)(resolvedPath)) {
             throw new Error(`Database path does not exist: ${resolvedPath}`);
@@ -290,6 +291,7 @@ class DatabaseManager {
     async createDatabase(options) {
         // Expand tilde to home directory
         const resolvedPath = expandTilde(options.dbPath);
+        await this.assertPathAllowedForMutation('Create path', resolvedPath);
         // Check if path already exists
         if ((0, node_fs_1.existsSync)(resolvedPath)) {
             const lanceDbPath = node_path_1.default.join(resolvedPath, LANCEDB_DIR_NAME);
@@ -662,6 +664,7 @@ class DatabaseManager {
      */
     async deleteDatabase(dbPath, deleteFiles = false) {
         const resolvedPath = expandTilde(dbPath);
+        await this.assertPathAllowedForMutation('Delete path', resolvedPath);
         // Cannot delete the currently active database
         if (this.currentConfig && this.currentConfig.dbPath === resolvedPath) {
             throw new Error('Cannot delete the currently active database. Switch to another database first.');
@@ -698,6 +701,18 @@ class DatabaseManager {
         if (!(0, node_fs_1.existsSync)(CONFIG_DIR)) {
             await (0, promises_1.mkdir)(CONFIG_DIR, { recursive: true });
         }
+    }
+    /**
+     * Enforce allowed-roots policy for database mutation operations.
+     */
+    async assertPathAllowedForMutation(action, targetPath) {
+        if (await this.isPathAllowed(targetPath)) {
+            return;
+        }
+        const allowedRoots = await this.getEffectiveAllowedRoots();
+        throw new Error(`${action} "${targetPath}" is outside allowed roots. ` +
+            `Allowed: ${allowedRoots.join(', ')}. ` +
+            `Add this path to allowed roots or set ALLOWED_SCAN_ROOTS environment variable.`);
     }
 }
 exports.DatabaseManager = DatabaseManager;

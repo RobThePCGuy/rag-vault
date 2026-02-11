@@ -2,7 +2,7 @@
 // Handles: base64url encoding, source normalization, file saving, source extraction
 
 import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname, join, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 // ============================================
 // Base64URL Encoding/Decoding
@@ -195,6 +195,21 @@ const RAW_DATA_NATIVE = `${sep}raw-data${sep}`
  */
 export function isRawDataPath(filePath: string): boolean {
   return filePath.includes(RAW_DATA_NATIVE) || filePath.includes(RAW_DATA_POSIX)
+}
+
+/**
+ * Check whether a path belongs to this database's managed raw-data directory.
+ * This is stricter than isRawDataPath() and should be used for trust decisions.
+ *
+ * @param dbPath - LanceDB database path for the current server
+ * @param filePath - File path to validate
+ * @returns True only if filePath is inside <dbPath>/raw-data
+ */
+export function isManagedRawDataPath(dbPath: string, filePath: string): boolean {
+  const rawDataDir = resolve(getRawDataDir(dbPath))
+  const resolvedPath = resolve(filePath)
+  const rel = relative(rawDataDir, resolvedPath)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
 }
 
 /**

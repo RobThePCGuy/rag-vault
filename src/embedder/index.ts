@@ -1,5 +1,7 @@
 // Embedder implementation with Transformers.js
 
+import { mkdir } from 'node:fs/promises'
+import path from 'node:path'
 import { env, pipeline } from '@huggingface/transformers'
 import { EmbeddingError } from '../errors/index.js'
 
@@ -70,6 +72,27 @@ export class Embedder {
       this.model = await pipeline('feature-extraction', this.config.modelPath)
       console.error('Embedder: Model loaded successfully')
     } catch (error) {
+      // Some ONNX caches fail with "Protobuf parsing failed". Retry once with isolated cache path.
+      if (this.isRecoverableCacheError(error)) {
+        const recoveryCacheDir = this.getRecoveryCacheDir()
+        console.error(
+          `Embedder: Detected corrupted model cache. Retrying with isolated cache: "${recoveryCacheDir}"`
+        )
+
+        try {
+          await mkdir(recoveryCacheDir, { recursive: true })
+          env.cacheDir = recoveryCacheDir
+          this.model = await pipeline('feature-extraction', this.config.modelPath)
+          console.error('Embedder: Model loaded successfully via recovery cache')
+          return
+        } catch (recoveryError) {
+          throw new EmbeddingError(
+            `Failed to initialize Embedder after cache recovery attempt: ${(recoveryError as Error).message}`,
+            recoveryError as Error
+          )
+        }
+      }
+
       throw new EmbeddingError(
         `Failed to initialize Embedder: ${(error as Error).message}`,
         error as Error
@@ -192,5 +215,28 @@ export class Embedder {
         error instanceof Error ? error : undefined
       )
     }
+  }
+
+  /**
+   * Detect known cache-corruption signatures from ONNX/protobuf loaders.
+   */
+  private isRecoverableCacheError(error: unknown): boolean {
+    if (!(error instanceof Error)) {
+      return false
+    }
+
+    const message = error.message.toLowerCase()
+    return (
+      message.includes('protobuf parsing failed') ||
+      (message.includes('protobuf') && message.includes('failed to parse'))
+    )
+  }
+
+  /**
+   * Build a model-specific fallback cache path to avoid reusing corrupted artifacts.
+   */
+  private getRecoveryCacheDir(): string {
+    const safeModelName = this.config.modelPath.replace(/[^a-z0-9_./-]/gi, '_').replace(/\//g, '__')
+    return path.join(this.config.cacheDir, '.recovery-cache', safeModelName)
   }
 }

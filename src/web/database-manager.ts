@@ -374,6 +374,8 @@ export class DatabaseManager {
     // Expand tilde to home directory
     const resolvedPath = expandTilde(newDbPath)
 
+    await this.assertPathAllowedForMutation('Switch path', resolvedPath)
+
     // Validate the new path exists and is a valid database
     if (!existsSync(resolvedPath)) {
       throw new Error(`Database path does not exist: ${resolvedPath}`)
@@ -450,6 +452,8 @@ export class DatabaseManager {
   async createDatabase(options: CreateDatabaseOptions): Promise<void> {
     // Expand tilde to home directory
     const resolvedPath = expandTilde(options.dbPath)
+
+    await this.assertPathAllowedForMutation('Create path', resolvedPath)
 
     // Check if path already exists
     if (existsSync(resolvedPath)) {
@@ -881,6 +885,8 @@ export class DatabaseManager {
   async deleteDatabase(dbPath: string, deleteFiles = false): Promise<void> {
     const resolvedPath = expandTilde(dbPath)
 
+    await this.assertPathAllowedForMutation('Delete path', resolvedPath)
+
     // Cannot delete the currently active database
     if (this.currentConfig && this.currentConfig.dbPath === resolvedPath) {
       throw new Error(
@@ -926,5 +932,21 @@ export class DatabaseManager {
     if (!existsSync(CONFIG_DIR)) {
       await mkdir(CONFIG_DIR, { recursive: true })
     }
+  }
+
+  /**
+   * Enforce allowed-roots policy for database mutation operations.
+   */
+  private async assertPathAllowedForMutation(action: string, targetPath: string): Promise<void> {
+    if (await this.isPathAllowed(targetPath)) {
+      return
+    }
+
+    const allowedRoots = await this.getEffectiveAllowedRoots()
+    throw new Error(
+      `${action} "${targetPath}" is outside allowed roots. ` +
+        `Allowed: ${allowedRoots.join(', ')}. ` +
+        `Add this path to allowed roots or set ALLOWED_SCAN_ROOTS environment variable.`
+    )
   }
 }

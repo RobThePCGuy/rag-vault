@@ -1,8 +1,8 @@
 // DocumentParser implementation with PDF/DOCX/TXT/MD/JSON/JSONL support
 
-import { statSync } from 'node:fs'
+import { realpathSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { extname, isAbsolute, resolve } from 'node:path'
+import { extname, isAbsolute, relative, resolve } from 'node:path'
 
 // ============================================
 // RAG Content Filtering Constants
@@ -136,11 +136,31 @@ export class DocumentParser {
       )
     }
 
-    // Check if path is within BASE_DIR
-    const baseDir = resolve(this.config.baseDir)
-    const normalizedPath = resolve(filePath)
+    // Resolve symlinks for both base and target to prevent symlink escape attacks.
+    // Fall back to resolve() only when path does not exist yet.
+    const resolveCanonicalPath = (targetPath: string): string => {
+      try {
+        return realpathSync(targetPath)
+      } catch (error) {
+        const nodeError = error as NodeJS.ErrnoException
+        if (nodeError.code === 'ENOENT') {
+          return resolve(targetPath)
+        }
+        throw new ParserValidationError(
+          `Failed to resolve path for security validation: ${targetPath}`
+        )
+      }
+    }
 
-    if (!normalizedPath.startsWith(baseDir)) {
+    // Check if path is within BASE_DIR using relative-path boundary check.
+    // This avoids prefix bypasses such as /base matching /base2.
+    const baseDir = resolveCanonicalPath(this.config.baseDir)
+    const normalizedPath = resolveCanonicalPath(filePath)
+    const relativePath = relative(baseDir, normalizedPath)
+    const isOutsideBaseDir =
+      relativePath.startsWith('..') || relativePath === '..' || isAbsolute(relativePath)
+
+    if (isOutsideBaseDir) {
       throw new ParserValidationError(
         `File path must be within BASE_DIR (${baseDir}). Received path outside BASE_DIR: ${filePath}`
       )

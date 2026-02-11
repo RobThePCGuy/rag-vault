@@ -7,6 +7,7 @@
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getIntegrationCacheDir } from '../utils/integration-cache.js'
 import { DocumentParser, ParserValidationError } from '../../parser/index.js'
 import { RAGServer } from '../../server/index.js'
 
@@ -17,7 +18,7 @@ import { RAGServer } from '../../server/index.js'
 const testConfig = {
   dbPath: './tmp/test-security-db',
   modelName: 'Xenova/all-MiniLM-L6-v2',
-  cacheDir: './tmp/models',
+  cacheDir: getIntegrationCacheDir('security-suite'),
   baseDir: resolve('./'), // Project root (accessible to both tests/fixtures and tmp)
   maxFileSize: 100 * 1024 * 1024, // 100MB
 }
@@ -59,6 +60,15 @@ describe('RAG MCP Server Security Test', () => {
     // Setup: Prepare environment for security testing
     await mkdir(testConfig.dbPath, { recursive: true })
     await mkdir(fixturesDir, { recursive: true })
+
+    // Warm model cache once so S-001 assertions measure runtime behavior after startup.
+    const { Embedder } = await import('../../embedder/index.js')
+    const warmupEmbedder = new Embedder({
+      modelPath: testConfig.modelName,
+      batchSize: 8,
+      cacheDir: testConfig.cacheDir,
+    })
+    await warmupEmbedder.initialize()
   })
 
   afterAll(async () => {
@@ -187,6 +197,22 @@ describe('RAG MCP Server Security Test', () => {
 
       // Cleanup
       await rm(linkPath, { force: true })
+    })
+
+    it('Path containing /raw-data/ outside db scope does not bypass BASE_DIR validation', async () => {
+      const fakeRawDataDir = '/tmp/fake-raw-data-scope/raw-data'
+      const fakeRawDataFile = '/tmp/fake-raw-data-scope/raw-data/outside.txt'
+
+      await mkdir(fakeRawDataDir, { recursive: true })
+      await writeFile(fakeRawDataFile, 'outside scoped raw-data content')
+
+      try {
+        await expect(server.handleIngestFile({ filePath: fakeRawDataFile })).rejects.toThrow(
+          /outside BASE_DIR/
+        )
+      } finally {
+        await rm('/tmp/fake-raw-data-scope', { recursive: true, force: true })
+      }
     })
   })
 

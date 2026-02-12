@@ -397,6 +397,7 @@ Copy the `DB_PATH` directory (default: `./lancedb/`).
 | File too large | Default limit is 100MB. Set `MAX_FILE_SIZE` higher or split the file. |
 | Path outside BASE_DIR | All file paths must be under `BASE_DIR`. Use absolute paths. |
 | MCP tools not showing | Verify config syntax, restart your AI tool completely (Cmd+Q on Mac). |
+| `mcp-publisher login github` fails with `slow_down` | Use token login instead: `mcp-publisher login github --token "$(gh auth token)"` (or pass a PAT). |
 | 401 Unauthorized | API key required. Set `RAG_API_KEY` or use correct header format. |
 | 429 Too Many Requests | Rate limited. Wait for reset or increase `RATE_LIMIT_MAX_REQUESTS`. |
 | CORS errors | Add your origin to `CORS_ORIGINS` environment variable. |

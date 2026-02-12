@@ -457,18 +457,18 @@ export class VectorStore {
       if (tableNames.includes(this.config.tableName)) {
         // Open existing table
         this.table = await this.db.openTable(this.config.tableName)
-        console.log(`VectorStore: Opened existing table "${this.config.tableName}"`)
+        console.error(`VectorStore: Opened existing table "${this.config.tableName}"`)
 
         // Ensure FTS index exists (migration for existing databases)
         await this.ensureFtsIndex()
       } else {
         // Create new table (schema auto-defined on first data insertion)
-        console.log(
+        console.error(
           `VectorStore: Table "${this.config.tableName}" will be created on first data insertion`
         )
       }
 
-      console.log(`VectorStore initialized: ${this.config.dbPath}`)
+      console.error(`VectorStore initialized: ${this.config.dbPath}`)
     } catch (error) {
       // Clean up partially initialized resources on failure
       // Close table first if it was opened, then db
@@ -500,7 +500,7 @@ export class VectorStore {
   async deleteChunks(filePath: string): Promise<void> {
     if (!this.table) {
       // If table doesn't exist, no deletion targets, return normally
-      console.log('VectorStore: Skipping deletion as table does not exist')
+      console.error('VectorStore: Skipping deletion as table does not exist')
       return
     }
 
@@ -520,7 +520,7 @@ export class VectorStore {
       // so call delete directly
       // Note: Field names are case-sensitive, use backticks for camelCase fields
       await this.table.delete(`\`filePath\` = '${escapedFilePath}'`)
-      console.log(`VectorStore: Deleted chunks for file "${filePath}"`)
+      console.error(`VectorStore: Deleted chunks for file "${filePath}"`)
 
       // Rebuild FTS index after deleting data
       await this.rebuildFtsIndex()
@@ -583,7 +583,7 @@ export class VectorStore {
             // Convert to LanceDB record format using explicit field mapping
             const records = chunksWithFingerprints.map(toDbRecord)
             this.table = await this.db!.createTable(this.config.tableName, records)
-            console.log(`VectorStore: Created table "${this.config.tableName}"`)
+            console.error(`VectorStore: Created table "${this.config.tableName}"`)
 
             // Create FTS index for hybrid search
             await this.ensureFtsIndex()
@@ -595,7 +595,7 @@ export class VectorStore {
             this.tableCreationPromise = null
           }
 
-          console.log(`VectorStore: Inserted ${chunks.length} chunks`)
+          console.error(`VectorStore: Inserted ${chunks.length} chunks`)
           return
         }
       }
@@ -607,7 +607,7 @@ export class VectorStore {
       // Rebuild FTS index after adding new data
       await this.rebuildFtsIndex()
 
-      console.log(`VectorStore: Inserted ${chunks.length} chunks`)
+      console.error(`VectorStore: Inserted ${chunks.length} chunks`)
     } catch (error) {
       throw new DatabaseError('Failed to insert chunks', error as Error)
     }
@@ -648,13 +648,13 @@ export class VectorStore {
       name: FTS_INDEX_NAME,
     })
     this.ftsEnabled = true
-    console.log(`VectorStore: FTS index "${FTS_INDEX_NAME}" created successfully`)
+    console.error(`VectorStore: FTS index "${FTS_INDEX_NAME}" created successfully`)
 
     // Drop old FTS indices
     for (const idx of existingFtsIndices) {
       if (idx.name !== FTS_INDEX_NAME) {
         await this.table.dropIndex(idx.name)
-        console.log(`VectorStore: Dropped old FTS index "${idx.name}"`)
+        console.error(`VectorStore: Dropped old FTS index "${idx.name}"`)
       }
     }
   }
@@ -745,7 +745,7 @@ export class VectorStore {
    */
   async search(queryVector: number[], queryText?: string, limit = 10): Promise<SearchResult[]> {
     if (!this.table) {
-      console.log('VectorStore: Returning empty results as table does not exist')
+      console.error('VectorStore: Returning empty results as table does not exist')
       return []
     }
 
@@ -975,7 +975,7 @@ export class VectorStore {
     this.ftsEnabled = false
     this.ftsFailureCount = 0
     this.ftsLastFailure = null
-    console.log('VectorStore: Connection closed')
+    console.error('VectorStore: Connection closed')
 
     // Propagate errors to caller after cleanup is complete
     if (errors.length > 0) {

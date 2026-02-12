@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { type VectorChunk, VectorStore } from '../index.js'
 
 describe('VectorStore', () => {
@@ -57,6 +57,26 @@ describe('VectorStore', () => {
   }
 
   describe('FTS Index Creation and Migration', () => {
+    it('should not write VectorStore operational logs to stdout', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      try {
+        const store = new VectorStore({
+          dbPath: testDbPath,
+          tableName: 'chunks',
+        })
+
+        await store.initialize()
+        await store.close()
+
+        const vectorStoreStdoutLogs = logSpy.mock.calls.filter(([firstArg]) =>
+          String(firstArg).includes('VectorStore:')
+        )
+        expect(vectorStoreStdoutLogs).toHaveLength(0)
+      } finally {
+        logSpy.mockRestore()
+      }
+    })
+
     describe('FTS index auto-creation', () => {
       it('should create FTS index on initialize when table exists', async () => {
         const store = new VectorStore({

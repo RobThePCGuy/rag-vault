@@ -23,6 +23,8 @@ jobs:
     name: Publish package
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     permissions:
       contents: read
       id-token: write
@@ -94,14 +96,22 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run
         run: pnpm publish --access public --no-git-checks --dry-run
 
+      - name: Ensure NPM_TOKEN is configured
+        if: steps.npm_version.outputs.exists == 'false' && (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run))
+        run: |
+          if [[ -z "${NPM_TOKEN:-}" ]]; then
+            echo "NPM_TOKEN is not configured. Add repository secret NPM_TOKEN."
+            exit 1
+          fi
+
       - name: Verify npm authentication
         if: steps.npm_version.outputs.exists == 'false' && (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run))
         run: npm whoami
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
 
       - name: Publish package
         if: steps.npm_version.outputs.exists == 'false' && (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run))
         run: pnpm publish --access public --no-git-checks --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}

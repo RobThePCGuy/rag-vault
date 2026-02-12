@@ -56,6 +56,67 @@ describe('VectorStore', () => {
     return vector.map((x) => x / norm)
   }
 
+  describe('Custom metadata schema compatibility', () => {
+    it('should keep ingesting when later chunks introduce new custom metadata keys', async () => {
+      const metadataSchemaDbPath = makeTestDbPath('test-vectordb-custom-metadata-schema')
+      if (fs.existsSync(metadataSchemaDbPath)) {
+        fs.rmSync(metadataSchemaDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: metadataSchemaDbPath,
+          tableName: 'chunks',
+        })
+        await store.initialize()
+
+        const firstChunk = createTestChunk(
+          'Timeline chunk',
+          '/test/timeline.md',
+          0,
+          createNormalizedVector(1)
+        )
+        firstChunk.metadata.custom = {
+          domain: 'series-canon',
+          type: 'timeline',
+        }
+        await store.insertChunks([firstChunk])
+
+        const secondChunk = createTestChunk(
+          'Character arc chunk',
+          '/test/character.md',
+          0,
+          createNormalizedVector(2)
+        )
+        secondChunk.metadata.custom = {
+          domain: 'series-canon',
+          type: 'character-arc',
+          character: 'ellie',
+        }
+
+        // Regression check:
+        // Previously this failed with:
+        // "Found field not in schema: metadata.custom.character at row 0"
+        await expect(store.insertChunks([secondChunk])).resolves.toBeUndefined()
+
+        const files = await store.listFiles()
+        expect(files.map((f) => f.filePath).sort()).toEqual(
+          ['/test/character.md', '/test/timeline.md'].sort()
+        )
+
+        const results = await store.search(createNormalizedVector(2), 'character arc', 10)
+        const characterResult = results.find((r) => r.filePath === '/test/character.md')
+        expect(characterResult).toBeDefined()
+        expect(characterResult?.metadata.custom?.['domain']).toBe('series-canon')
+        expect(characterResult?.metadata.custom?.['type']).toBe('character-arc')
+      } finally {
+        if (fs.existsSync(metadataSchemaDbPath)) {
+          fs.rmSync(metadataSchemaDbPath, { recursive: true })
+        }
+      }
+    })
+  })
+
   describe('FTS Index Creation and Migration', () => {
     it('should not write VectorStore operational logs to stdout', async () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})

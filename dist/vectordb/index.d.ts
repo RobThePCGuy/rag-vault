@@ -150,6 +150,30 @@ export declare class VectorStore {
      */
     private recordFtsSuccess;
     /**
+     * Extract unsupported custom metadata field from LanceDB schema mismatch errors.
+     *
+     * Returns:
+     * - specific key (e.g., "character") for metadata.custom.character mismatch
+     * - CUSTOM_METADATA_ALL_FIELDS when metadata.custom itself is unsupported
+     * - null when error is unrelated
+     */
+    private extractUnsupportedCustomMetadataField;
+    /**
+     * Remove unsupported custom metadata field from chunks for schema compatibility.
+     *
+     * @param chunks - Source chunks
+     * @param field - Unsupported field name, or CUSTOM_METADATA_ALL_FIELDS to drop all custom metadata
+     * @returns Sanitized chunks and whether any changes were applied
+     */
+    private stripUnsupportedCustomMetadata;
+    /**
+     * Add chunks to existing table with automatic fallback for custom metadata schema mismatches.
+     *
+     * LanceDB infers struct fields from early inserts, so later custom metadata keys may fail.
+     * This method retries by stripping only unsupported custom fields when needed.
+     */
+    private addChunksWithSchemaFallback;
+    /**
      * Initialize LanceDB and create table
      */
     initialize(): Promise<void>;

@@ -81,6 +81,16 @@ const DELETE_IGNORABLE_PATTERNS = [
 ] as const
 
 /**
+ * LanceDB schema mismatch pattern for custom metadata fields.
+ * Example: "Found field not in schema: metadata.custom.character at row 0"
+ */
+const CUSTOM_METADATA_SCHEMA_MISMATCH_REGEX =
+  /Found field not in schema:\s*metadata\.custom(?:\.([A-Za-z0-9_-]+))?/i
+
+/** Sentinel for "metadata.custom itself is not in schema" */
+const CUSTOM_METADATA_ALL_FIELDS = '__all__'
+
+/**
  * Regex for validating file paths before use in queries.
  * Allows alphanumeric characters, slashes, dots, underscores, hyphens, colons (Windows), and spaces.
  * Rejects paths with SQL injection attempts or path traversal.
@@ -445,6 +455,136 @@ export class VectorStore {
   }
 
   /**
+   * Extract unsupported custom metadata field from LanceDB schema mismatch errors.
+   *
+   * Returns:
+   * - specific key (e.g., "character") for metadata.custom.character mismatch
+   * - CUSTOM_METADATA_ALL_FIELDS when metadata.custom itself is unsupported
+   * - null when error is unrelated
+   */
+  private extractUnsupportedCustomMetadataField(
+    error: unknown
+  ): string | typeof CUSTOM_METADATA_ALL_FIELDS | null {
+    const message =
+      error instanceof Error ? error.message : typeof error === 'string' ? error : String(error)
+    const match = CUSTOM_METADATA_SCHEMA_MISMATCH_REGEX.exec(message)
+    if (!match) return null
+    return match[1] || CUSTOM_METADATA_ALL_FIELDS
+  }
+
+  /**
+   * Remove unsupported custom metadata field from chunks for schema compatibility.
+   *
+   * @param chunks - Source chunks
+   * @param field - Unsupported field name, or CUSTOM_METADATA_ALL_FIELDS to drop all custom metadata
+   * @returns Sanitized chunks and whether any changes were applied
+   */
+  private stripUnsupportedCustomMetadata(
+    chunks: VectorChunk[],
+    field: string | typeof CUSTOM_METADATA_ALL_FIELDS
+  ): { chunks: VectorChunk[]; changed: boolean } {
+    let changed = false
+
+    const sanitizedChunks = chunks.map((chunk) => {
+      const custom = chunk.metadata.custom
+      if (!custom) return chunk
+
+      // Entire custom object is unsupported by table schema
+      if (field === CUSTOM_METADATA_ALL_FIELDS) {
+        changed = true
+        const metadataWithoutCustom = { ...chunk.metadata }
+        delete metadataWithoutCustom.custom
+        return {
+          ...chunk,
+          metadata: metadataWithoutCustom,
+        }
+      }
+
+      // Specific custom key is unsupported by table schema
+      if (!(field in custom)) {
+        return chunk
+      }
+
+      changed = true
+      const filteredCustom = Object.fromEntries(
+        Object.entries(custom).filter(([key]) => key !== field)
+      )
+
+      if (Object.keys(filteredCustom).length === 0) {
+        const metadataWithoutCustom = { ...chunk.metadata }
+        delete metadataWithoutCustom.custom
+        return {
+          ...chunk,
+          metadata: metadataWithoutCustom,
+        }
+      }
+
+      return {
+        ...chunk,
+        metadata: {
+          ...chunk.metadata,
+          custom: filteredCustom,
+        },
+      }
+    })
+
+    return { chunks: sanitizedChunks, changed }
+  }
+
+  /**
+   * Add chunks to existing table with automatic fallback for custom metadata schema mismatches.
+   *
+   * LanceDB infers struct fields from early inserts, so later custom metadata keys may fail.
+   * This method retries by stripping only unsupported custom fields when needed.
+   */
+  private async addChunksWithSchemaFallback(chunks: VectorChunk[]): Promise<void> {
+    if (!this.table) {
+      throw new DatabaseError('VectorStore is not initialized. Call initialize() first.')
+    }
+
+    let chunksToInsert = chunks
+    const removedFields = new Set<string>()
+
+    // Multiple unknown keys can surface one-by-one; allow bounded retries.
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        const records = chunksToInsert.map(toDbRecord)
+        await this.table.add(records)
+
+        if (removedFields.size > 0) {
+          const removed = Array.from(removedFields)
+            .map((field) => (field === CUSTOM_METADATA_ALL_FIELDS ? 'metadata.custom' : field))
+            .join(', ')
+          console.warn(
+            `VectorStore: Removed unsupported custom metadata field(s) for schema compatibility: ${removed}`
+          )
+        }
+
+        return
+      } catch (error) {
+        const unsupportedField = this.extractUnsupportedCustomMetadataField(error)
+        if (!unsupportedField) {
+          throw error
+        }
+
+        const { chunks: strippedChunks, changed } = this.stripUnsupportedCustomMetadata(
+          chunksToInsert,
+          unsupportedField
+        )
+
+        if (!changed) {
+          throw error
+        }
+
+        removedFields.add(unsupportedField)
+        chunksToInsert = strippedChunks
+      }
+    }
+
+    throw new DatabaseError('Failed to insert chunks after schema fallback retries')
+  }
+
+  /**
    * Initialize LanceDB and create table
    */
   async initialize(): Promise<void> {
@@ -601,8 +741,7 @@ export class VectorStore {
       }
 
       // Add data to existing table
-      const records = chunksWithFingerprints.map(toDbRecord)
-      await this.table.add(records)
+      await this.addChunksWithSchemaFallback(chunksWithFingerprints)
 
       // Rebuild FTS index after adding new data
       await this.rebuildFtsIndex()

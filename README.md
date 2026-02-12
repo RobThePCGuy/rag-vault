@@ -430,6 +430,12 @@ pnpm dev
 
 # Run web server locally
 pnpm web:dev
+
+# Release to npm (local, guarded)
+pnpm release:patch
+pnpm release:minor
+pnpm release:major
+pnpm release:dry
 ```
 
 
@@ -440,11 +446,13 @@ pnpm web:dev
 
 Use `RUN_EMBEDDING_INTEGRATION=1` to explicitly opt into network/model-dependent suites.
 
-### CI Strategy
+### Release Strategy
 
-- `quality.yml` runs on PRs and pushes and enforces the root quality gate (`pnpm check:all`), which includes backend checks and web-ui type/lint/format checks plus unit tests.
-- A nightly scheduled job runs the integration/E2E suite so model-dependent workflows stay healthy without blocking every PR.
-- `publish-npm.yml` publishes to npm on GitHub Releases, validates tag/version alignment, blocks duplicate npm versions, and supports a manual dry-run, while a real publish requires `NPM_TOKEN`.
+- Releases are local and scripted via `scripts/release-npm.sh`.
+- Supported bumps: `patch`, `minor`, `major`.
+- The script runs dependency installs, `pnpm check:all`, and `pnpm ui:build` before touching version files.
+- `package.json` and `server.json` versions are updated only after checks pass, and auto-restored if any later step fails.
+- `pnpm release:dry` performs the full gate plus npm dry-run publish and always restores version files.
 
 ### Project Structure
 

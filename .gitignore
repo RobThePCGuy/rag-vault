@@ -8,6 +8,7 @@ package-lock.json
 
 # Build artifacts
 *.tsbuildinfo
+.artifacts/
 
 # Environment variables
 .env
@@ -29,7 +30,6 @@ test-output.json
 *.swp
 *.swo
 *~
-scripts/
 # OS specific files
 .DS_Store
 Thumbs.db

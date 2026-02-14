@@ -14,6 +14,7 @@
  */
 
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
@@ -25,6 +26,7 @@ import { dirname, join, resolve } from 'node:path'
 // dist/bin/install-skills.js -> dist/skills/rag-vault
 // But skills are actually in package root: skills/rag-vault
 // So from dist/bin, go up twice: ../.. then skills/rag-vault
+const __dirname = dirname(fileURLToPath(import.meta.url))
 const SKILLS_SOURCE = resolve(__dirname, '..', '..', 'skills', 'rag-vault')
 
 // Codex home directory (supports CODEX_HOME environment variable)

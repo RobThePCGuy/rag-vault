@@ -327,11 +327,19 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
  * Start HTTP server
  */
 function startServer(app, port) {
-    return new Promise((resolve) => {
-        app.listen(port, () => {
+    return new Promise((resolve, reject) => {
+        const server = app.listen(port);
+        const onError = (error) => {
+            server.off('listening', onListening);
+            reject(error);
+        };
+        const onListening = () => {
+            server.off('error', onError);
             console.log(`Web server running at http://localhost:${port}`);
             resolve();
-        });
+        };
+        server.once('error', onError);
+        server.once('listening', onListening);
     });
 }
 //# sourceMappingURL=http-server.js.map

@@ -52,17 +52,23 @@ const index_js_1 = require("./middleware/index.js");
     console.error('Cleaning up rate limiter...');
     (0, index_js_1.stopRateLimiterCleanup)();
 });
+function isErrnoException(error) {
+    return (typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        typeof error.code === 'string');
+}
 /**
  * Entry point - Start RAG Web Server
  */
 async function main() {
+    const port = Number.parseInt(process.env['WEB_PORT'] || '3000', 10);
     try {
         // Dynamic imports to avoid loading heavy modules at CLI parse time
         const { RAGServer } = await Promise.resolve().then(() => __importStar(require('../server/index.js')));
         const { createHttpServerWithManager, startServer } = await Promise.resolve().then(() => __importStar(require('./http-server.js')));
         const { DatabaseManager } = await Promise.resolve().then(() => __importStar(require('./database-manager.js')));
         // Configuration from environment
-        const port = Number.parseInt(process.env['WEB_PORT'] || '3000', 10);
         const uploadDir = process.env['UPLOAD_DIR'] || './uploads/';
         // Determine static files directory
         // Check multiple locations: cwd for dev, package dir for npx/global install
@@ -113,6 +119,10 @@ async function main() {
         }
     }
     catch (error) {
+        if (isErrnoException(error) && error.code === 'EADDRINUSE') {
+            console.error(`Port ${port} is already in use. Close the other RAG Vault web server or run with a different port (example: WEB_PORT=3001 npx @robthepcguy/rag-vault web).`);
+            process.exit(1);
+        }
         console.error('Failed to start RAG Web Server:', error);
         process.exit(1);
     }

@@ -379,10 +379,21 @@ async function createHttpServerInternal(
  * Start HTTP server
  */
 export function startServer(app: Express, port: number): Promise<void> {
-  return new Promise((resolve) => {
-    app.listen(port, () => {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port)
+
+    const onError = (error: Error): void => {
+      server.off('listening', onListening)
+      reject(error)
+    }
+
+    const onListening = (): void => {
+      server.off('error', onError)
       console.log(`Web server running at http://localhost:${port}`)
       resolve()
-    })
+    }
+
+    server.once('error', onError)
+    server.once('listening', onListening)
   })
 }

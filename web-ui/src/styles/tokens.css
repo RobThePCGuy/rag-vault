@@ -608,3 +608,15 @@
   .ws-nav-item { justify-content: center; padding: var(--ws-space-2); }
   .ws-nav-label { display: none; }
 }
+
+/* ==========================================
+   Migration utilities
+   ========================================== */
+
+.ws-page { color: var(--ws-text); }
+.ws-page-title { font-size: var(--ws-text-xl); font-weight: 600; color: var(--ws-text); }
+.ws-page-subtitle { font-size: var(--ws-text-sm); color: var(--ws-text-muted); margin-top: 4px; }
+.ws-surface { background: var(--ws-surface-2); border: 1px solid var(--ws-border); border-radius: var(--ws-radius-lg); }
+.ws-error-box { background: var(--ws-danger-muted); border: 1px solid var(--ws-danger); border-radius: var(--ws-radius-md); padding: var(--ws-space-4); color: var(--ws-danger); }
+.ws-success-box { background: var(--ws-success-muted); border: 1px solid var(--ws-success); border-radius: var(--ws-radius-md); padding: var(--ws-space-4); color: var(--ws-success); }
+.ws-info-box { background: var(--ws-info-muted); border: 1px solid var(--ws-info); border-radius: var(--ws-radius-md); padding: var(--ws-space-4); color: var(--ws-info); }

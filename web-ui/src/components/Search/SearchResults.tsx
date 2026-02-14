@@ -35,7 +35,7 @@ export function SearchResults({ results, hasSearched }: SearchResultsProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+      <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
         Results ({results.length})
       </h2>
       <div className="space-y-3">
@@ -73,12 +73,15 @@ function ResultCard({ result, rank, onView, onRead }: ResultCardProps) {
   const scoreColor = getScoreColor(result.score)
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
+    <div
+      className="ws-surface p-4 hover:shadow-md transition-shadow"
+    >
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-400 dark:text-gray-500">#{rank}</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--ws-text-faint)' }}>#{rank}</span>
           <h3
-            className="font-medium text-gray-900 dark:text-gray-100 truncate"
+            className="font-medium truncate"
+            style={{ color: 'var(--ws-text)' }}
             title={displaySource}
           >
             {formatSource(displaySource)}
@@ -94,25 +97,27 @@ function ResultCard({ result, rank, onView, onRead }: ResultCardProps) {
           <button
             type="button"
             onClick={onRead}
-            className="px-2 py-1 text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded transition-colors"
+            style={{ color: 'var(--ws-success)' }}
           >
             Read
           </button>
           <button
             type="button"
             onClick={onView}
-            className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+            className="px-2 py-1 text-xs font-medium rounded transition-colors"
+            style={{ color: 'var(--ws-accent)' }}
           >
             View
           </button>
         </div>
       </div>
 
-      <p className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap line-clamp-4">
+      <p className="text-sm whitespace-pre-wrap line-clamp-4" style={{ color: 'var(--ws-text-secondary)' }}>
         {result.text}
       </p>
 
-      <div className="mt-2 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+      <div className="mt-2 flex items-center gap-3 text-xs" style={{ color: 'var(--ws-text-faint)' }}>
         <span>Chunk #{result.chunkIndex}</span>
         {result.source && (
           <span className="truncate" title={result.filePath}>

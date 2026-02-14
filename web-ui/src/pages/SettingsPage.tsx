@@ -39,7 +39,7 @@ const itemVariants = {
     y: 0,
     transition: {
       duration: 0.3,
-      ease: [0.25, 0.1, 0.25, 1],
+      ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number],
     },
   },
 }
@@ -93,11 +93,11 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="ws-page max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Settings</h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <h1 className="ws-page-title text-2xl font-bold mb-2">Settings</h1>
+          <p style={{ color: 'var(--ws-text-secondary)' }}>
             Manage your RAG database configuration.
           </p>
         </div>
@@ -105,7 +105,8 @@ export function SettingsPage() {
           type="button"
           onClick={() => refetch()}
           disabled={isLoadingConfig || isFetching}
-          className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          className="ws-button px-4 py-2 text-sm rounded-lg transition-colors"
+          data-variant="default"
         >
           {isLoadingConfig || isFetching ? 'Refreshing...' : 'Refresh'}
         </button>
@@ -113,11 +114,11 @@ export function SettingsPage() {
 
       {isLoadingConfig && !config ? (
         <div className="flex items-center justify-center py-12">
-          <Spinner className="text-gray-400" />
-          <span className="ml-3 text-gray-500 dark:text-gray-400">Loading configuration...</span>
+          <span style={{ color: 'var(--ws-text-faint)' }}><Spinner /></span>
+          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>Loading configuration...</span>
         </div>
       ) : configError ? (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
+        <div className="ws-error-box rounded-lg">
           <p className="font-medium">Error loading configuration</p>
           <p className="text-sm">{configError.message}</p>
         </div>

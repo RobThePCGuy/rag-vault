@@ -1,10 +1,5 @@
-"use strict";
 // Shared process error handlers
 // Used by both MCP server (src/index.ts) and Web server (src/web/index.ts)
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.onShutdown = onShutdown;
-exports.setupProcessHandlers = setupProcessHandlers;
-exports.setupGracefulShutdown = setupGracefulShutdown;
 /** Cleanup callbacks registered for graceful shutdown */
 const cleanupCallbacks = [];
 /** Track if process handlers have been registered (prevent duplicate registration) */
@@ -12,9 +7,9 @@ let processHandlersRegistered = false;
 /** Track if graceful shutdown handlers have been registered (prevent duplicate registration) */
 let gracefulShutdownRegistered = false;
 /** Timeout for cleanup operations (10 seconds) */
-const CLEANUP_TIMEOUT_MS = 10000;
+const CLEANUP_TIMEOUT_MS = 10_000;
 /** Timeout for individual cleanup callback (5 seconds) */
-const CALLBACK_TIMEOUT_MS = 5000;
+const CALLBACK_TIMEOUT_MS = 5_000;
 /**
  * Register a cleanup callback for graceful shutdown
  *
@@ -22,7 +17,7 @@ const CALLBACK_TIMEOUT_MS = 5000;
  *
  * @param callback - Cleanup function to execute on shutdown
  */
-function onShutdown(callback) {
+export function onShutdown(callback) {
     cleanupCallbacks.push(callback);
 }
 /**
@@ -54,7 +49,7 @@ async function runCleanupCallbacks() {
  *
  * @param exitCode - Exit code to use on error (default: 1)
  */
-function setupProcessHandlers(exitCode = 1) {
+export function setupProcessHandlers(exitCode = 1) {
     // Guard against duplicate registration
     if (processHandlersRegistered) {
         return;
@@ -93,7 +88,7 @@ function setupProcessHandlers(exitCode = 1) {
  * Includes a forced exit timeout to prevent hanging on slow cleanup.
  * Guards against duplicate registration to prevent multiple handlers.
  */
-function setupGracefulShutdown() {
+export function setupGracefulShutdown() {
     // Guard against duplicate registration
     if (gracefulShutdownRegistered) {
         return;

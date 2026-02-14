@@ -1,14 +1,9 @@
-"use strict";
 // Shared configuration parsing utilities
 // Used by both MCP server (src/index.ts) and Web server (src/web/index.ts)
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseGroupingMode = parseGroupingMode;
-exports.parseMaxDistance = parseMaxDistance;
-exports.parseHybridWeight = parseHybridWeight;
 /**
  * Parse grouping mode from environment variable
  */
-function parseGroupingMode(value) {
+export function parseGroupingMode(value) {
     if (!value)
         return undefined;
     const normalized = value.toLowerCase().trim();
@@ -21,7 +16,7 @@ function parseGroupingMode(value) {
 /**
  * Parse max distance from environment variable
  */
-function parseMaxDistance(value) {
+export function parseMaxDistance(value) {
     if (!value)
         return undefined;
     const parsed = Number.parseFloat(value);
@@ -34,7 +29,7 @@ function parseMaxDistance(value) {
 /**
  * Parse hybrid weight from environment variable
  */
-function parseHybridWeight(value) {
+export function parseHybridWeight(value) {
     if (!value)
         return undefined;
     const parsed = Number.parseFloat(value);

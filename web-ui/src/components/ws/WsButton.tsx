@@ -19,7 +19,7 @@ export const WsButton = forwardRef<HTMLButtonElement, WsButtonProps>(
     >
       {children}
     </button>
-  ),
+  )
 )
 
 WsButton.displayName = 'WsButton'

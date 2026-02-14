@@ -1,8 +1,4 @@
-"use strict";
 // Curatorial Flywheel module
 // Re-ranking based on user feedback (pins, dismissals)
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFeedbackStore = void 0;
-var feedback_js_1 = require("./feedback.js");
-Object.defineProperty(exports, "getFeedbackStore", { enumerable: true, get: function () { return feedback_js_1.getFeedbackStore; } });
+export { getFeedbackStore, } from './feedback.js';
 //# sourceMappingURL=index.js.map

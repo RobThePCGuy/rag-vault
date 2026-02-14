@@ -1,8 +1,4 @@
-"use strict";
 // Mathematical utility functions for vector operations
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.cosineSimilarity = cosineSimilarity;
-exports.dotProduct = dotProduct;
 /**
  * Calculate cosine similarity between two vectors.
  *
@@ -20,7 +16,7 @@ exports.dotProduct = dotProduct;
  * const opposite = cosineSimilarity([1, 0, 0], [-1, 0, 0])  // -1.0 (opposite)
  * ```
  */
-function cosineSimilarity(vec1, vec2) {
+export function cosineSimilarity(vec1, vec2) {
     if (vec1.length !== vec2.length || vec1.length === 0) {
         return 0;
     }
@@ -46,7 +42,7 @@ function cosineSimilarity(vec1, vec2) {
  * @param vec2 - Second vector
  * @returns Dot product value, or 0 if vectors have different lengths
  */
-function dotProduct(vec1, vec2) {
+export function dotProduct(vec1, vec2) {
     if (vec1.length !== vec2.length) {
         return 0;
     }

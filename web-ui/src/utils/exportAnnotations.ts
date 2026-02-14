@@ -13,7 +13,7 @@ export interface ExportOptions {
   includeProvenance?: boolean
 }
 
-export interface DocumentExportData {
+interface DocumentExportData {
   filePath: string
   title: string
   chunks: Array<{
@@ -40,7 +40,7 @@ function escapeHighlightMarkers(text: string): string {
 /**
  * Export document with annotations as Markdown
  */
-export function exportAsMarkdown(data: DocumentExportData, options: ExportOptions): string {
+function exportAsMarkdown(data: DocumentExportData, options: ExportOptions): string {
   const lines: string[] = []
 
   // Title
@@ -141,7 +141,7 @@ function applyHighlightsToText(text: string, highlights: Highlight[]): string {
 /**
  * Export document with full metadata as JSON
  */
-export function exportAsJson(data: DocumentExportData, options: ExportOptions): string {
+function exportAsJson(data: DocumentExportData, options: ExportOptions): string {
   const exportData: Record<string, unknown> = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -180,7 +180,7 @@ const HIGHLIGHT_COLORS: Record<string, string> = {
 /**
  * Export document as styled HTML with <mark> highlights
  */
-export function exportAsHtml(data: DocumentExportData, options: ExportOptions): string {
+function exportAsHtml(data: DocumentExportData, options: ExportOptions): string {
   const lines: string[] = []
 
   // HTML header with embedded styles

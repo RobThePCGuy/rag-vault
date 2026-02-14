@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface WikiLinkSuggestion {
   docTitle: string
@@ -25,6 +25,7 @@ export function WikiLinkAutocomplete({
   const listRef = useRef<HTMLDivElement>(null)
 
   // Reset selection when suggestions change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: suggestions triggers reset
   useEffect(() => {
     setSelectedIndex(0)
   }, [suggestions])

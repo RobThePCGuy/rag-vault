@@ -95,29 +95,25 @@ export function OutlineItemComponent({
       style={{ marginLeft: indentPadding }}
     >
       <div
-        className={`
-          flex items-start gap-2 p-2 rounded-lg border transition-colors
-          ${
-            item.type === 'heading'
-              ? 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
-              : item.type === 'chunk-ref'
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-          }
-        `}
+        className="flex items-start gap-2 p-2 rounded-lg border transition-colors"
+        style={
+          item.type === 'heading'
+            ? { background: 'var(--ws-surface-1)', borderColor: 'var(--ws-border)' }
+            : item.type === 'chunk-ref'
+              ? { background: 'var(--ws-accent-subtle)', borderColor: 'var(--ws-accent)' }
+              : { background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }
+        }
       >
         {/* Type indicator */}
         <div
-          className={`
-            flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-xs
-            ${
-              item.type === 'heading'
-                ? 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
-                : item.type === 'chunk-ref'
-                  ? 'bg-blue-200 dark:bg-blue-800 text-blue-600 dark:text-blue-300'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-            }
-          `}
+          className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-xs"
+          style={
+            item.type === 'heading'
+              ? { background: 'var(--ws-surface-2)', color: 'var(--ws-text-secondary)' }
+              : item.type === 'chunk-ref'
+                ? { background: 'var(--ws-accent-subtle)', color: 'var(--ws-accent)' }
+                : { background: 'var(--ws-surface-1)', color: 'var(--ws-text-muted)' }
+          }
         >
           {item.type === 'heading' ? 'H' : item.type === 'chunk-ref' ? 'C' : 'N'}
         </div>
@@ -126,11 +122,11 @@ export function OutlineItemComponent({
         <div className="flex-1 min-w-0">
           {item.type === 'chunk-ref' ? (
             <div>
-              <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
+              <p className="text-sm line-clamp-3" style={{ color: 'var(--ws-text-secondary)' }}>
                 {item.sourcePreview || 'No preview available'}
               </p>
               {item.sourceRef && (
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                <p className="text-xs mt-1" style={{ color: 'var(--ws-accent)' }}>
                   {formatPath(item.sourceRef.filePath)} #{item.sourceRef.chunkIndex}
                 </p>
               )}
@@ -143,12 +139,11 @@ export function OutlineItemComponent({
               onKeyDown={handleKeyDown}
               className={`
                 w-full bg-transparent border-0 p-0 focus:outline-none resize-none
-                ${
-                  item.type === 'heading'
-                    ? 'text-base font-medium text-gray-900 dark:text-gray-100'
-                    : 'text-sm text-gray-700 dark:text-gray-300'
-                }
+                ${item.type === 'heading' ? 'text-base font-medium' : 'text-sm'}
               `}
+              style={{
+                color: item.type === 'heading' ? 'var(--ws-text)' : 'var(--ws-text-secondary)',
+              }}
               rows={item.type === 'heading' ? 1 : 3}
             />
           ) : (
@@ -157,14 +152,17 @@ export function OutlineItemComponent({
               onClick={() => setIsEditing(true)}
               className={`
                 text-left w-full
-                ${
-                  item.type === 'heading'
-                    ? 'text-base font-medium text-gray-900 dark:text-gray-100'
-                    : 'text-sm text-gray-700 dark:text-gray-300'
-                }
+                ${item.type === 'heading' ? 'text-base font-medium' : 'text-sm'}
               `}
+              style={{
+                color: item.type === 'heading' ? 'var(--ws-text)' : 'var(--ws-text-secondary)',
+              }}
             >
-              {item.content || <span className="italic text-gray-400">Click to edit...</span>}
+              {item.content || (
+                <span className="italic" style={{ color: 'var(--ws-text-muted)' }}>
+                  Click to edit...
+                </span>
+              )}
             </button>
           )}
         </div>
@@ -175,7 +173,8 @@ export function OutlineItemComponent({
             type="button"
             onClick={onMoveUp}
             disabled={index === 0}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
+            className="p-1 disabled:opacity-30"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Move up (Alt+Up)"
           >
             <ChevronUpIcon className="w-4 h-4" />
@@ -184,7 +183,8 @@ export function OutlineItemComponent({
             type="button"
             onClick={onMoveDown}
             disabled={index === totalItems - 1}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
+            className="p-1 disabled:opacity-30"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Move down (Alt+Down)"
           >
             <ChevronDownIcon className="w-4 h-4" />
@@ -193,7 +193,8 @@ export function OutlineItemComponent({
             type="button"
             onClick={onOutdent}
             disabled={item.indentLevel === 0}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
+            className="p-1 disabled:opacity-30"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Outdent (Alt+Left)"
           >
             <OutdentIcon className="w-4 h-4" />
@@ -202,7 +203,8 @@ export function OutlineItemComponent({
             type="button"
             onClick={onIndent}
             disabled={item.indentLevel >= 3}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-30"
+            className="p-1 disabled:opacity-30"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Indent (Alt+Right)"
           >
             <IndentIcon className="w-4 h-4" />
@@ -210,7 +212,8 @@ export function OutlineItemComponent({
           <button
             type="button"
             onClick={onRemove}
-            className="p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+            className="p-1 hover:text-red-500"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Remove"
           >
             <TrashIcon className="w-4 h-4" />

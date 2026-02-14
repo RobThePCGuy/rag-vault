@@ -41,20 +41,26 @@ export function DropZone({ onFilesSelect, isUploading }: DropZoneProps) {
       {...getRootProps()}
       className={`
         border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-        ${isDragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}
         ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
       `}
+      style={
+        isDragActive
+          ? { borderColor: 'var(--ws-accent)', background: 'var(--ws-accent-subtle)' }
+          : { borderColor: 'var(--ws-border)' }
+      }
     >
       <input {...getInputProps()} />
-      <UploadIcon className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+      <UploadIcon className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--ws-text-muted)' }} />
       {isDragActive ? (
-        <p className="text-blue-600 dark:text-blue-400 font-medium">Drop files here...</p>
+        <p className="font-medium" style={{ color: 'var(--ws-accent)' }}>
+          Drop files here...
+        </p>
       ) : (
         <>
-          <p className="text-gray-600 dark:text-gray-300 font-medium mb-1">
+          <p className="font-medium mb-1" style={{ color: 'var(--ws-text-secondary)' }}>
             Drag and drop files here, or click to select
           </p>
-          <p className="text-sm text-gray-400 dark:text-gray-500">
+          <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
             Supports PDF, DOCX, TXT, MD, HTML, JSON, JSONL, NDJSON (max 100MB each)
           </p>
         </>
@@ -63,9 +69,9 @@ export function DropZone({ onFilesSelect, isUploading }: DropZoneProps) {
   )
 }
 
-function UploadIcon({ className }: { className?: string }) {
+function UploadIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

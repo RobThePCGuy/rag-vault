@@ -73,12 +73,12 @@ function ResultCard({ result, rank, onView, onRead }: ResultCardProps) {
   const scoreColor = getScoreColor(result.score)
 
   return (
-    <div
-      className="ws-surface p-4 hover:shadow-md transition-shadow"
-    >
+    <div className="ws-surface p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-4 mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium" style={{ color: 'var(--ws-text-faint)' }}>#{rank}</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--ws-text-faint)' }}>
+            #{rank}
+          </span>
           <h3
             className="font-medium truncate"
             style={{ color: 'var(--ws-text)' }}
@@ -113,11 +113,17 @@ function ResultCard({ result, rank, onView, onRead }: ResultCardProps) {
         </div>
       </div>
 
-      <p className="text-sm whitespace-pre-wrap line-clamp-4" style={{ color: 'var(--ws-text-secondary)' }}>
+      <p
+        className="text-sm whitespace-pre-wrap line-clamp-4"
+        style={{ color: 'var(--ws-text-secondary)' }}
+      >
         {result.text}
       </p>
 
-      <div className="mt-2 flex items-center gap-3 text-xs" style={{ color: 'var(--ws-text-faint)' }}>
+      <div
+        className="mt-2 flex items-center gap-3 text-xs"
+        style={{ color: 'var(--ws-text-faint)' }}
+      >
         <span>Chunk #{result.chunkIndex}</span>
         {result.source && (
           <span className="truncate" title={result.filePath}>

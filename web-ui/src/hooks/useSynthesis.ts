@@ -1,7 +1,7 @@
 /**
  * Reference to a chunk with fingerprint for resilient linking
  */
-export interface ChunkRef {
+interface ChunkRef {
   filePath: string
   chunkIndex: number
   fingerprint?: string
@@ -10,7 +10,7 @@ export interface ChunkRef {
 /**
  * Item types in the synthesis outline
  */
-export type OutlineItemType = 'heading' | 'chunk-ref' | 'note'
+type OutlineItemType = 'heading' | 'chunk-ref' | 'note'
 
 /**
  * Single item in the synthesis outline

@@ -219,9 +219,7 @@ export function TabsProvider({ dbId, children }: TabsProviderProps) {
       setState((prev) => ({
         ...prev,
         activeTabId: tabId,
-        tabs: prev.tabs.map((t) =>
-          t.tabId === tabId ? { ...t, lastActiveAt: Date.now() } : t
-        ),
+        tabs: prev.tabs.map((t) => (t.tabId === tabId ? { ...t, lastActiveAt: Date.now() } : t)),
       }))
     },
     [setState]
@@ -268,7 +266,17 @@ export function TabsProvider({ dbId, children }: TabsProviderProps) {
       updateTabScroll,
       pinTab,
     }),
-    [state.tabs, state.activeTabId, activeTab, openDoc, openPage, closeTab, setActiveTab, updateTabScroll, pinTab]
+    [
+      state.tabs,
+      state.activeTabId,
+      activeTab,
+      openDoc,
+      openPage,
+      closeTab,
+      setActiveTab,
+      updateTabScroll,
+      pinTab,
+    ]
   )
 
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>

@@ -48,14 +48,21 @@ export function ScanDatabasesCard({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+    <div
+      className="border rounded-lg p-6"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+    >
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
           <SearchIcon className="w-6 h-6 text-amber-600 dark:text-amber-400" />
         </div>
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Scan for Databases</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Find existing RAG databases</p>
+          <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
+            Scan for Databases
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
+            Find existing RAG databases
+          </p>
         </div>
       </div>
 
@@ -63,7 +70,8 @@ export function ScanDatabasesCard({
         <div>
           <label
             htmlFor="scanPath"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+            className="block text-sm font-medium mb-1"
+            style={{ color: 'var(--ws-text-secondary)' }}
           >
             Directory to Scan
           </label>
@@ -74,14 +82,24 @@ export function ScanDatabasesCard({
               value={scanPath}
               onChange={(e) => setScanPath(e.target.value)}
               placeholder="/path/to/scan"
-              className="flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              style={{
+                background: 'var(--ws-surface-raised)',
+                borderColor: 'var(--ws-border)',
+                color: 'var(--ws-text)',
+              }}
               disabled={isScanning}
             />
             <button
               type="button"
               onClick={() => setIsBrowserOpen(true)}
               disabled={isScanning}
-              className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-2 text-sm font-medium border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{
+                color: 'var(--ws-text-secondary)',
+                background: 'var(--ws-surface-raised)',
+                borderColor: 'var(--ws-border)',
+              }}
               title="Browse folders"
             >
               <FolderIcon className="w-5 h-5" />
@@ -101,7 +119,7 @@ export function ScanDatabasesCard({
               )}
             </button>
           </div>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
             Searches the directory and up to 2 levels of subdirectories
           </p>
         </div>
@@ -116,20 +134,21 @@ export function ScanDatabasesCard({
       {scanResults && (
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <h3 className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>
               Found {scanResults.length} database{scanResults.length !== 1 ? 's' : ''}
             </h3>
             <button
               type="button"
               onClick={handleReset}
-              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              className="text-sm"
+              style={{ color: 'var(--ws-text-muted)' }}
             >
               Clear results
             </button>
           </div>
 
           {scanResults.length === 0 ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 py-2">
+            <p className="text-sm py-2" style={{ color: 'var(--ws-text-muted)' }}>
               No databases found in this directory.
             </p>
           ) : (
@@ -137,11 +156,14 @@ export function ScanDatabasesCard({
               {scanResults.map((db) => (
                 <div
                   key={db.path}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
+                  className="flex items-center justify-between p-3 rounded-lg"
+                  style={{ background: 'var(--ws-surface-1)' }}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900 dark:text-white">{db.name}</p>
+                      <p className="font-medium" style={{ color: 'var(--ws-text)' }}>
+                        {db.name}
+                      </p>
                       {db.isKnown && (
                         <span className="px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 rounded-full">
                           Known
@@ -149,7 +171,8 @@ export function ScanDatabasesCard({
                       )}
                     </div>
                     <p
-                      className="text-sm text-gray-500 dark:text-gray-400 font-mono truncate max-w-xs"
+                      className="text-sm font-mono truncate max-w-xs"
+                      style={{ color: 'var(--ws-text-muted)' }}
                       title={db.path}
                     >
                       {db.path}

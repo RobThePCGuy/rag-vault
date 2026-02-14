@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import {
-  exportLinkData,
-  importLinkData,
-  migrateLinksStore,
-} from '../storage-migration'
+import { exportLinkData, importLinkData, migrateLinksStore } from '../storage-migration'
 import type { PinsStoreV2 } from '../storage-migration'
 
 describe('storage-migration', () => {
@@ -85,10 +81,7 @@ describe('storage-migration', () => {
       bookmarks: [{ id: 'bm1' }],
     }
     localStorage.setItem('rag-vault-pins-v2-roundtrip', JSON.stringify(pins))
-    localStorage.setItem(
-      'rag-vault-dismissed-v1-roundtrip',
-      JSON.stringify(['chunk-a', 'chunk-b'])
-    )
+    localStorage.setItem('rag-vault-dismissed-v1-roundtrip', JSON.stringify(['chunk-a', 'chunk-b']))
 
     const exported = exportLinkData('roundtrip')
 
@@ -108,9 +101,7 @@ describe('storage-migration', () => {
     const restoredPins = JSON.parse(localStorage.getItem('rag-vault-pins-v2-roundtrip')!)
     expect(restoredPins).toEqual(pins)
 
-    const restoredDismissed = JSON.parse(
-      localStorage.getItem('rag-vault-dismissed-v1-roundtrip')!
-    )
+    const restoredDismissed = JSON.parse(localStorage.getItem('rag-vault-dismissed-v1-roundtrip')!)
     expect(restoredDismissed).toEqual(['chunk-a', 'chunk-b'])
   })
 

@@ -275,7 +275,8 @@ export function KnowledgeGraph({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full relative bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden"
+      className="w-full h-full relative rounded-lg overflow-hidden"
+      style={{ background: 'var(--ws-surface-1)' }}
     >
       <canvas
         ref={canvasRef}
@@ -296,15 +297,19 @@ export function KnowledgeGraph({
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="absolute pointer-events-none z-10 max-w-xs px-3 py-2 text-xs bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg shadow-lg"
+          className="absolute pointer-events-none z-10 max-w-xs px-3 py-2 text-xs rounded-lg shadow-lg"
           style={{
+            background: 'var(--ws-surface-0)',
+            color: 'var(--ws-text)',
             left: Math.min(tooltip.x + 10, dimensions.width - 200),
             top: Math.min(tooltip.y + 10, dimensions.height - 60),
           }}
         >
           <p className="font-medium truncate">{getFileName(tooltip.node.filePath)}</p>
-          <p className="text-gray-300 dark:text-gray-600">Chunk #{tooltip.node.chunkIndex}</p>
-          <p className="mt-1 line-clamp-2 text-gray-400 dark:text-gray-500">{tooltip.node.text}</p>
+          <p style={{ color: 'var(--ws-text-faint)' }}>Chunk #{tooltip.node.chunkIndex}</p>
+          <p className="mt-1 line-clamp-2" style={{ color: 'var(--ws-text-muted)' }}>
+            {tooltip.node.text}
+          </p>
         </div>
       )}
 
@@ -313,7 +318,8 @@ export function KnowledgeGraph({
         <button
           type="button"
           onClick={() => setZoom((z) => Math.min(3, z * 1.2))}
-          className="p-1.5 bg-white dark:bg-gray-800 rounded shadow text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+          className="p-1.5 rounded shadow"
+          style={{ background: 'var(--ws-surface-raised)', color: 'var(--ws-text-secondary)' }}
           title="Zoom in"
         >
           <PlusIcon className="w-4 h-4" />
@@ -321,7 +327,8 @@ export function KnowledgeGraph({
         <button
           type="button"
           onClick={() => setZoom((z) => Math.max(0.3, z * 0.8))}
-          className="p-1.5 bg-white dark:bg-gray-800 rounded shadow text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+          className="p-1.5 rounded shadow"
+          style={{ background: 'var(--ws-surface-raised)', color: 'var(--ws-text-secondary)' }}
           title="Zoom out"
         >
           <MinusIcon className="w-4 h-4" />
@@ -332,18 +339,24 @@ export function KnowledgeGraph({
             setPan({ x: 0, y: 0 })
             setZoom(1)
           }}
-          className="p-1.5 bg-white dark:bg-gray-800 rounded shadow text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+          className="p-1.5 rounded shadow"
+          style={{ background: 'var(--ws-surface-raised)', color: 'var(--ws-text-secondary)' }}
           title="Reset view"
         >
           <ResetIcon className="w-4 h-4" />
         </button>
         {!isStable && (
-          <span className="p-1.5 text-xs text-gray-500 dark:text-gray-400">Simulating...</span>
+          <span className="p-1.5 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+            Simulating...
+          </span>
         )}
       </div>
 
       {/* Legend */}
-      <div className="absolute top-2 left-2 text-xs text-gray-600 dark:text-gray-400 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded">
+      <div
+        className="absolute top-2 left-2 text-xs px-2 py-1 rounded"
+        style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-raised)' }}
+      >
         <span className="inline-flex items-center gap-1">
           <span
             className="w-2 h-2 rounded-full"

@@ -1,11 +1,7 @@
-"use strict";
 // Semantic Chunker implementation using Max-Min algorithm
 // Based on: "Max–Min semantic chunking of documents for RAG application" (Springer, 2025)
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SemanticChunker = exports.DEFAULT_SEMANTIC_CHUNKER_CONFIG = void 0;
-exports.isGarbageChunk = isGarbageChunk;
-const sentence_splitter_js_1 = require("./sentence-splitter.js");
-const math_js_1 = require("../utils/math.js");
+import { splitIntoSentences } from './sentence-splitter.js';
+import { cosineSimilarity as cosineSimilarityUtil } from '../utils/math.js';
 // ============================================
 // Performance Optimization Constants
 // ============================================
@@ -35,7 +31,7 @@ const MAX_SENTENCES = 15;
  * @param text - Chunk text to check
  * @returns true if chunk is garbage and should be removed
  */
-function isGarbageChunk(text) {
+export function isGarbageChunk(text) {
     const trimmed = text.trim();
     if (trimmed.length === 0)
         return true;
@@ -58,7 +54,7 @@ function isGarbageChunk(text) {
 // ============================================
 // Default Configuration
 // ============================================
-exports.DEFAULT_SEMANTIC_CHUNKER_CONFIG = {
+export const DEFAULT_SEMANTIC_CHUNKER_CONFIG = {
     hardThreshold: 0.6,
     initConst: 1.5,
     c: 0.9,
@@ -79,9 +75,10 @@ exports.DEFAULT_SEMANTIC_CHUNKER_CONFIG = {
  * Key insight: A sentence belongs to a chunk if its maximum similarity to any chunk member
  * is greater than the minimum similarity between existing chunk members (with threshold adjustment)
  */
-class SemanticChunker {
+export class SemanticChunker {
+    config;
     constructor(config = {}) {
-        this.config = { ...exports.DEFAULT_SEMANTIC_CHUNKER_CONFIG, ...config };
+        this.config = { ...DEFAULT_SEMANTIC_CHUNKER_CONFIG, ...config };
     }
     /**
      * Split text into semantically coherent chunks
@@ -96,7 +93,7 @@ class SemanticChunker {
             return [];
         }
         // Split into sentences
-        const sentences = (0, sentence_splitter_js_1.splitIntoSentences)(text);
+        const sentences = splitIntoSentences(text);
         if (sentences.length === 0) {
             return [];
         }
@@ -260,8 +257,7 @@ class SemanticChunker {
      * Public for testing - delegates to shared utility
      */
     cosineSimilarity(vec1, vec2) {
-        return (0, math_js_1.cosineSimilarity)(vec1, vec2);
+        return cosineSimilarityUtil(vec1, vec2);
     }
 }
-exports.SemanticChunker = SemanticChunker;
 //# sourceMappingURL=semantic-chunker.js.map

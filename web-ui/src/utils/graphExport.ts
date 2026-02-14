@@ -6,7 +6,7 @@ import type { GraphData, GraphNode } from '../components/Graph/types'
 
 export type GraphExportFormat = 'json' | 'svg' | 'png'
 
-export interface ExportedGraphData {
+interface ExportedGraphData {
   version: 1
   exportedAt: string
   nodes: Array<{
@@ -24,7 +24,7 @@ export interface ExportedGraphData {
   }>
 }
 
-export interface GraphExportOptions {
+interface GraphExportOptions {
   includePositions?: boolean
   width?: number
   height?: number
@@ -35,7 +35,7 @@ export interface GraphExportOptions {
 // JSON Export
 // ============================================
 
-export function exportGraphAsJSON(
+function exportGraphAsJSON(
   graphData: GraphData,
   nodes: GraphNode[],
   options: GraphExportOptions = {}
@@ -86,7 +86,7 @@ export function downloadGraphJSON(
 // SVG Export
 // ============================================
 
-export function exportGraphAsSVG(
+function exportGraphAsSVG(
   graphData: GraphData,
   nodes: GraphNode[],
   options: GraphExportOptions = {}
@@ -162,7 +162,7 @@ export function downloadGraphSVG(
 // PNG Export
 // ============================================
 
-export async function exportGraphAsPNG(
+async function exportGraphAsPNG(
   canvas: HTMLCanvasElement,
   options: GraphExportOptions = {}
 ): Promise<Blob> {

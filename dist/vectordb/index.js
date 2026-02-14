@@ -1,15 +1,9 @@
-"use strict";
 // VectorStore implementation with LanceDB integration
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.VectorStore = exports.DatabaseError = void 0;
-exports.isValidFilePath = isValidFilePath;
-exports.generateChunkFingerprint = generateChunkFingerprint;
-const node_crypto_1 = require("node:crypto");
-const lancedb_1 = require("@lancedb/lancedb");
-const index_js_1 = require("../errors/index.js");
+import { createHash } from 'node:crypto';
+import { Index, connect } from '@lancedb/lancedb';
+import { DatabaseError } from '../errors/index.js';
 // Re-export error class for backwards compatibility
-var index_js_2 = require("../errors/index.js");
-Object.defineProperty(exports, "DatabaseError", { enumerable: true, get: function () { return index_js_2.DatabaseError; } });
+export { DatabaseError } from '../errors/index.js';
 // ============================================
 // Constants (configurable via environment variables)
 // ============================================
@@ -97,7 +91,7 @@ const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/;
  * @param filePath - The file path to validate
  * @returns true if path is safe for use in queries
  */
-function isValidFilePath(filePath) {
+export function isValidFilePath(filePath) {
     if (!filePath || typeof filePath !== 'string')
         return false;
     if (filePath.includes('..'))
@@ -127,9 +121,9 @@ function normalizeTextForFingerprint(text) {
  * Uses SHA-256 hash of normalized text (first 16 hex chars for compactness).
  * This enables stable chunk identification across re-indexing.
  */
-function generateChunkFingerprint(text) {
+export function generateChunkFingerprint(text) {
     const normalized = normalizeTextForFingerprint(text);
-    const hash = (0, node_crypto_1.createHash)('sha256').update(normalized, 'utf8').digest('hex');
+    const hash = createHash('sha256').update(normalized, 'utf8').digest('hex');
     // Use first 16 characters (64 bits) - sufficient for practical uniqueness
     return hash.slice(0, 16);
 }
@@ -190,7 +184,7 @@ function toDbRecord(chunk) {
  */
 function toSearchResult(raw) {
     if (!isLanceDBRawResult(raw)) {
-        throw new index_js_1.DatabaseError('Invalid search result format from LanceDB');
+        throw new DatabaseError('Invalid search result format from LanceDB');
     }
     const result = {
         filePath: raw.filePath,
@@ -225,19 +219,20 @@ function toSearchResult(raw) {
  * - Auto-recovers after 5-minute cooldown
  * - Prevents permanent FTS disable from transient errors
  */
-class VectorStore {
+export class VectorStore {
+    db = null;
+    table = null;
+    config;
+    ftsEnabled = false;
+    ftsFailureCount = 0;
+    ftsLastFailure = null;
+    /** Promise-based mutex for atomic circuit breaker reset */
+    ftsRecoveryPromise = null;
+    /** Runtime override for hybrid weight (allows dynamic adjustment) */
+    hybridWeightOverride = null;
+    /** Promise-based mutex for table creation (prevents race on first insert) */
+    tableCreationPromise = null;
     constructor(config) {
-        this.db = null;
-        this.table = null;
-        this.ftsEnabled = false;
-        this.ftsFailureCount = 0;
-        this.ftsLastFailure = null;
-        /** Promise-based mutex for atomic circuit breaker reset */
-        this.ftsRecoveryPromise = null;
-        /** Runtime override for hybrid weight (allows dynamic adjustment) */
-        this.hybridWeightOverride = null;
-        /** Promise-based mutex for table creation (prevents race on first insert) */
-        this.tableCreationPromise = null;
         this.config = config;
     }
     /**
@@ -388,7 +383,7 @@ class VectorStore {
      */
     async addChunksWithSchemaFallback(chunks) {
         if (!this.table) {
-            throw new index_js_1.DatabaseError('VectorStore is not initialized. Call initialize() first.');
+            throw new DatabaseError('VectorStore is not initialized. Call initialize() first.');
         }
         let chunksToInsert = chunks;
         const removedFields = new Set();
@@ -418,7 +413,7 @@ class VectorStore {
                 chunksToInsert = strippedChunks;
             }
         }
-        throw new index_js_1.DatabaseError('Failed to insert chunks after schema fallback retries');
+        throw new DatabaseError('Failed to insert chunks after schema fallback retries');
     }
     /**
      * Initialize LanceDB and create table
@@ -426,7 +421,7 @@ class VectorStore {
     async initialize() {
         try {
             // Connect to LanceDB
-            this.db = await (0, lancedb_1.connect)(this.config.dbPath);
+            this.db = await connect(this.config.dbPath);
             // Check table existence and create if needed
             const tableNames = await this.db.tableNames();
             if (tableNames.includes(this.config.tableName)) {
@@ -463,7 +458,7 @@ class VectorStore {
                 }
                 this.db = null;
             }
-            throw new index_js_1.DatabaseError('Failed to initialize VectorStore', error);
+            throw new DatabaseError('Failed to initialize VectorStore', error);
         }
     }
     /**
@@ -479,7 +474,7 @@ class VectorStore {
         }
         // Validate file path before use in query to prevent SQL injection
         if (!isValidFilePath(filePath)) {
-            throw new index_js_1.DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
+            throw new DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
         }
         // Escape path before try block so it's available in catch for logging
         const escapedFilePath = filePath.replace(/'/g, "''");
@@ -507,7 +502,7 @@ class VectorStore {
             const errorMessage = error.message.toLowerCase();
             const isIgnorable = DELETE_IGNORABLE_PATTERNS.some((pattern) => errorMessage.includes(pattern));
             if (!isIgnorable) {
-                throw new index_js_1.DatabaseError(`Failed to delete chunks for file: ${filePath}`, error);
+                throw new DatabaseError(`Failed to delete chunks for file: ${filePath}`, error);
             }
             // Ignorable errors (no matching records) are logged but not thrown
         }
@@ -537,7 +532,7 @@ class VectorStore {
                 if (!this.table) {
                     // Create table on first insertion with mutex
                     if (!this.db) {
-                        throw new index_js_1.DatabaseError('VectorStore is not initialized. Call initialize() first.');
+                        throw new DatabaseError('VectorStore is not initialized. Call initialize() first.');
                     }
                     // Set promise atomically before async operation
                     this.tableCreationPromise = (async () => {
@@ -565,7 +560,7 @@ class VectorStore {
             console.error(`VectorStore: Inserted ${chunks.length} chunks`);
         }
         catch (error) {
-            throw new index_js_1.DatabaseError('Failed to insert chunks', error);
+            throw new DatabaseError('Failed to insert chunks', error);
         }
     }
     /**
@@ -590,7 +585,7 @@ class VectorStore {
         // - max=3: Balance between precision and index size
         // - prefixOnly=false: Generate ngrams from all positions for proper CJK support
         await this.table.createIndex('text', {
-            config: lancedb_1.Index.fts({
+            config: Index.fts({
                 baseTokenizer: 'ngram',
                 ngramMinLength: 2,
                 ngramMaxLength: 3,
@@ -691,7 +686,7 @@ class VectorStore {
             return [];
         }
         if (limit < 1 || limit > 20) {
-            throw new index_js_1.DatabaseError(`Invalid limit: expected 1-20, got ${limit}`);
+            throw new DatabaseError(`Invalid limit: expected 1-20, got ${limit}`);
         }
         try {
             // Step 1: Semantic (vector) search - always the primary search
@@ -740,7 +735,7 @@ class VectorStore {
             return results.slice(0, limit);
         }
         catch (error) {
-            throw new index_js_1.DatabaseError('Failed to search vectors', error);
+            throw new DatabaseError('Failed to search vectors', error);
         }
     }
     /**
@@ -847,7 +842,7 @@ class VectorStore {
             return results;
         }
         catch (error) {
-            throw new index_js_1.DatabaseError('Failed to list files', error);
+            throw new DatabaseError('Failed to list files', error);
         }
     }
     /**
@@ -890,7 +885,7 @@ class VectorStore {
         console.error('VectorStore: Connection closed');
         // Propagate errors to caller after cleanup is complete
         if (errors.length > 0) {
-            throw new index_js_1.DatabaseError(`Errors during close: ${errors.map((e) => e.message).join('; ')}`, errors[0]);
+            throw new DatabaseError(`Errors during close: ${errors.map((e) => e.message).join('; ')}`, errors[0]);
         }
     }
     /**
@@ -905,7 +900,7 @@ class VectorStore {
         }
         // Validate file path before use in query
         if (!isValidFilePath(filePath)) {
-            throw new index_js_1.DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
+            throw new DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
         }
         try {
             const escapedFilePath = filePath.replace(/'/g, "''");
@@ -929,7 +924,7 @@ class VectorStore {
             return chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
         }
         catch (error) {
-            throw new index_js_1.DatabaseError(`Failed to get document chunks for: ${filePath}`, error);
+            throw new DatabaseError(`Failed to get document chunks for: ${filePath}`, error);
         }
     }
     /**
@@ -947,7 +942,7 @@ class VectorStore {
         }
         // Validate file path before use in query
         if (!isValidFilePath(filePath)) {
-            throw new index_js_1.DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
+            throw new DatabaseError(`Invalid file path: contains disallowed characters or patterns`);
         }
         try {
             // First, fetch the source chunk to get its vector
@@ -1000,7 +995,7 @@ class VectorStore {
         }
         catch (error) {
             const cause = error instanceof Error ? error.message : String(error);
-            throw new index_js_1.DatabaseError(`Failed to find related chunks for: ${filePath}:${chunkIndex}: ${cause}`, error);
+            throw new DatabaseError(`Failed to find related chunks for: ${filePath}:${chunkIndex}: ${cause}`, error);
         }
     }
     /**
@@ -1043,9 +1038,8 @@ class VectorStore {
             };
         }
         catch (error) {
-            throw new index_js_1.DatabaseError('Failed to get status', error);
+            throw new DatabaseError('Failed to get status', error);
         }
     }
 }
-exports.VectorStore = VectorStore;
 //# sourceMappingURL=index.js.map

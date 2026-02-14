@@ -1,9 +1,6 @@
-"use strict";
 // Sentence Splitter for Semantic Chunking
 // Created: 2025-12-27
 // Purpose: Split text into sentences using Intl.Segmenter (Unicode standard)
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.splitIntoSentences = splitIntoSentences;
 // ============================================
 // Constants
 // ============================================
@@ -77,7 +74,7 @@ const segmenter = new Intl.Segmenter('und', { granularity: 'sentence' });
  * @param text - The text to split into sentences
  * @returns Array of sentences
  */
-function splitIntoSentences(text) {
+export function splitIntoSentences(text) {
     // Handle empty input
     if (!text || text.trim().length === 0) {
         return [];

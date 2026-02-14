@@ -16,14 +16,14 @@ export interface GraphViewState {
   zoom: number
 }
 
-export interface GraphStateStore {
+interface GraphStateStore {
   version: 1
   vaultId: string
   nodePositions: Record<string, SavedNodePosition>
   viewState: GraphViewState
 }
 
-export interface GraphStateContextValue {
+interface GraphStateContextValue {
   // Node positions
   nodePositions: Record<string, SavedNodePosition>
   getNodePosition: (nodeId: string) => SavedNodePosition | undefined

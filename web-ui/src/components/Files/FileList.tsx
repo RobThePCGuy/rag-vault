@@ -10,7 +10,7 @@ interface FileListProps {
 export function FileList({ files, onDelete, isDeleting }: FileListProps) {
   if (files.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12" style={{ color: 'var(--ws-text-muted)' }}>
         <p>No files ingested yet.</p>
         <p className="text-sm mt-1">Upload a file or paste content to get started.</p>
       </div>

@@ -51,9 +51,8 @@ interface ParsedLink {
 
 function parseWikiLinksInline(text: string): ParsedLink[] {
   const links: ParsedLink[] = []
-  let match: RegExpExecArray | null
   WIKI_LINK_RE.lastIndex = 0
-  while ((match = WIKI_LINK_RE.exec(text)) !== null) {
+  for (let match = WIKI_LINK_RE.exec(text); match !== null; match = WIKI_LINK_RE.exec(text)) {
     links.push({
       docTitle: match[1]!.trim(),
       heading: match[2]?.trim(),

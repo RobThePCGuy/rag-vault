@@ -39,6 +39,7 @@ export function CommandPalette() {
   }, [isOpen])
 
   // Scroll selected item into view
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedIndex drives data-selected in DOM
   useEffect(() => {
     if (!isOpen || !listRef.current) return
     const selected = listRef.current.querySelector('[data-selected="true"]')
@@ -72,11 +73,14 @@ export function CommandPalette() {
   if (!isOpen) return null
 
   // Group results by category, preserving order
-  const grouped: { category: CommandAction['category']; items: { action: CommandAction; globalIndex: number }[] }[] = []
+  const grouped: {
+    category: CommandAction['category']
+    items: { action: CommandAction; globalIndex: number }[]
+  }[] = []
   const seenCategories = new Set<string>()
 
   for (let i = 0; i < results.length; i++) {
-    const action = results[i]
+    const action = results[i]!
     if (!seenCategories.has(action.category)) {
       seenCategories.add(action.category)
       grouped.push({ category: action.category, items: [] })
@@ -88,6 +92,7 @@ export function CommandPalette() {
   return (
     <>
       {/* Backdrop */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss pattern */}
       <div
         className="ws-command-palette-backdrop"
         onClick={close}
@@ -128,9 +133,7 @@ export function CommandPalette() {
           role="listbox"
           aria-label="Command palette results"
         >
-          {results.length === 0 && (
-            <div className="ws-command-palette-empty">No results found</div>
-          )}
+          {results.length === 0 && <div className="ws-command-palette-empty">No results found</div>}
 
           {grouped.map((group) => (
             <div key={group.category} className="ws-command-palette-group">
@@ -155,7 +158,9 @@ export function CommandPalette() {
                   <span className="ws-command-palette-item-content">
                     <span className="ws-command-palette-item-label">{action.label}</span>
                     {action.description && (
-                      <span className="ws-command-palette-item-description">{action.description}</span>
+                      <span className="ws-command-palette-item-description">
+                        {action.description}
+                      </span>
                     )}
                   </span>
                 </button>

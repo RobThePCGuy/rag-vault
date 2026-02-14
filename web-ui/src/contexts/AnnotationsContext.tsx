@@ -34,7 +34,7 @@ export interface AnnotationsStore {
   annotations: Annotation[]
 }
 
-export interface AnnotationsContextValue {
+interface AnnotationsContextValue {
   // Highlights
   highlights: Highlight[]
   createHighlight: (

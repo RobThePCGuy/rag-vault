@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export interface UseViewportChunksResult {
+interface UseViewportChunksResult {
   visibleChunkIndices: Set<number>
   registerChunk: (index: number, element: HTMLElement | null) => void
   activeChunkIndex: number | null

@@ -69,16 +69,16 @@ export function FilesPage() {
   const hasFilters = selectedCollectionId || selectedTagId
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="ws-page max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          <h1 className="ws-page-title text-2xl font-bold mb-2">
             Ingested Files
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage your knowledge base content.</p>
+          <p style={{ color: 'var(--ws-text-secondary)' }}>Manage your knowledge base content.</p>
         </div>
         {files.length > 0 && (
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
             {filteredFiles.length === files.length
               ? `${files.length} file${files.length !== 1 ? 's' : ''}`
               : `${filteredFiles.length} of ${files.length} files`}
@@ -88,15 +88,18 @@ export function FilesPage() {
 
       {/* Filters */}
       {(collections.length > 0 || tags.length > 0) && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Filter by:</span>
+        <div
+          className="flex flex-wrap items-center gap-3 p-3 rounded-lg"
+          style={{ background: 'var(--ws-surface-1)', border: '1px solid var(--ws-border)' }}
+        >
+          <span className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>Filter by:</span>
 
           {/* Collection filter */}
           {collections.length > 0 && (
             <select
               value={selectedCollectionId}
               onChange={(e) => handleCollectionChange(e.target.value)}
-              className="text-sm px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="ws-select text-sm px-3 py-1.5"
             >
               <option value="">All collections</option>
               {collections.map((c) => (
@@ -112,7 +115,7 @@ export function FilesPage() {
             <select
               value={selectedTagId}
               onChange={(e) => handleTagChange(e.target.value)}
-              className="text-sm px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="ws-select text-sm px-3 py-1.5"
             >
               <option value="">All tags</option>
               {tags.map((t) => (
@@ -128,7 +131,8 @@ export function FilesPage() {
             <button
               type="button"
               onClick={clearFilters}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-sm hover:underline"
+              style={{ color: 'var(--ws-accent)' }}
             >
               Clear filters
             </button>
@@ -159,25 +163,26 @@ export function FilesPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Spinner className="text-gray-400" />
-          <span className="ml-3 text-gray-500 dark:text-gray-400">Loading files...</span>
+          <span style={{ color: 'var(--ws-text-faint)' }}><Spinner /></span>
+          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>Loading files...</span>
         </div>
       ) : error ? (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
+        <div className="ws-error-box rounded-lg">
           <p className="font-medium">Error loading files</p>
           <p className="text-sm">{error.message}</p>
         </div>
       ) : filteredFiles.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <FilterIcon className="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500 mb-3" />
-          <p className="text-gray-600 dark:text-gray-400">
+        <div className="ws-surface text-center py-12">
+          <FilterIcon className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--ws-text-faint)' }} />
+          <p style={{ color: 'var(--ws-text-secondary)' }}>
             {hasFilters ? 'No files match the selected filters.' : 'No files ingested yet.'}
           </p>
           {hasFilters && (
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              className="mt-2 text-sm hover:underline"
+              style={{ color: 'var(--ws-accent)' }}
             >
               Clear filters
             </button>
@@ -201,31 +206,34 @@ function FilterBadge({ label, type, color, onRemove }: FilterBadgeProps) {
   const bgColor =
     type === 'tag' && color
       ? TAG_COLOR_CLASSES[color as keyof typeof TAG_COLOR_CLASSES]?.bg
-      : 'bg-gray-100 dark:bg-gray-700'
+      : undefined
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 text-sm rounded-full ${bgColor}`}>
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-1 text-sm rounded-full ${bgColor || ''}`}
+      style={!bgColor ? { background: 'var(--ws-surface-2)' } : undefined}
+    >
       {type === 'collection' ? (
-        <FolderIcon className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+        <FolderIcon className="w-3.5 h-3.5" style={{ color: 'var(--ws-text-muted)' }} />
       ) : (
-        <TagIcon className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+        <TagIcon className="w-3.5 h-3.5" style={{ color: 'var(--ws-text-muted)' }} />
       )}
-      <span className="text-gray-700 dark:text-gray-300">{label}</span>
+      <span style={{ color: 'var(--ws-text-secondary)' }}>{label}</span>
       <button
         type="button"
         onClick={onRemove}
         className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10"
       >
-        <CloseIcon className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+        <CloseIcon className="w-3 h-3" style={{ color: 'var(--ws-text-muted)' }} />
       </button>
     </span>
   )
 }
 
 // Icons
-function FilterIcon({ className }: { className?: string }) {
+function FilterIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -236,9 +244,9 @@ function FilterIcon({ className }: { className?: string }) {
   )
 }
 
-function FolderIcon({ className }: { className?: string }) {
+function FolderIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -249,9 +257,9 @@ function FolderIcon({ className }: { className?: string }) {
   )
 }
 
-function TagIcon({ className }: { className?: string }) {
+function TagIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -262,9 +270,9 @@ function TagIcon({ className }: { className?: string }) {
   )
 }
 
-function CloseIcon({ className }: { className?: string }) {
+function CloseIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
     </svg>
   )

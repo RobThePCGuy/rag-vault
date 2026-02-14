@@ -77,12 +77,12 @@ export function CollectionsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="ws-page max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Collections</h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <h1 className="ws-page-title text-2xl font-bold mb-2">Collections</h1>
+          <p style={{ color: 'var(--ws-text-secondary)' }}>
             Organize your documents into collections.
           </p>
         </div>
@@ -90,7 +90,8 @@ export function CollectionsPage() {
           <button
             type="button"
             onClick={handleStartCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="ws-button flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
+            data-variant="primary"
           >
             <PlusIcon className="w-4 h-4" />
             New Collection
@@ -105,28 +106,28 @@ export function CollectionsPage() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4"
+            className="ws-surface p-4 space-y-4"
           >
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <h3 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
               {isCreating ? 'Create Collection' : 'Edit Collection'}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ws-text-secondary)' }}>
                   Name
                   <input
                     type="text"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="Collection name"
-                    className="mt-1 w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="ws-input mt-1"
                   />
                 </label>
               </div>
 
               <div>
-                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <span className="block text-sm font-medium mb-1" style={{ color: 'var(--ws-text-secondary)' }}>
                   Color
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -137,9 +138,10 @@ export function CollectionsPage() {
                       onClick={() => setFormColor(color)}
                       className={`w-8 h-8 rounded-full ${COLLECTION_COLOR_CLASSES[color].bg} ${
                         formColor === color
-                          ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-800'
+                          ? 'ring-2 ring-offset-2'
                           : ''
                       }`}
+                      style={formColor === color ? { '--tw-ring-color': 'var(--ws-accent)', '--tw-ring-offset-color': 'var(--ws-surface-2)' } as React.CSSProperties : undefined}
                     />
                   ))}
                 </div>
@@ -147,14 +149,14 @@ export function CollectionsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ws-text-secondary)' }}>
                 Description (optional)
                 <input
                   type="text"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="What's this collection for?"
-                  className="mt-1 w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="ws-input mt-1"
                 />
               </label>
             </div>
@@ -163,7 +165,8 @@ export function CollectionsPage() {
               <button
                 type="button"
                 onClick={handleCancel}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="ws-button px-4 py-2 text-sm rounded-lg transition-colors"
+                data-variant="default"
               >
                 Cancel
               </button>
@@ -171,7 +174,8 @@ export function CollectionsPage() {
                 type="button"
                 onClick={handleSave}
                 disabled={!formName.trim()}
-                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="ws-button px-4 py-2 text-sm rounded-lg transition-colors"
+                data-variant="primary"
               >
                 {isCreating ? 'Create' : 'Save'}
               </button>
@@ -182,18 +186,19 @@ export function CollectionsPage() {
 
       {/* Collections List */}
       {collections.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <FolderIcon className="w-12 h-12 mx-auto text-gray-400 dark:text-gray-500 mb-3" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
+        <div className="ws-surface text-center py-12">
+          <FolderIcon className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--ws-text-faint)' }} />
+          <h3 className="text-lg font-medium mb-1" style={{ color: 'var(--ws-text)' }}>
             No collections yet
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+          <p className="mb-4" style={{ color: 'var(--ws-text-muted)' }}>
             Create a collection to organize your documents.
           </p>
           <button
             type="button"
             onClick={handleStartCreate}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="ws-button inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors"
+            data-variant="primary"
           >
             <PlusIcon className="w-4 h-4" />
             Create your first collection
@@ -213,12 +218,13 @@ export function CollectionsPage() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className={`bg-white dark:bg-gray-800 rounded-lg border ${colorClasses.border} p-4`}
+                  className={`rounded-lg p-4 ${colorClasses.border}`}
+                  style={{ background: 'var(--ws-surface-2)', border: '1px solid' }}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className={`w-4 h-4 rounded-full ${colorClasses.bg}`} />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                      <h3 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
                         {collection.name}
                       </h3>
                     </div>
@@ -226,7 +232,8 @@ export function CollectionsPage() {
                       <button
                         type="button"
                         onClick={() => handleStartEdit(collection)}
-                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        className="p-1.5 rounded transition-colors"
+                        style={{ color: 'var(--ws-text-faint)' }}
                         title="Edit"
                       >
                         <EditIcon className="w-4 h-4" />
@@ -236,21 +243,22 @@ export function CollectionsPage() {
                   </div>
 
                   {collection.description && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    <p className="text-sm mb-3" style={{ color: 'var(--ws-text-muted)' }}>
                       {collection.description}
                     </p>
                   )}
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
                       {documents.length} document{documents.length !== 1 ? 's' : ''}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleViewCollection(collection.id)}
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      className="text-sm hover:underline"
+                      style={{ color: 'var(--ws-accent)' }}
                     >
-                      View documents →
+                      View documents &rarr;
                     </button>
                   </div>
                 </motion.div>
@@ -272,14 +280,16 @@ function DeleteButton({ onDelete }: { onDelete: () => void }) {
         <button
           type="button"
           onClick={onDelete}
-          className="px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 rounded hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+          className="px-2 py-1 text-xs font-medium rounded transition-colors"
+          style={{ color: 'var(--ws-danger)', background: 'var(--ws-danger-muted)' }}
         >
           Delete
         </button>
         <button
           type="button"
           onClick={() => setShowConfirm(false)}
-          className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          className="px-2 py-1 text-xs font-medium rounded transition-colors"
+          style={{ color: 'var(--ws-text-muted)' }}
         >
           Cancel
         </button>
@@ -291,7 +301,8 @@ function DeleteButton({ onDelete }: { onDelete: () => void }) {
     <button
       type="button"
       onClick={() => setShowConfirm(true)}
-      className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      className="p-1.5 rounded transition-colors"
+      style={{ color: 'var(--ws-text-faint)' }}
       title="Delete"
     >
       <TrashIcon className="w-4 h-4" />
@@ -308,9 +319,9 @@ function PlusIcon({ className }: { className?: string }) {
   )
 }
 
-function FolderIcon({ className }: { className?: string }) {
+function FolderIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

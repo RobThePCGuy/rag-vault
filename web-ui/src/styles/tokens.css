@@ -1,0 +1,168 @@
+/* ============================================
+   Design Tokens - Dark-First Knowledge Workstation
+   ============================================ */
+
+/* --- Dark theme (default) --- */
+:root {
+  /* Surfaces */
+  --ws-bg: #0f1117;
+  --ws-surface-1: #161922;
+  --ws-surface-2: #1c1f2b;
+  --ws-surface-3: #242836;
+  --ws-surface-raised: #2a2e3d;
+
+  /* Borders */
+  --ws-border: #2a2e3d;
+  --ws-border-subtle: #1e2230;
+  --ws-border-strong: #3a3f52;
+
+  /* Text */
+  --ws-text: #e2e4ea;
+  --ws-text-secondary: #a0a4b4;
+  --ws-text-muted: #6b7084;
+  --ws-text-faint: #4a4f62;
+
+  /* Accent (orange) */
+  --ws-accent: #e8863a;
+  --ws-accent-hover: #f09a52;
+  --ws-accent-muted: rgba(232, 134, 58, 0.15);
+  --ws-accent-subtle: rgba(232, 134, 58, 0.08);
+  --ws-accent-text: #f0a060;
+
+  /* Semantic */
+  --ws-success: #34d399;
+  --ws-success-muted: rgba(52, 211, 153, 0.15);
+  --ws-warning: #fbbf24;
+  --ws-warning-muted: rgba(251, 191, 36, 0.15);
+  --ws-danger: #f87171;
+  --ws-danger-muted: rgba(248, 113, 113, 0.15);
+  --ws-info: #60a5fa;
+  --ws-info-muted: rgba(96, 165, 250, 0.15);
+
+  /* Link types */
+  --ws-link-explicit: #60a5fa;
+  --ws-link-semantic: #a78bfa;
+  --ws-link-backlink: #818cf8;
+  --ws-link-unresolved: #f87171;
+  --ws-link-mention: #34d399;
+
+  /* Focus */
+  --ws-focus-ring: var(--ws-accent);
+  --ws-focus-ring-offset: var(--ws-bg);
+
+  /* Radius */
+  --ws-radius-xs: 3px;
+  --ws-radius-sm: 5px;
+  --ws-radius-md: 8px;
+  --ws-radius-lg: 12px;
+  --ws-radius-xl: 16px;
+
+  /* Shadows */
+  --ws-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ws-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --ws-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --ws-shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --ws-shadow-popover: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+
+  /* Spacing */
+  --ws-space-1: 4px;
+  --ws-space-2: 8px;
+  --ws-space-3: 12px;
+  --ws-space-4: 16px;
+  --ws-space-5: 20px;
+  --ws-space-6: 24px;
+  --ws-space-7: 28px;
+  --ws-space-8: 32px;
+  --ws-space-9: 36px;
+  --ws-space-10: 40px;
+  --ws-space-11: 44px;
+  --ws-space-12: 48px;
+
+  /* Typography - Font families */
+  --ws-font-ui: "DM Sans", system-ui, -apple-system, sans-serif;
+  --ws-font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  --ws-font-reader: Georgia, "Palatino Linotype", "Book Antiqua", Palatino, serif;
+
+  /* Typography - Text sizes */
+  --ws-text-xs: 0.6875rem;
+  --ws-text-sm: 0.8125rem;
+  --ws-text-base: 0.875rem;
+  --ws-text-md: 0.9375rem;
+  --ws-text-lg: 1.0625rem;
+  --ws-text-xl: 1.25rem;
+  --ws-text-2xl: 1.5rem;
+
+  /* Typography - Line heights */
+  --ws-leading-tight: 1.3;
+  --ws-leading-normal: 1.5;
+  --ws-leading-relaxed: 1.7;
+
+  /* Transitions */
+  --ws-transition-fast: 100ms ease;
+  --ws-transition-base: 150ms ease;
+  --ws-transition-slow: 250ms ease;
+
+  /* Layout */
+  --ws-left-rail-width: 220px;
+  --ws-left-rail-min: 180px;
+  --ws-left-rail-max: 320px;
+  --ws-left-rail-collapsed: 52px;
+  --ws-right-rail-width: 300px;
+  --ws-right-rail-min: 240px;
+  --ws-right-rail-max: 420px;
+  --ws-tab-bar-height: 36px;
+  --ws-header-height: 40px;
+}
+
+/* --- Light theme --- */
+.light,
+:root:not(.dark) {
+  /* Surfaces */
+  --ws-bg: #f0ece6;
+  --ws-surface-1: #f7f4ef;
+  --ws-surface-2: #fdfcfa;
+  --ws-surface-3: #ffffff;
+  --ws-surface-raised: #ffffff;
+
+  /* Borders */
+  --ws-border: #d8d3ca;
+  --ws-border-subtle: #e6e2db;
+  --ws-border-strong: #c0b9ae;
+
+  /* Text */
+  --ws-text: #1e1b16;
+  --ws-text-secondary: #52504a;
+  --ws-text-muted: #8a8780;
+  --ws-text-faint: #b0ada6;
+
+  /* Accent (orange) */
+  --ws-accent: #c06820;
+  --ws-accent-hover: #a85a18;
+  --ws-accent-muted: rgba(192, 104, 32, 0.12);
+  --ws-accent-subtle: rgba(192, 104, 32, 0.06);
+  --ws-accent-text: #9a5518;
+
+  /* Semantic */
+  --ws-success: #16a364;
+  --ws-success-muted: rgba(22, 163, 100, 0.1);
+  --ws-warning: #d97706;
+  --ws-warning-muted: rgba(217, 119, 6, 0.1);
+  --ws-danger: #dc2626;
+  --ws-danger-muted: rgba(220, 38, 38, 0.1);
+  --ws-info: #2563eb;
+  --ws-info-muted: rgba(37, 99, 235, 0.1);
+
+  /* Link types */
+  --ws-link-explicit: #2563eb;
+  --ws-link-semantic: #7c3aed;
+  --ws-link-backlink: #6366f1;
+  --ws-link-unresolved: #dc2626;
+  --ws-link-mention: #16a364;
+
+  /* Shadows (lighter for light theme) */
+  --ws-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --ws-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --ws-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --ws-shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --ws-shadow-popover: 0 4px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}

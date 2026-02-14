@@ -1,19 +1,20 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "./styles/tokens.css";
+@import "tailwindcss";
 
 :root {
-  --color-primary: 251 146 60;
-  --color-primary-hover: 234 88 12;
   --toast-enter-duration: 300ms;
   --toast-exit-duration: 200ms;
 }
 
 body {
-  @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+  background-color: var(--ws-bg);
+  color: var(--ws-text);
+  font-family: var(--ws-font-ui);
+  font-size: var(--ws-text-base);
+  line-height: var(--ws-leading-normal);
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+    background-color var(--ws-transition-slow),
+    color var(--ws-transition-slow);
 }
 
 /* Scrollbar styling for dark mode */
@@ -23,34 +24,33 @@ body {
 }
 
 .dark ::-webkit-scrollbar-track {
-  @apply bg-gray-800;
+  background-color: var(--ws-surface-1);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  @apply bg-gray-600 rounded;
+  background-color: var(--ws-border-strong);
+  border-radius: var(--ws-radius-sm);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+  background-color: var(--ws-text-muted);
 }
 
 /* Animation utilities */
-@layer utilities {
-  .animate-slide-in-right {
-    animation: slideInRight var(--toast-enter-duration) ease-out;
-  }
+@utility animate-slide-in-right {
+  animation: slideInRight var(--toast-enter-duration) ease-out;
+}
 
-  .animate-slide-out-right {
-    animation: slideOutRight var(--toast-exit-duration) ease-in;
-  }
+@utility animate-slide-out-right {
+  animation: slideOutRight var(--toast-exit-duration) ease-in;
+}
 
-  .animate-fade-in {
-    animation: fadeIn 0.2s ease-out;
-  }
+@utility animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
 
-  .animate-scale-in {
-    animation: scaleIn 0.2s ease-out;
-  }
+@utility animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
 }
 
 @keyframes slideInRight {
@@ -58,6 +58,7 @@ body {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -69,6 +70,7 @@ body {
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 0;
@@ -79,6 +81,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -89,6 +92,7 @@ body {
     transform: scale(0.95);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;

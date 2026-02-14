@@ -1,4 +1,5 @@
 import { useResizablePanel } from '../../hooks/useResizablePanel'
+import { CommandPalette } from '../CommandPalette'
 import { CenterPane } from './CenterPane'
 import { LeftRail } from './LeftRail'
 import { ResizeHandle } from './ResizeHandle'
@@ -21,6 +22,7 @@ export function WorkstationShell() {
 
   return (
     <div className="ws-shell">
+      <CommandPalette />
       <LeftRail
         collapsed={leftPanel.collapsed}
         onToggle={leftPanel.toggleCollapsed}

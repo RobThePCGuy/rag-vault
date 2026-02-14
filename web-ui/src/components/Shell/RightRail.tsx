@@ -1,4 +1,12 @@
-import { useSelection } from '../../contexts/SelectionContext'
+import { useLocalStorage } from '../../hooks/useLocalStorage'
+import {
+  BacklinksTab,
+  RelatedTab,
+  OutlineTab,
+  OutgoingTab,
+  MentionsTab,
+  GraphTab,
+} from '../RightRail'
 import { WsTabs } from '../ws'
 
 interface RightRailProps {
@@ -16,8 +24,22 @@ const rightRailTabs = [
   { id: 'graph', label: 'Graph' },
 ]
 
+type RightRailTabId = 'backlinks' | 'outgoing' | 'related' | 'mentions' | 'outline' | 'graph'
+
+const tabPanels: Record<RightRailTabId, () => JSX.Element> = {
+  backlinks: BacklinksTab,
+  outgoing: OutgoingTab,
+  related: RelatedTab,
+  mentions: MentionsTab,
+  outline: OutlineTab,
+  graph: GraphTab,
+}
+
 export function RightRail({ collapsed, onToggle, width }: RightRailProps) {
-  const { selection } = useSelection()
+  const [activeTab, setActiveTab] = useLocalStorage<RightRailTabId>(
+    'ws-right-rail-tab',
+    'backlinks'
+  )
 
   if (collapsed) {
     return (
@@ -29,13 +51,15 @@ export function RightRail({ collapsed, onToggle, width }: RightRailProps) {
     )
   }
 
+  const ActivePanel = tabPanels[activeTab] ?? BacklinksTab
+
   return (
     <aside className="ws-right-rail" style={{ width }}>
       <div className="ws-right-rail-header">
         <WsTabs
           tabs={rightRailTabs}
-          activeId="backlinks"
-          onSelect={() => {}}
+          activeId={activeTab}
+          onSelect={(id) => setActiveTab(id as RightRailTabId)}
           variant="pill"
           className="ws-right-rail-tabs"
         />
@@ -44,15 +68,7 @@ export function RightRail({ collapsed, onToggle, width }: RightRailProps) {
         </button>
       </div>
       <div className="ws-right-rail-content">
-        {selection.docId ? (
-          <div style={{ padding: 'var(--ws-space-4)', color: 'var(--ws-text-muted)', fontSize: 'var(--ws-text-sm)' }}>
-            Context for: {selection.docId}
-          </div>
-        ) : (
-          <div style={{ padding: 'var(--ws-space-4)', color: 'var(--ws-text-faint)', fontSize: 'var(--ws-text-sm)' }}>
-            Select a document to see backlinks, related passages, and more.
-          </div>
-        )}
+        <ActivePanel />
       </div>
     </aside>
   )

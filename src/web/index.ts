@@ -23,10 +23,21 @@ onShutdown(() => {
   stopRateLimiterCleanup()
 })
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    typeof (error as NodeJS.ErrnoException).code === 'string'
+  )
+}
+
 /**
  * Entry point - Start RAG Web Server
  */
 async function main(): Promise<void> {
+  const port = Number.parseInt(process.env['WEB_PORT'] || '3000', 10)
+
   try {
     // Dynamic imports to avoid loading heavy modules at CLI parse time
     const { RAGServer } = await import('../server/index.js')
@@ -34,7 +45,6 @@ async function main(): Promise<void> {
     const { DatabaseManager } = await import('./database-manager.js')
 
     // Configuration from environment
-    const port = Number.parseInt(process.env['WEB_PORT'] || '3000', 10)
     const uploadDir = process.env['UPLOAD_DIR'] || './uploads/'
 
     // Determine static files directory
@@ -95,6 +105,12 @@ async function main(): Promise<void> {
       console.log('No UI build found. Run "pnpm ui:build" to build the frontend.')
     }
   } catch (error) {
+    if (isErrnoException(error) && error.code === 'EADDRINUSE') {
+      console.error(
+        `Port ${port} is already in use. Close the other RAG Vault web server or run with a different port (example: WEB_PORT=3001 npx @robthepcguy/rag-vault web).`
+      )
+      process.exit(1)
+    }
     console.error('Failed to start RAG Web Server:', error)
     process.exit(1)
   }

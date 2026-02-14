@@ -10,6 +10,8 @@ import { LinksProvider } from './contexts/LinksContext'
 import { PreferencesProvider } from './contexts/PreferencesContext'
 import { ReadingModeProvider } from './contexts/ReadingModeContext'
 import { ReadingStatsProvider } from './contexts/ReadingStatsContext'
+import { SelectionProvider } from './contexts/SelectionContext'
+import { TabsProvider } from './contexts/TabsContext'
 import { TagsProvider } from './contexts/TagsContext'
 import { ToastProvider } from './contexts/ToastContext'
 import './index.css'
@@ -17,7 +19,7 @@ import './index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // 1 minute
+      staleTime: 1000 * 60,
       retry: 1,
     },
   },
@@ -34,21 +36,25 @@ createRoot(rootElement).render(
       <BrowserRouter>
         <PreferencesProvider>
           <ToastProvider>
-            <LinksProvider>
-              <AnnotationsProvider>
-                <TagsProvider>
-                  <CollectionsProvider>
-                    <GraphStateProvider>
-                      <ReadingModeProvider>
-                        <ReadingStatsProvider>
-                          <App />
-                        </ReadingStatsProvider>
-                      </ReadingModeProvider>
-                    </GraphStateProvider>
-                  </CollectionsProvider>
-                </TagsProvider>
-              </AnnotationsProvider>
-            </LinksProvider>
+            <SelectionProvider>
+              <TabsProvider dbId="default">
+                <LinksProvider>
+                  <AnnotationsProvider>
+                    <TagsProvider>
+                      <CollectionsProvider>
+                        <GraphStateProvider>
+                          <ReadingModeProvider>
+                            <ReadingStatsProvider>
+                              <App />
+                            </ReadingStatsProvider>
+                          </ReadingModeProvider>
+                        </GraphStateProvider>
+                      </CollectionsProvider>
+                    </TagsProvider>
+                  </AnnotationsProvider>
+                </LinksProvider>
+              </TabsProvider>
+            </SelectionProvider>
           </ToastProvider>
         </PreferencesProvider>
       </BrowserRouter>

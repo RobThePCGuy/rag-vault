@@ -78,7 +78,7 @@ export interface PinOptions {
   originalScore?: number
 }
 
-export interface LinksContextValue {
+interface LinksContextValue {
   // Pins
   pins: PinnedLink[]
   createPin: (

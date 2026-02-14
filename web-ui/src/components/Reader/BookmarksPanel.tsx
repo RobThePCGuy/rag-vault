@@ -41,21 +41,29 @@ export function BookmarksPanel({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-80 max-w-full bg-white dark:bg-gray-800 shadow-xl z-50 flex flex-col"
+            className="fixed right-0 top-0 h-full w-80 max-w-full shadow-xl z-50 flex flex-col"
+            style={{ background: 'var(--ws-surface-raised)' }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <div
+              className="flex items-center justify-between px-4 py-3 border-b"
+              style={{ borderColor: 'var(--ws-border)' }}
+            >
+              <h2
+                className="text-lg font-semibold flex items-center gap-2"
+                style={{ color: 'var(--ws-text)' }}
+              >
                 <BookmarkIcon className="w-5 h-5 text-blue-500" />
                 Bookmarks
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+                <span className="text-sm font-normal" style={{ color: 'var(--ws-text-muted)' }}>
                   ({bookmarks.length})
                 </span>
               </h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+                className="p-1 rounded transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 <CloseIcon className="w-5 h-5" />
               </button>
@@ -64,13 +72,18 @@ export function BookmarksPanel({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
               {bookmarks.length === 0 ? (
-                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <div className="text-center py-12" style={{ color: 'var(--ws-text-muted)' }}>
                   <BookmarkOutlineIcon className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">No bookmarks yet</p>
                   <p className="text-xs mt-1">
                     Press{' '}
-                    <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">b</kbd> on a
-                    chunk to bookmark it
+                    <kbd
+                      className="px-1.5 py-0.5 rounded"
+                      style={{ background: 'var(--ws-surface-2)' }}
+                    >
+                      b
+                    </kbd>{' '}
+                    on a chunk to bookmark it
                   </p>
                 </div>
               ) : (
@@ -138,15 +151,19 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className="bg-gray-50 dark:bg-gray-750 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+      className="rounded-lg p-3 border"
+      style={{ background: 'var(--ws-surface-1)', borderColor: 'var(--ws-border)' }}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <button type="button" onClick={onNavigate} className="text-left flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate hover:text-blue-600 dark:hover:text-blue-400">
+          <div
+            className="text-sm font-medium truncate"
+            style={{ color: 'var(--ws-text-secondary)' }}
+          >
             {displayPath}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
             Chunk #{bookmark.chunkKey.chunkIndex}
           </div>
         </button>
@@ -155,7 +172,8 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
           <button
             type="button"
             onClick={() => setIsEditing(!isEditing)}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+            className="p-1 rounded transition-colors"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Edit note"
           >
             <EditIcon className="w-4 h-4" />
@@ -172,7 +190,8 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
               <button
                 type="button"
                 onClick={() => setShowConfirmDelete(false)}
-                className="px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-0.5 text-xs font-medium rounded transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 Cancel
               </button>
@@ -181,7 +200,8 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
             <button
               type="button"
               onClick={() => setShowConfirmDelete(true)}
-              className="p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors"
+              className="p-1 rounded transition-colors"
+              style={{ color: 'var(--ws-text-muted)' }}
               title="Delete bookmark"
             >
               <TrashIcon className="w-4 h-4" />
@@ -197,7 +217,12 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
             value={noteValue}
             onChange={(e) => setNoteValue(e.target.value)}
             placeholder="Add a note..."
-            className="w-full px-2 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-2 py-1.5 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            style={{
+              background: 'var(--ws-surface-raised)',
+              borderColor: 'var(--ws-border)',
+              color: 'var(--ws-text)',
+            }}
             rows={2}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -217,27 +242,29 @@ function BookmarkItem({ bookmark, onNavigate, onUpdateNote, onDelete }: Bookmark
                 setIsEditing(false)
                 setNoteValue(bookmark.note || '')
               }}
-              className="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              className="px-2 py-1 text-xs font-medium rounded transition-colors"
+              style={{ color: 'var(--ws-text-secondary)' }}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSaveNote}
-              className="px-2 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+              className="px-2 py-1 text-xs font-medium rounded transition-colors"
+              style={{ background: 'var(--ws-accent)', color: 'white' }}
             >
               Save
             </button>
           </div>
         </div>
       ) : bookmark.note ? (
-        <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+        <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--ws-text-secondary)' }}>
           {bookmark.note}
         </p>
       ) : null}
 
       {/* Timestamp */}
-      <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+      <div className="mt-2 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
         {new Date(bookmark.createdAt).toLocaleDateString()}
       </div>
     </motion.div>

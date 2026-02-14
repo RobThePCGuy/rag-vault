@@ -1,19 +1,7 @@
-"use strict";
 // Raw Data Utilities for ingest_data tool
 // Handles: base64url encoding, source normalization, file saving, source extraction
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.encodeBase64Url = encodeBase64Url;
-exports.decodeBase64Url = decodeBase64Url;
-exports.validateSourceProtocol = validateSourceProtocol;
-exports.normalizeSource = normalizeSource;
-exports.getRawDataDir = getRawDataDir;
-exports.generateRawDataPath = generateRawDataPath;
-exports.saveRawData = saveRawData;
-exports.isRawDataPath = isRawDataPath;
-exports.isManagedRawDataPath = isManagedRawDataPath;
-exports.extractSourceFromPath = extractSourceFromPath;
-const promises_1 = require("node:fs/promises");
-const node_path_1 = require("node:path");
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 // ============================================
 // Base64URL Encoding/Decoding
 // ============================================
@@ -26,7 +14,7 @@ const node_path_1 = require("node:path");
  * @param str - String to encode
  * @returns URL-safe base64 encoded string
  */
-function encodeBase64Url(str) {
+export function encodeBase64Url(str) {
     return Buffer.from(str, 'utf-8')
         .toString('base64')
         .replace(/\+/g, '-')
@@ -39,7 +27,7 @@ function encodeBase64Url(str) {
  * @param base64url - URL-safe base64 encoded string
  * @returns Decoded string
  */
-function decodeBase64Url(base64url) {
+export function decodeBase64Url(base64url) {
     // Convert base64url to standard base64
     let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
     // Add padding if needed
@@ -64,7 +52,7 @@ const BLOCKED_PROTOCOLS = ['javascript:', 'vbscript:', 'data:'];
  * @param source - Source identifier to validate
  * @throws Error if the protocol is blocked
  */
-function validateSourceProtocol(source) {
+export function validateSourceProtocol(source) {
     try {
         const parsed = new URL(source);
         if (BLOCKED_PROTOCOLS.includes(parsed.protocol)) {
@@ -87,7 +75,7 @@ function validateSourceProtocol(source) {
  * @returns Normalized source
  * @throws Error if the source uses a disallowed protocol
  */
-function normalizeSource(source) {
+export function normalizeSource(source) {
     // Validate protocol before processing
     validateSourceProtocol(source);
     try {
@@ -113,8 +101,8 @@ function normalizeSource(source) {
  * @param dbPath - LanceDB database path
  * @returns Raw-data directory path
  */
-function getRawDataDir(dbPath) {
-    return (0, node_path_1.join)(dbPath, 'raw-data');
+export function getRawDataDir(dbPath) {
+    return join(dbPath, 'raw-data');
 }
 /**
  * Generate raw-data file path from source and format
@@ -125,12 +113,12 @@ function getRawDataDir(dbPath) {
  * @param format - Content format
  * @returns Generated file path
  */
-function generateRawDataPath(dbPath, source, _format) {
+export function generateRawDataPath(dbPath, source, _format) {
     const normalizedSource = normalizeSource(source);
     const encoded = encodeBase64Url(normalizedSource);
     // All formats use .md extension for consistency
     // This allows generating unique path from source without knowing original format
-    return (0, node_path_1.resolve)(getRawDataDir(dbPath), `${encoded}.md`);
+    return resolve(getRawDataDir(dbPath), `${encoded}.md`);
 }
 // ============================================
 // File Operations
@@ -145,12 +133,12 @@ function generateRawDataPath(dbPath, source, _format) {
  * @param format - Content format
  * @returns Saved file path
  */
-async function saveRawData(dbPath, source, content, format) {
+export async function saveRawData(dbPath, source, content, format) {
     const filePath = generateRawDataPath(dbPath, source, format);
     // Ensure directory exists
-    await (0, promises_1.mkdir)((0, node_path_1.dirname)(filePath), { recursive: true });
+    await mkdir(dirname(filePath), { recursive: true });
     // Write content to file
-    await (0, promises_1.writeFile)(filePath, content, 'utf-8');
+    await writeFile(filePath, content, 'utf-8');
     return filePath;
 }
 // ============================================
@@ -158,14 +146,14 @@ async function saveRawData(dbPath, source, content, format) {
 // ============================================
 // Path patterns for raw-data directory detection (cross-platform)
 const RAW_DATA_POSIX = '/raw-data/';
-const RAW_DATA_NATIVE = `${node_path_1.sep}raw-data${node_path_1.sep}`;
+const RAW_DATA_NATIVE = `${sep}raw-data${sep}`;
 /**
  * Check if file path is in raw-data directory
  *
  * @param filePath - File path to check
  * @returns True if path is in raw-data directory
  */
-function isRawDataPath(filePath) {
+export function isRawDataPath(filePath) {
     return filePath.includes(RAW_DATA_NATIVE) || filePath.includes(RAW_DATA_POSIX);
 }
 /**
@@ -176,11 +164,11 @@ function isRawDataPath(filePath) {
  * @param filePath - File path to validate
  * @returns True only if filePath is inside <dbPath>/raw-data
  */
-function isManagedRawDataPath(dbPath, filePath) {
-    const rawDataDir = (0, node_path_1.resolve)(getRawDataDir(dbPath));
-    const resolvedPath = (0, node_path_1.resolve)(filePath);
-    const rel = (0, node_path_1.relative)(rawDataDir, resolvedPath);
-    return rel === '' || (!rel.startsWith('..') && !(0, node_path_1.isAbsolute)(rel));
+export function isManagedRawDataPath(dbPath, filePath) {
+    const rawDataDir = resolve(getRawDataDir(dbPath));
+    const resolvedPath = resolve(filePath);
+    const rel = relative(rawDataDir, resolvedPath);
+    return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 /**
  * Extract original source from raw-data file path
@@ -189,7 +177,7 @@ function isManagedRawDataPath(dbPath, filePath) {
  * @param filePath - Raw-data file path
  * @returns Original source or null
  */
-function extractSourceFromPath(filePath) {
+export function extractSourceFromPath(filePath) {
     // Try native path separator first, then POSIX
     let rawDataIndex = filePath.indexOf(RAW_DATA_NATIVE);
     let markerLength = RAW_DATA_NATIVE.length;

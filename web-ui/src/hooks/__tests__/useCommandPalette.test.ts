@@ -48,9 +48,7 @@ describe('useCommandPalette', () => {
     const { result } = renderHook(() => useCommandPalette())
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
     })
 
     expect(result.current.isOpen).toBe(true)
@@ -60,9 +58,7 @@ describe('useCommandPalette', () => {
     const { result } = renderHook(() => useCommandPalette())
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }),
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))
     })
 
     expect(result.current.isOpen).toBe(true)
@@ -72,16 +68,12 @@ describe('useCommandPalette', () => {
     const { result } = renderHook(() => useCommandPalette())
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
     })
     expect(result.current.isOpen).toBe(true)
 
     act(() => {
-      window.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
-      )
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
     })
     expect(result.current.isOpen).toBe(false)
   })
@@ -117,9 +109,9 @@ describe('useCommandPalette', () => {
 
     const docActions = result.current.results.filter((a) => a.category === 'document')
     expect(docActions).toHaveLength(3)
-    expect(docActions[0].label).toBe('architecture.md')
-    expect(docActions[1].label).toBe('design-patterns.md')
-    expect(docActions[2].label).toBe('2024-01-15.md')
+    expect(docActions[0]!.label).toBe('architecture.md')
+    expect(docActions[1]!.label).toBe('design-patterns.md')
+    expect(docActions[2]!.label).toBe('2024-01-15.md')
   })
 
   it('includes navigation actions', () => {

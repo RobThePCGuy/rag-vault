@@ -10,7 +10,7 @@ export interface ComparisonChunk {
   text: string
 }
 
-export interface UseChunkComparisonResult {
+interface UseChunkComparisonResult {
   isComparing: boolean
   leftChunk: ComparisonChunk | null
   rightChunk: ComparisonChunk | null

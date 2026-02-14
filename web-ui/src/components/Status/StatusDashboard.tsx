@@ -31,15 +31,18 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
         {metrics.map((metric) => (
           <div
             key={metric.label}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6"
+            className="border rounded-lg p-6"
+            style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                <metric.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-lg" style={{ background: 'var(--ws-accent-subtle)' }}>
+                <metric.icon className="w-6 h-6" style={{ color: 'var(--ws-accent)' }} />
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{metric.label}</p>
-                <p className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
+                  {metric.label}
+                </p>
+                <p className="text-2xl font-semibold" style={{ color: 'var(--ws-text)' }}>
                   {metric.value}
                 </p>
               </div>
@@ -49,24 +52,29 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
       </div>
 
       {/* System Info */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">System Info</h2>
+      <div
+        className="border rounded-lg p-6"
+        style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+      >
+        <h2 className="text-lg font-medium mb-4" style={{ color: 'var(--ws-text)' }}>
+          System Info
+        </h2>
         <dl className="space-y-3">
           <div className="flex justify-between">
-            <dt className="text-gray-500 dark:text-gray-400">Search Mode</dt>
-            <dd className="text-gray-900 dark:text-gray-100 font-mono text-sm">
+            <dt style={{ color: 'var(--ws-text-muted)' }}>Search Mode</dt>
+            <dd className="font-mono text-sm" style={{ color: 'var(--ws-text)' }}>
               {status.searchMode}
             </dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500 dark:text-gray-400">FTS Index</dt>
-            <dd className="text-gray-900 dark:text-gray-100 font-mono text-sm">
+            <dt style={{ color: 'var(--ws-text-muted)' }}>FTS Index</dt>
+            <dd className="font-mono text-sm" style={{ color: 'var(--ws-text)' }}>
               {status.ftsIndexEnabled ? 'Enabled' : 'Disabled'}
             </dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500 dark:text-gray-400">Uptime</dt>
-            <dd className="text-gray-900 dark:text-gray-100 font-mono text-sm">
+            <dt style={{ color: 'var(--ws-text-muted)' }}>Uptime</dt>
+            <dd className="font-mono text-sm" style={{ color: 'var(--ws-text)' }}>
               {formatUptime(status.uptime)}
             </dd>
           </div>
@@ -76,9 +84,9 @@ export function StatusDashboard({ status }: StatusDashboardProps) {
   )
 }
 
-function DocumentIcon({ className }: { className?: string }) {
+function DocumentIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -89,9 +97,9 @@ function DocumentIcon({ className }: { className?: string }) {
   )
 }
 
-function ChunkIcon({ className }: { className?: string }) {
+function ChunkIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -102,9 +110,9 @@ function ChunkIcon({ className }: { className?: string }) {
   )
 }
 
-function DatabaseIcon({ className }: { className?: string }) {
+function DatabaseIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

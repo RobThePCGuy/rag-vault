@@ -9,7 +9,7 @@ export type FontSize = 'sm' | 'base' | 'lg' | 'xl'
 export type LineHeight = 'tight' | 'normal' | 'relaxed'
 export type FontFamily = 'sans' | 'serif' | 'mono'
 
-export interface ReaderSettings {
+interface ReaderSettings {
   fontSize: FontSize
   lineHeight: LineHeight
   fontFamily: FontFamily
@@ -18,7 +18,7 @@ export interface ReaderSettings {
   showHeatmap: boolean
 }
 
-export interface ReaderSettingsContextValue {
+interface ReaderSettingsContextValue {
   settings: ReaderSettings
   setFontSize: (size: FontSize) => void
   setLineHeight: (height: LineHeight) => void

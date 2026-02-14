@@ -26,7 +26,7 @@ interface UseDiscoveryModeOptions {
   onSaveTrail?: (steps: DiscoveryStep[], name: string) => void
 }
 
-export interface UseDiscoveryModeResult {
+interface UseDiscoveryModeResult {
   isActive: boolean
   currentStep: DiscoveryStep | null
   history: DiscoveryStep[]

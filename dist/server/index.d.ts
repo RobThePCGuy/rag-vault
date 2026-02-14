@@ -1,3 +1,4 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { type GroupingMode } from '../vectordb/index.js';
 import { type DeleteFileInput, type IngestDataInput, type IngestFileInput, type QueryDocumentsInput } from './schemas.js';
 /**
@@ -38,6 +39,11 @@ export declare class RAGServer {
     private readonly parser;
     private readonly dbPath;
     constructor(config: RAGServerConfig);
+    /**
+     * Create a new McpServer session sharing this RAGServer's backend resources.
+     * Used by the remote transport to create one MCP server per client session.
+     */
+    createSession(): McpServer;
     /**
      * Set up MCP handlers using tool() API
      * Note: Type casts are used to work around Zod version compatibility between project and SDK

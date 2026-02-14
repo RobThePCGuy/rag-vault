@@ -1,14 +1,8 @@
-"use strict";
 // HTML Parser using Readability and Turndown
 // Extracts main content from HTML and converts to Markdown
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseHtml = parseHtml;
-const readability_1 = require("@mozilla/readability");
-const jsdom_1 = require("jsdom");
-const turndown_1 = __importDefault(require("turndown"));
+import { Readability } from '@mozilla/readability';
+import { JSDOM } from 'jsdom';
+import TurndownService from 'turndown';
 // ============================================
 // Turndown Service Configuration
 // ============================================
@@ -16,7 +10,7 @@ const turndown_1 = __importDefault(require("turndown"));
  * Create and configure Turndown service for HTML to Markdown conversion
  */
 function createTurndownService() {
-    const turndownService = new turndown_1.default({
+    const turndownService = new TurndownService({
         headingStyle: 'atx', // Use # style headings
         codeBlockStyle: 'fenced', // Use ``` for code blocks
         bulletListMarker: '-', // Use - for bullet lists
@@ -51,21 +45,21 @@ function createTurndownService() {
  * @param url - Source URL (used for resolving relative links)
  * @returns Markdown string of extracted content
  */
-async function parseHtml(html, url) {
+export async function parseHtml(html, url) {
     // Handle empty or whitespace-only HTML
     if (!html || html.trim().length === 0) {
         return '';
     }
     try {
         // Create DOM from HTML string
-        const dom = new jsdom_1.JSDOM(html, {
+        const dom = new JSDOM(html, {
             url,
             // Enable features needed for Readability
             runScripts: 'outside-only',
         });
         const document = dom.window.document;
         // Use Readability to extract main content
-        const reader = new readability_1.Readability(document, {
+        const reader = new Readability(document, {
             keepClasses: false,
             debug: false,
         });

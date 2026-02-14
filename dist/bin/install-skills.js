@@ -1,4 +1,3 @@
-"use strict";
 /**
  * MCP Local RAG Skills Installer
  *
@@ -13,11 +12,9 @@
  *   npx rag-vault skills install --codex                # Codex
  *   npx rag-vault skills install --path /custom/path    # Custom
  */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.run = run;
-const node_fs_1 = require("node:fs");
-const node_os_1 = require("node:os");
-const node_path_1 = require("node:path");
+import { cpSync, existsSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 // ============================================
 // Constants
 // ============================================
@@ -25,16 +22,16 @@ const node_path_1 = require("node:path");
 // dist/bin/install-skills.js -> dist/skills/rag-vault
 // But skills are actually in package root: skills/rag-vault
 // So from dist/bin, go up twice: ../.. then skills/rag-vault
-const SKILLS_SOURCE = (0, node_path_1.resolve)(__dirname, '..', '..', 'skills', 'rag-vault');
+const SKILLS_SOURCE = resolve(__dirname, '..', '..', 'skills', 'rag-vault');
 // Codex home directory (supports CODEX_HOME environment variable)
 // https://developers.openai.com/codex/local-config/
-const CODEX_HOME = process.env['CODEX_HOME'] || (0, node_path_1.join)((0, node_os_1.homedir)(), '.codex');
+const CODEX_HOME = process.env['CODEX_HOME'] || join(homedir(), '.codex');
 // Installation targets
 const TARGETS = {
     'claude-code-project': './.claude/skills/rag-vault',
-    'claude-code-global': (0, node_path_1.join)((0, node_os_1.homedir)(), '.claude', 'skills', 'rag-vault'),
+    'claude-code-global': join(homedir(), '.claude', 'skills', 'rag-vault'),
     'codex-project': './.codex/skills/rag-vault',
-    'codex-global': (0, node_path_1.join)(CODEX_HOME, 'skills', 'rag-vault'),
+    'codex-global': join(CODEX_HOME, 'skills', 'rag-vault'),
 };
 function parseArgs(args) {
     const options = {
@@ -140,24 +137,24 @@ function getTargetPath(options) {
             console.error('Error: Custom path not specified');
             process.exit(1);
         }
-        return (0, node_path_1.resolve)(options.customPath, 'rag-vault');
+        return resolve(options.customPath, 'rag-vault');
     }
     return TARGETS[options.target];
 }
 function install(targetPath) {
     // Check source exists
-    if (!(0, node_fs_1.existsSync)(SKILLS_SOURCE)) {
+    if (!existsSync(SKILLS_SOURCE)) {
         console.error(`Error: Skills source not found at ${SKILLS_SOURCE}`);
         process.exit(1);
     }
     // Create target directory
-    const targetDir = (0, node_path_1.dirname)(targetPath);
-    if (!(0, node_fs_1.existsSync)(targetDir)) {
-        (0, node_fs_1.mkdirSync)(targetDir, { recursive: true });
+    const targetDir = dirname(targetPath);
+    if (!existsSync(targetDir)) {
+        mkdirSync(targetDir, { recursive: true });
         console.log(`Created directory: ${targetDir}`);
     }
     // Copy skills
-    (0, node_fs_1.cpSync)(SKILLS_SOURCE, targetPath, { recursive: true });
+    cpSync(SKILLS_SOURCE, targetPath, { recursive: true });
     console.log(`Installed skills to: ${targetPath}`);
 }
 // ============================================
@@ -167,7 +164,7 @@ function install(targetPath) {
  * Run the skills installer with the given arguments
  * @param args - Command line arguments (after "skills install")
  */
-function run(args) {
+export function run(args) {
     // Default to help if no args
     if (args.length === 0) {
         printHelp();

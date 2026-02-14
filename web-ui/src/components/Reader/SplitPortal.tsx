@@ -24,18 +24,23 @@ export function SplitPortal({ filePath, chunkIndex, onClose, onNavigate }: Split
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 50 }}
-      className="h-full flex flex-col bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700"
+      className="h-full flex flex-col border-l"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b"
+        style={{ borderColor: 'var(--ws-border)', background: 'var(--ws-surface-1)' }}
+      >
         <div className="flex-1 min-w-0">
           <h3
-            className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
+            className="text-sm font-medium truncate"
+            style={{ color: 'var(--ws-text)' }}
             title={filePath}
           >
             {displaySource}
           </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
             {chunks.length} chunks &middot; Viewing #{chunkIndex}
           </p>
         </div>
@@ -45,7 +50,8 @@ export function SplitPortal({ filePath, chunkIndex, onClose, onNavigate }: Split
           <button
             type="button"
             onClick={() => onNavigate(filePath, chunkIndex)}
-            className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+            className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+            style={{ color: 'var(--ws-accent)' }}
           >
             Open Full
           </button>
@@ -54,7 +60,8 @@ export function SplitPortal({ filePath, chunkIndex, onClose, onNavigate }: Split
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--ws-text-muted)' }}
             aria-label="Close split view"
           >
             <CloseIcon />
@@ -66,8 +73,10 @@ export function SplitPortal({ filePath, chunkIndex, onClose, onNavigate }: Split
       <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
           <div className="flex items-center justify-center h-32">
-            <Spinner className="w-6 h-6 text-gray-400" />
-            <span className="ml-2 text-gray-500 dark:text-gray-400">Loading document...</span>
+            <Spinner className="w-6 h-6" style={{ color: 'var(--ws-text-muted)' }} />
+            <span className="ml-2" style={{ color: 'var(--ws-text-muted)' }}>
+              Loading document...
+            </span>
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">

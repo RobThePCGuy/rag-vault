@@ -1,12 +1,8 @@
-"use strict";
 // Curatorial Flywheel v1: Feedback-based Re-ranking
 // Tracks user actions (pins, dismissals) to improve retrieval quality
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FeedbackStore = void 0;
-exports.getFeedbackStore = getFeedbackStore;
-const promises_1 = require("node:fs/promises");
-const node_path_1 = require("node:path");
-const file_utils_js_1 = require("../utils/file-utils.js");
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { atomicWriteFile } from '../utils/file-utils.js';
 const DEFAULT_CONFIG = {
     pinBoost: 1.3,
     coPinBoost: 1.15,
@@ -27,13 +23,14 @@ function chunkKey(ref) {
  * FeedbackStore: In-memory store for feedback events
  * Can be persisted to disk for long-term learning
  */
-class FeedbackStore {
+export class FeedbackStore {
+    events = [];
+    config;
+    // Index structures for fast lookup
+    pinnedPairs = new Map(); // source -> targets
+    dismissedPairs = new Map(); // source -> targets
+    coPinnedWith = new Map(); // target -> co-targets -> count
     constructor(config = {}) {
-        this.events = [];
-        // Index structures for fast lookup
-        this.pinnedPairs = new Map(); // source -> targets
-        this.dismissedPairs = new Map(); // source -> targets
-        this.coPinnedWith = new Map(); // target -> co-targets -> count
         this.config = { ...DEFAULT_CONFIG, ...config };
     }
     /**
@@ -217,7 +214,7 @@ class FeedbackStore {
      * @param dbPath - Path to the database directory
      */
     async saveToDisk(dbPath) {
-        const filePath = (0, node_path_1.join)(dbPath, 'feedback.json');
+        const filePath = join(dbPath, 'feedback.json');
         const data = {
             version: 1,
             events: this.events.map((e) => ({
@@ -225,7 +222,7 @@ class FeedbackStore {
                 timestamp: e.timestamp.toISOString(),
             })),
         };
-        await (0, file_utils_js_1.atomicWriteFile)(filePath, JSON.stringify(data, null, 2));
+        await atomicWriteFile(filePath, JSON.stringify(data, null, 2));
         console.error(`FeedbackStore: Saved ${this.events.length} events to ${filePath}`);
     }
     /**
@@ -233,9 +230,9 @@ class FeedbackStore {
      * @param dbPath - Path to the database directory
      */
     async loadFromDisk(dbPath) {
-        const filePath = (0, node_path_1.join)(dbPath, 'feedback.json');
+        const filePath = join(dbPath, 'feedback.json');
         try {
-            const content = await (0, promises_1.readFile)(filePath, 'utf-8');
+            const content = await readFile(filePath, 'utf-8');
             const data = JSON.parse(content);
             // Validate JSON structure before importing
             if (data.version !== 1) {
@@ -260,7 +257,6 @@ class FeedbackStore {
         }
     }
 }
-exports.FeedbackStore = FeedbackStore;
 // Global feedback store instance (eager initialization to prevent race conditions)
 // Using eager init instead of lazy init avoids the check-then-act race where
 // concurrent requests could create separate instances and lose feedback events.
@@ -268,7 +264,7 @@ const globalFeedbackStore = new FeedbackStore();
 /**
  * Get the global feedback store
  */
-function getFeedbackStore() {
+export function getFeedbackStore() {
     return globalFeedbackStore;
 }
 //# sourceMappingURL=feedback.js.map

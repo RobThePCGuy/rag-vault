@@ -114,7 +114,10 @@ export function CollectionsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ws-text-secondary)' }}>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: 'var(--ws-text-secondary)' }}
+                >
                   Name
                   <input
                     type="text"
@@ -127,7 +130,10 @@ export function CollectionsPage() {
               </div>
 
               <div>
-                <span className="block text-sm font-medium mb-1" style={{ color: 'var(--ws-text-secondary)' }}>
+                <span
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: 'var(--ws-text-secondary)' }}
+                >
                   Color
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -137,11 +143,16 @@ export function CollectionsPage() {
                       type="button"
                       onClick={() => setFormColor(color)}
                       className={`w-8 h-8 rounded-full ${COLLECTION_COLOR_CLASSES[color].bg} ${
-                        formColor === color
-                          ? 'ring-2 ring-offset-2'
-                          : ''
+                        formColor === color ? 'ring-2 ring-offset-2' : ''
                       }`}
-                      style={formColor === color ? { '--tw-ring-color': 'var(--ws-accent)', '--tw-ring-offset-color': 'var(--ws-surface-2)' } as React.CSSProperties : undefined}
+                      style={
+                        formColor === color
+                          ? ({
+                              '--tw-ring-color': 'var(--ws-accent)',
+                              '--tw-ring-offset-color': 'var(--ws-surface-2)',
+                            } as React.CSSProperties)
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -149,7 +160,10 @@ export function CollectionsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--ws-text-secondary)' }}>
+              <label
+                className="block text-sm font-medium mb-1"
+                style={{ color: 'var(--ws-text-secondary)' }}
+              >
                 Description (optional)
                 <input
                   type="text"
@@ -187,7 +201,10 @@ export function CollectionsPage() {
       {/* Collections List */}
       {collections.length === 0 ? (
         <div className="ws-surface text-center py-12">
-          <FolderIcon className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--ws-text-faint)' }} />
+          <FolderIcon
+            className="w-12 h-12 mx-auto mb-3"
+            style={{ color: 'var(--ws-text-faint)' }}
+          />
           <h3 className="text-lg font-medium mb-1" style={{ color: 'var(--ws-text)' }}>
             No collections yet
           </h3>

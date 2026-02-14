@@ -1,8 +1,4 @@
-"use strict";
 // Request logging middleware for audit trail
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createRequestLogger = createRequestLogger;
-exports.isRequestLoggingEnabled = isRequestLoggingEnabled;
 /**
  * Default logger - outputs to stderr in structured format
  */
@@ -32,7 +28,7 @@ const defaultLogger = (entry) => {
  *   skip: (req) => req.path === '/health'
  * }))
  */
-function createRequestLogger(config = {}) {
+export function createRequestLogger(config = {}) {
     const { logger = defaultLogger, skip } = config;
     return (req, res, next) => {
         // Skip logging if configured
@@ -67,7 +63,7 @@ function createRequestLogger(config = {}) {
  *
  * Enable with: REQUEST_LOGGING=true
  */
-function isRequestLoggingEnabled() {
+export function isRequestLoggingEnabled() {
     const envValue = process.env['REQUEST_LOGGING'];
     return envValue === 'true' || envValue === '1';
 }

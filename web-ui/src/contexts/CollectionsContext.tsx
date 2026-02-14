@@ -32,7 +32,7 @@ export interface CollectionsStore {
   collections: Collection[]
 }
 
-export interface CollectionsContextValue {
+interface CollectionsContextValue {
   // Collections
   collections: Collection[]
   createCollection: (name: string, color: CollectionColor, description?: string) => Collection

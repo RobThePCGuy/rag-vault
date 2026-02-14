@@ -60,8 +60,19 @@ export function ClusterLegend({ clusters, clusterColors }: ClusterLegendProps) {
   if (clusters.length === 0) return null
 
   return (
-    <div className="absolute bottom-2 left-2 z-10 bg-white/90 dark:bg-gray-800/90 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 px-3 py-2 max-w-xs max-h-48 overflow-y-auto">
-      <h4 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
+    <div
+      className="absolute bottom-2 left-2 z-10 rounded-lg shadow-lg px-3 py-2 max-w-xs max-h-48 overflow-y-auto"
+      style={{
+        background: 'var(--ws-surface-raised)',
+        borderColor: 'var(--ws-border)',
+        borderWidth: '1px',
+        borderStyle: 'solid',
+      }}
+    >
+      <h4
+        className="text-xs font-semibold uppercase tracking-wide mb-2"
+        style={{ color: 'var(--ws-text-secondary)' }}
+      >
         Document Clusters
       </h4>
       <div className="space-y-1">
@@ -72,12 +83,13 @@ export function ClusterLegend({ clusters, clusterColors }: ClusterLegendProps) {
               style={{ backgroundColor: clusterColors.get(cluster.filePath) }}
             />
             <span
-              className="text-xs text-gray-700 dark:text-gray-300 truncate"
+              className="text-xs truncate"
+              style={{ color: 'var(--ws-text-secondary)' }}
               title={cluster.filePath}
             >
               {cluster.fileName}
             </span>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
+            <span className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
               ({cluster.nodeIds.length})
             </span>
           </div>

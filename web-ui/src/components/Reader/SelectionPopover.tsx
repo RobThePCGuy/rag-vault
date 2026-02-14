@@ -79,8 +79,10 @@ export function SelectionPopover({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 4 }}
         transition={{ duration: 0.1 }}
-        className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-2"
+        className="fixed z-50 rounded-lg shadow-xl border p-2"
         style={{
+          background: 'var(--ws-surface-raised)',
+          borderColor: 'var(--ws-border)',
           left: adjustedLeft,
           top: adjustedTop,
           minWidth: popoverWidth,
@@ -101,7 +103,10 @@ export function SelectionPopover({
 
         {/* Row 2: Margin indicator (when auto-search is active) */}
         {showIndicator && (
-          <div className="flex items-center justify-center gap-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+          <div
+            className="flex items-center justify-center gap-1.5 pt-1.5 border-t"
+            style={{ borderColor: 'var(--ws-border)' }}
+          >
             <span className="text-xs text-violet-600 dark:text-violet-400 flex items-center gap-1">
               <MarginIcon className="w-3 h-3" />
               See margin
@@ -112,7 +117,10 @@ export function SelectionPopover({
 
         {/* Row 2: X-Ray Vision actions (legacy - only if handler provided) */}
         {hasActions && (
-          <div className="flex items-center justify-center gap-1 pt-1.5 border-t border-gray-200 dark:border-gray-700">
+          <div
+            className="flex items-center justify-center gap-1 pt-1.5 border-t"
+            style={{ borderColor: 'var(--ws-border)' }}
+          >
             {ACTIONS.map(({ action, icon, title }) => (
               <button
                 key={action}
@@ -122,11 +130,7 @@ export function SelectionPopover({
                 className={`
                   flex items-center justify-center w-8 h-8 rounded-md text-sm
                   transition-all
-                  ${
-                    isActionLoading
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }
+                  ${isActionLoading ? 'opacity-50 cursor-not-allowed' : ''}
                 `}
                 title={title}
               >

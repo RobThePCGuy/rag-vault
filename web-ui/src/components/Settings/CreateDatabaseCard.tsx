@@ -34,14 +34,21 @@ export function CreateDatabaseCard({ onCreate, isLoading, error }: CreateDatabas
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+    <div
+      className="border rounded-lg p-6"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+    >
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
           <PlusIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
         </div>
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Create Database</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Create a new RAG database</p>
+          <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
+            Create Database
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
+            Create a new RAG database
+          </p>
         </div>
       </div>
 
@@ -50,7 +57,8 @@ export function CreateDatabaseCard({ onCreate, isLoading, error }: CreateDatabas
           <div>
             <label
               htmlFor="dbPath"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="block text-sm font-medium mb-1"
+              style={{ color: 'var(--ws-text-secondary)' }}
             >
               Database Path
             </label>
@@ -61,20 +69,30 @@ export function CreateDatabaseCard({ onCreate, isLoading, error }: CreateDatabas
                 value={dbPath}
                 onChange={(e) => setDbPath(e.target.value)}
                 placeholder="/path/to/new-database"
-                className="flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                style={{
+                  background: 'var(--ws-surface-raised)',
+                  borderColor: 'var(--ws-border)',
+                  color: 'var(--ws-text)',
+                }}
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setIsBrowserOpen(true)}
                 disabled={isLoading}
-                className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 text-sm font-medium border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                style={{
+                  color: 'var(--ws-text-secondary)',
+                  background: 'var(--ws-surface-raised)',
+                  borderColor: 'var(--ws-border)',
+                }}
                 title="Browse folders"
               >
                 <FolderIcon className="w-5 h-5" />
               </button>
             </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
               Enter the full path where you want to create the database
             </p>
           </div>
@@ -116,7 +134,8 @@ export function CreateDatabaseCard({ onCreate, isLoading, error }: CreateDatabas
                 setSelectedModel('')
               }}
               disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+              style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
             >
               Cancel
             </button>

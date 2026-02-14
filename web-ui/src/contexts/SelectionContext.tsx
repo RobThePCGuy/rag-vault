@@ -1,6 +1,12 @@
 import { createContext, type ReactNode, useCallback, useContext, useState } from 'react'
 
-export type SelectionSource = 'search' | 'reader' | 'files' | 'graph' | 'backlink' | 'command-palette'
+export type SelectionSource =
+  | 'search'
+  | 'reader'
+  | 'files'
+  | 'graph'
+  | 'backlink'
+  | 'command-palette'
 
 export interface AppSelection {
   docId: string | null

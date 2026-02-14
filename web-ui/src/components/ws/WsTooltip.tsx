@@ -30,6 +30,7 @@ export function WsTooltip({ content, side = 'top', delay = 300, children }: WsTo
   }, [])
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: tooltip trigger pattern
     <span
       className="ws-tooltip-anchor"
       onMouseEnter={show}

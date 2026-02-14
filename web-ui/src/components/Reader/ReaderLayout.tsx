@@ -434,7 +434,8 @@ export function ReaderLayout({
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
-                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
                 title="Keyboard shortcuts (?)"
               >
                 <KeyboardIcon className="w-4 h-4" />
@@ -448,8 +449,10 @@ export function ReaderLayout({
           <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-8 py-6 book-reader">
             {isLoadingDoc ? (
               <div className="flex items-center justify-center h-32">
-                <Spinner className="w-6 h-6 text-gray-400" />
-                <span className="ml-2 text-gray-500 dark:text-gray-400">Loading document...</span>
+                <Spinner className="w-6 h-6" style={{ color: 'var(--ws-text-muted)' }} />
+                <span className="ml-2" style={{ color: 'var(--ws-text-muted)' }}>
+                  Loading document...
+                </span>
               </div>
             ) : docError ? (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
@@ -476,7 +479,11 @@ export function ReaderLayout({
         {/* Split view or margin (40%) */}
         <AnimatePresence mode="wait">
           {splitView ? (
-            <div key="split" className="w-[60%] border-l border-gray-200 dark:border-gray-700">
+            <div
+              key="split"
+              className="w-[60%] border-l"
+              style={{ borderColor: 'var(--ws-border)' }}
+            >
               <SplitPortal
                 filePath={splitView.filePath}
                 chunkIndex={splitView.chunkIndex}
@@ -490,7 +497,8 @@ export function ReaderLayout({
           ) : (
             <div
               key="margin"
-              className="w-[40%] border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-850"
+              className="w-[40%] border-l"
+              style={{ borderColor: 'var(--ws-border)', background: 'var(--ws-surface-1)' }}
             >
               <DynamicMargin
                 relatedChunks={activeRelated}

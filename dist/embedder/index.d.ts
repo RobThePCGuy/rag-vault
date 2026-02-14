@@ -9,6 +9,11 @@ export interface EmbedderConfig {
     batchSize: number;
     /** Model cache directory */
     cacheDir: string;
+    /**
+     * Device hint for Transformers.js runtime.
+     * Examples: auto, cpu, cuda, dml, webgpu
+     */
+    device?: string;
 }
 /**
  * Embedding generation class using Transformers.js
@@ -59,5 +64,10 @@ export declare class Embedder {
      * Build a model-specific fallback cache path to avoid reusing corrupted artifacts.
      */
     private getRecoveryCacheDir;
+    /**
+     * Resolve device preference for Transformers.js.
+     * Priority: constructor config -> RAG_EMBEDDING_DEVICE env -> auto
+     */
+    private resolveDevice;
 }
 //# sourceMappingURL=index.d.ts.map

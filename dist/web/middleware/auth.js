@@ -1,8 +1,5 @@
-"use strict";
 // API Key authentication middleware
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.apiKeyAuth = apiKeyAuth;
-const node_crypto_1 = require("node:crypto");
+import { timingSafeEqual } from 'node:crypto';
 /**
  * API Key authentication middleware
  *
@@ -22,7 +19,7 @@ const node_crypto_1 = require("node:crypto");
  *   headers: { 'Authorization': 'Bearer your-secret-key' }
  * })
  */
-function apiKeyAuth(req, res, next) {
+export function apiKeyAuth(req, res, next) {
     const configuredKey = process.env['RAG_API_KEY'];
     // If no API key configured, skip authentication (local-only mode)
     if (!configuredKey) {
@@ -76,6 +73,6 @@ function safeCompare(a, b) {
     bufB.copy(padB);
     // Use Node.js timing-safe comparison and verify original lengths match
     // lengthsMatch is already computed, so no timing leak from && evaluation
-    return (0, node_crypto_1.timingSafeEqual)(padA, padB) && lengthsMatch;
+    return timingSafeEqual(padA, padB) && lengthsMatch;
 }
 //# sourceMappingURL=auth.js.map

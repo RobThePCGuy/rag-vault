@@ -25,7 +25,8 @@ export function Breadcrumbs({ items, onNavigate, onSaveTrail, canSaveTrail }: Br
 
   return (
     <nav
-      className="flex items-center gap-1 px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto"
+      className="flex items-center gap-1 px-4 py-2 border-b overflow-x-auto"
+      style={{ background: 'var(--ws-surface-1)', borderColor: 'var(--ws-border)' }}
       aria-label="Breadcrumb"
     >
       <ol className="flex items-center gap-1">
@@ -34,7 +35,8 @@ export function Breadcrumbs({ items, onNavigate, onSaveTrail, canSaveTrail }: Br
           <button
             type="button"
             onClick={() => onNavigate({ filePath: '', label: 'Search', chunkIndex: undefined })}
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            className="transition-colors"
+            style={{ color: 'var(--ws-text-muted)' }}
           >
             <HomeIcon />
           </button>
@@ -48,9 +50,11 @@ export function Breadcrumbs({ items, onNavigate, onSaveTrail, canSaveTrail }: Br
             className="flex items-center"
           >
             {/* Separator with connection reason */}
-            <span className="mx-1 text-gray-400 dark:text-gray-500">/</span>
+            <span className="mx-1" style={{ color: 'var(--ws-text-muted)' }}>
+              /
+            </span>
             {item.connectionReason && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 italic mr-1">
+              <span className="text-xs italic mr-1" style={{ color: 'var(--ws-text-muted)' }}>
                 via "{item.connectionReason}"
               </span>
             )}
@@ -60,20 +64,19 @@ export function Breadcrumbs({ items, onNavigate, onSaveTrail, canSaveTrail }: Br
               type="button"
               onClick={() => onNavigate(item)}
               disabled={index === items.length - 1}
-              className={`
-                text-sm truncate max-w-[150px] px-2 py-0.5 rounded
-                ${
-                  index === items.length - 1
-                    ? 'text-gray-900 dark:text-gray-100 font-medium bg-gray-100 dark:bg-gray-700'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }
-                transition-colors
-              `}
+              className="text-sm truncate max-w-[150px] px-2 py-0.5 rounded transition-colors"
+              style={
+                index === items.length - 1
+                  ? { color: 'var(--ws-text)', fontWeight: 500, background: 'var(--ws-surface-1)' }
+                  : { color: 'var(--ws-text-secondary)' }
+              }
               title={`${item.label}${item.chunkIndex !== undefined ? ` #${item.chunkIndex}` : ''}`}
             >
               {item.label}
               {item.chunkIndex !== undefined && (
-                <span className="ml-1 text-gray-400 dark:text-gray-500">#{item.chunkIndex}</span>
+                <span className="ml-1" style={{ color: 'var(--ws-text-muted)' }}>
+                  #{item.chunkIndex}
+                </span>
               )}
             </button>
           </motion.li>
@@ -87,7 +90,8 @@ export function Breadcrumbs({ items, onNavigate, onSaveTrail, canSaveTrail }: Br
           animate={{ opacity: 1, scale: 1 }}
           type="button"
           onClick={onSaveTrail}
-          className="ml-auto px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors whitespace-nowrap"
+          className="ml-auto px-2 py-1 text-xs font-medium rounded transition-colors whitespace-nowrap"
+          style={{ color: 'var(--ws-accent)' }}
         >
           Save Trail
         </motion.button>

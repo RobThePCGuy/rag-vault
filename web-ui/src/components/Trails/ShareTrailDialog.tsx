@@ -54,30 +54,35 @@ export function ShareTrailDialog({ isOpen, onClose, trail, vaultId }: ShareTrail
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full mx-4 p-6"
+            className="rounded-xl shadow-xl max-w-lg w-full mx-4 p-6"
+            style={{ background: 'var(--ws-surface-raised)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <ShareIcon className="w-5 h-5 text-blue-500" />
+              <h2
+                className="text-lg font-semibold flex items-center gap-2"
+                style={{ color: 'var(--ws-text)' }}
+              >
+                <ShareIcon className="w-5 h-5" style={{ color: 'var(--ws-accent)' }} />
                 Share Trail
               </h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+                className="p-1 rounded transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 <CloseIcon className="w-5 h-5" />
               </button>
             </div>
 
             {/* Trail Info */}
-            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-750 rounded-lg">
-              <h3 className="font-medium text-gray-900 dark:text-gray-100">
+            <div className="mb-4 p-3 rounded-lg" style={{ background: 'var(--ws-surface-1)' }}>
+              <h3 className="font-medium" style={{ color: 'var(--ws-text)' }}>
                 {trail.name || 'Untitled Trail'}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm mt-1" style={{ color: 'var(--ws-text-muted)' }}>
                 {trail.steps.length} step{trail.steps.length !== 1 ? 's' : ''}
               </p>
             </div>
@@ -104,7 +109,8 @@ export function ShareTrailDialog({ isOpen, onClose, trail, vaultId }: ShareTrail
                 <div>
                   <label
                     htmlFor="share-link-input"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    className="block text-sm font-medium mb-1"
+                    style={{ color: 'var(--ws-text-secondary)' }}
                   >
                     Share Link
                   </label>
@@ -114,24 +120,26 @@ export function ShareTrailDialog({ isOpen, onClose, trail, vaultId }: ShareTrail
                       type="text"
                       value={shareUrl}
                       readOnly
-                      className="flex-1 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none focus:ring-2"
+                      style={{
+                        background: 'var(--ws-surface-1)',
+                        border: '1px solid var(--ws-border)',
+                        color: 'var(--ws-text)',
+                      }}
                       onClick={(e) => (e.target as HTMLInputElement).select()}
                     />
                     <button
                       type="button"
                       onClick={handleCopy}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        copied
-                          ? 'bg-green-500 text-white'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
+                      className="px-4 py-2 text-sm font-medium rounded-lg transition-colors text-white"
+                      style={{ background: copied ? 'var(--ws-success)' : 'var(--ws-accent)' }}
                     >
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
                 </div>
 
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
                   Anyone with this link can import the trail into their vault. The link does not
                   contain document content, only file paths and chunk numbers.
                 </p>
@@ -143,7 +151,8 @@ export function ShareTrailDialog({ isOpen, onClose, trail, vaultId }: ShareTrail
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="px-4 py-2 text-sm rounded-lg transition-colors"
+                style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-2)' }}
               >
                 Close
               </button>
@@ -156,9 +165,9 @@ export function ShareTrailDialog({ isOpen, onClose, trail, vaultId }: ShareTrail
 }
 
 // Icons
-function ShareIcon({ className }: { className?: string }) {
+function ShareIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

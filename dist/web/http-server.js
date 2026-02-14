@@ -1,58 +1,17 @@
-"use strict";
 // HTTP server for web frontend
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createHttpServerWithManager = createHttpServerWithManager;
-exports.createHttpServer = createHttpServer;
-exports.startServer = startServer;
-const node_crypto_1 = require("node:crypto");
-const node_fs_1 = require("node:fs");
-const promises_1 = require("node:fs/promises");
-const node_path_1 = __importDefault(require("node:path"));
-const compression_1 = __importDefault(require("compression"));
-const cors_1 = __importDefault(require("cors"));
-const express_1 = __importDefault(require("express"));
-const file_type_1 = require("file-type");
-const helmet_1 = __importDefault(require("helmet"));
-const multer_1 = __importDefault(require("multer"));
-const api_routes_js_1 = require("./api-routes.js");
-const config_routes_js_1 = require("./config-routes.js");
-const index_js_1 = require("./middleware/index.js");
+import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import compression from 'compression';
+import cors from 'cors';
+import express from 'express';
+import { fileTypeFromBuffer } from 'file-type';
+import helmet from 'helmet';
+import multer from 'multer';
+import { createApiRouter } from './api-routes.js';
+import { createConfigRouter } from './config-routes.js';
+import { apiKeyAuth, createRateLimiter, createRequestLogger, errorHandler, getRateLimitConfigFromEnv, isRequestLoggingEnabled, notFoundHandler, } from './middleware/index.js';
 // ============================================
 // Constants
 // ============================================
@@ -68,11 +27,11 @@ const DEFAULT_CORS_ORIGINS = [
 /** File size limit for uploads (100MB) */
 const FILE_SIZE_LIMIT_BYTES = 100 * 1024 * 1024;
 /** Default request timeout (30 seconds) */
-const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 /** Upload/ingest timeout (5 minutes - embedding models can be slow) */
-const UPLOAD_TIMEOUT_MS = 300000;
+const UPLOAD_TIMEOUT_MS = 300_000;
 /** Minimum allowed request timeout (1 second) */
-const MIN_REQUEST_TIMEOUT_MS = 1000;
+const MIN_REQUEST_TIMEOUT_MS = 1_000;
 /**
  * Get request timeout from environment variable or use default
  * @returns Request timeout in milliseconds
@@ -103,20 +62,20 @@ const ALLOWED_MIME_TYPES = [
 /**
  * Create and configure Express app with DatabaseManager
  */
-async function createHttpServerWithManager(dbManager, config) {
+export async function createHttpServerWithManager(dbManager, config) {
     // Create server accessor
     const serverAccessor = () => {
         return dbManager.getServer();
     };
     // Create config router to add before error handlers
-    const configRouter = (0, config_routes_js_1.createConfigRouter)(dbManager);
+    const configRouter = createConfigRouter(dbManager);
     const app = await createHttpServerInternal(serverAccessor, config, configRouter);
     return app;
 }
 /**
  * Create and configure Express app (legacy - direct RAGServer)
  */
-async function createHttpServer(ragServer, config) {
+export async function createHttpServer(ragServer, config) {
     return createHttpServerInternal(() => ragServer, config);
 }
 /**
@@ -128,8 +87,8 @@ async function createHttpServer(ragServer, config) {
  */
 async function validateFileContent(filePath) {
     try {
-        const buffer = await (0, promises_1.readFile)(filePath);
-        const type = await (0, file_type_1.fileTypeFromBuffer)(buffer);
+        const buffer = await readFile(filePath);
+        const type = await fileTypeFromBuffer(buffer);
         // Allow text files which may not have magic bytes
         if (!type) {
             // Check if it's likely a text file by looking for common text patterns
@@ -188,9 +147,9 @@ function parseCorsOrigins(env) {
         .filter(Boolean);
 }
 async function createHttpServerInternal(serverAccessor, config, configRouter) {
-    const app = (0, express_1.default)();
+    const app = express();
     // Security headers (helmet)
-    app.use((0, helmet_1.default)({
+    app.use(helmet({
         contentSecurityPolicy: {
             directives: {
                 defaultSrc: ["'self'"],
@@ -202,42 +161,42 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
         },
     }));
     // Response compression
-    app.use((0, compression_1.default)());
+    app.use(compression());
     // Request timeout for API routes (configurable via REQUEST_TIMEOUT_MS env var)
     // Upload/ingest routes automatically get longer timeout (5 min) for slow embedding models
     app.use('/api', requestTimeout(getRequestTimeoutMs()));
     // CORS configuration
     // CORS_ORIGINS env var: comma-separated list of allowed origins, or "*" for all
     const corsOrigins = parseCorsOrigins(process.env['CORS_ORIGINS']);
-    app.use((0, cors_1.default)({
+    app.use(cors({
         origin: corsOrigins,
         methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
     }));
     // JSON body parser with size limit to prevent DoS
     const jsonLimit = process.env['JSON_BODY_LIMIT'] || DEFAULT_JSON_LIMIT;
-    app.use(express_1.default.json({ limit: jsonLimit }));
+    app.use(express.json({ limit: jsonLimit }));
     // Request ID tracking for tracing and debugging
     app.use((req, res, next) => {
-        const requestId = req.headers['x-request-id'] || (0, node_crypto_1.randomUUID)();
+        const requestId = req.headers['x-request-id'] || randomUUID();
         res.setHeader('X-Request-ID', requestId);
         next();
     });
     // Request logging (enabled when REQUEST_LOGGING=true)
-    if ((0, index_js_1.isRequestLoggingEnabled)()) {
-        app.use((0, index_js_1.createRequestLogger)());
+    if (isRequestLoggingEnabled()) {
+        app.use(createRequestLogger());
     }
     // Rate limiting (configurable via RATE_LIMIT_* env vars)
-    const rateLimitConfig = (0, index_js_1.getRateLimitConfigFromEnv)();
-    app.use('/api', (0, index_js_1.createRateLimiter)(rateLimitConfig));
+    const rateLimitConfig = getRateLimitConfigFromEnv();
+    app.use('/api', createRateLimiter(rateLimitConfig));
     // API Key authentication (enabled when RAG_API_KEY env var is set)
-    app.use('/api', index_js_1.apiKeyAuth);
+    app.use('/api', apiKeyAuth);
     // Ensure upload directory exists
-    if (!(0, node_fs_1.existsSync)(config.uploadDir)) {
-        await (0, promises_1.mkdir)(config.uploadDir, { recursive: true });
+    if (!existsSync(config.uploadDir)) {
+        await mkdir(config.uploadDir, { recursive: true });
     }
     // Configure multer for file uploads
-    const storage = multer_1.default.diskStorage({
+    const storage = multer.diskStorage({
         destination: (_req, _file, cb) => {
             cb(null, config.uploadDir);
         },
@@ -248,7 +207,7 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
             cb(null, `${timestamp}-${safeName}`);
         },
     });
-    const upload = (0, multer_1.default)({
+    const upload = multer({
         storage,
         limits: {
             fileSize: FILE_SIZE_LIMIT_BYTES,
@@ -265,7 +224,7 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
                 '.jsonl',
                 '.ndjson',
             ];
-            const ext = node_path_1.default.extname(file.originalname).toLowerCase();
+            const ext = path.extname(file.originalname).toLowerCase();
             if (ALLOWED_MIME_TYPES.includes(file.mimetype) || allowedExtensions.includes(ext)) {
                 cb(null, true);
             }
@@ -275,7 +234,7 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
         },
     });
     // API routes
-    const apiRouter = (0, api_routes_js_1.createApiRouter)(serverAccessor);
+    const apiRouter = createApiRouter(serverAccessor);
     // Apply multer middleware to upload endpoint with magic byte validation
     app.use('/api/v1/files/upload', upload.single('file'), async (req, res, next) => {
         // Multer adds file to req.file
@@ -285,7 +244,7 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
             const isValid = await validateFileContent(file.path);
             if (!isValid) {
                 // Delete the uploaded file
-                const { unlink } = await Promise.resolve().then(() => __importStar(require('node:fs/promises')));
+                const { unlink } = await import('node:fs/promises');
                 try {
                     await unlink(file.path);
                 }
@@ -308,25 +267,25 @@ async function createHttpServerInternal(serverAccessor, config, configRouter) {
         app.use('/api/v1/config', configRouter);
     }
     // Serve static files in production
-    if (config.staticDir && (0, node_fs_1.existsSync)(config.staticDir)) {
-        app.use(express_1.default.static(config.staticDir));
+    if (config.staticDir && existsSync(config.staticDir)) {
+        app.use(express.static(config.staticDir));
         // SPA fallback - serve index.html for all non-API routes
         app.get('*', (req, res) => {
             if (!req.path.startsWith('/api/')) {
-                res.sendFile(node_path_1.default.join(config.staticDir, 'index.html'));
+                res.sendFile(path.join(config.staticDir, 'index.html'));
             }
         });
     }
     // 404 handler for API routes
-    app.use('/api/*', index_js_1.notFoundHandler);
+    app.use('/api/*', notFoundHandler);
     // Error handling middleware
-    app.use(index_js_1.errorHandler);
+    app.use(errorHandler);
     return app;
 }
 /**
  * Start HTTP server
  */
-function startServer(app, port) {
+export function startServer(app, port) {
     return new Promise((resolve, reject) => {
         const server = app.listen(port);
         const onError = (error) => {

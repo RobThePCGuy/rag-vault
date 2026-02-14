@@ -25,12 +25,12 @@ export function PinButton({ isPinned, onToggle, size = 'sm' }: PinButtonProps) {
       className={`
         ${buttonClasses}
         transition-colors
-        ${
-          isPinned
-            ? 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60'
-            : 'text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-        }
       `}
+      style={
+        isPinned
+          ? { color: 'var(--ws-accent)', background: 'var(--ws-accent-subtle)' }
+          : { color: 'var(--ws-text-muted)' }
+      }
       title={isPinned ? 'Unpin link' : 'Pin link'}
     >
       <PinIcon className={sizeClasses} filled={isPinned} />

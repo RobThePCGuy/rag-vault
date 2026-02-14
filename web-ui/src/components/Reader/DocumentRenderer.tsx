@@ -62,7 +62,10 @@ export function DocumentRenderer({
 
   if (chunks.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
+      <div
+        className="flex items-center justify-center h-64"
+        style={{ color: 'var(--ws-text-muted)' }}
+      >
         <p>No content to display</p>
       </div>
     )

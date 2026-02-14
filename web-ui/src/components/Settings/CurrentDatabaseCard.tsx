@@ -20,15 +20,22 @@ export function CurrentDatabaseCard({ config, onRefresh, isFetching }: CurrentDa
   const { preferences, setStatsRefreshInterval } = usePreferences()
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+    <div
+      className="border rounded-lg p-6"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg">
             <DatabaseIcon className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
           <div>
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Current Database</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Active RAG database</p>
+            <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
+              Current Database
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
+              Active RAG database
+            </p>
           </div>
         </div>
         {onRefresh && (
@@ -36,7 +43,8 @@ export function CurrentDatabaseCard({ config, onRefresh, isFetching }: CurrentDa
             type="button"
             onClick={onRefresh}
             disabled={isFetching}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+            className="p-2 rounded-lg transition-colors disabled:opacity-50"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Refresh stats"
           >
             {isFetching ? <Spinner size="sm" /> : <RefreshIcon className="w-5 h-5" />}
@@ -45,46 +53,74 @@ export function CurrentDatabaseCard({ config, onRefresh, isFetching }: CurrentDa
       </div>
 
       <div className="space-y-3">
-        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-gray-500 dark:text-gray-400">Name</span>
-          <span className="font-medium text-gray-900 dark:text-white">{config.name}</span>
+        <div
+          className="flex justify-between items-center py-2 border-b"
+          style={{ borderColor: 'var(--ws-border-subtle)' }}
+        >
+          <span style={{ color: 'var(--ws-text-muted)' }}>Name</span>
+          <span className="font-medium" style={{ color: 'var(--ws-text)' }}>
+            {config.name}
+          </span>
         </div>
-        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-gray-500 dark:text-gray-400">Path</span>
+        <div
+          className="flex justify-between items-center py-2 border-b"
+          style={{ borderColor: 'var(--ws-border-subtle)' }}
+        >
+          <span style={{ color: 'var(--ws-text-muted)' }}>Path</span>
           <span
-            className="font-mono text-sm text-gray-900 dark:text-gray-200 max-w-xs truncate"
+            className="font-mono text-sm max-w-xs truncate"
+            style={{ color: 'var(--ws-text)' }}
             title={config.dbPath}
           >
             {config.dbPath}
           </span>
         </div>
-        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-gray-500 dark:text-gray-400">Model</span>
-          <span className="font-mono text-sm text-gray-900 dark:text-gray-200">
+        <div
+          className="flex justify-between items-center py-2 border-b"
+          style={{ borderColor: 'var(--ws-border-subtle)' }}
+        >
+          <span style={{ color: 'var(--ws-text-muted)' }}>Model</span>
+          <span className="font-mono text-sm" style={{ color: 'var(--ws-text)' }}>
             {config.modelName}
           </span>
         </div>
-        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-gray-500 dark:text-gray-400">Documents</span>
-          <span className="font-medium text-gray-900 dark:text-white">{config.documentCount}</span>
+        <div
+          className="flex justify-between items-center py-2 border-b"
+          style={{ borderColor: 'var(--ws-border-subtle)' }}
+        >
+          <span style={{ color: 'var(--ws-text-muted)' }}>Documents</span>
+          <span className="font-medium" style={{ color: 'var(--ws-text)' }}>
+            {config.documentCount}
+          </span>
         </div>
-        <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700">
-          <span className="text-gray-500 dark:text-gray-400">Chunks</span>
-          <span className="font-medium text-gray-900 dark:text-white">{config.chunkCount}</span>
+        <div
+          className="flex justify-between items-center py-2 border-b"
+          style={{ borderColor: 'var(--ws-border-subtle)' }}
+        >
+          <span style={{ color: 'var(--ws-text-muted)' }}>Chunks</span>
+          <span className="font-medium" style={{ color: 'var(--ws-text)' }}>
+            {config.chunkCount}
+          </span>
         </div>
         <div className="flex justify-between items-center py-2">
-          <span className="text-gray-500 dark:text-gray-400">Auto-refresh</span>
-          <div className="flex items-center gap-1 p-0.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <span style={{ color: 'var(--ws-text-muted)' }}>Auto-refresh</span>
+          <div
+            className="flex items-center gap-1 p-0.5 rounded-lg"
+            style={{ background: 'var(--ws-surface-1)' }}
+          >
             {refreshIntervals.map(({ value, label }) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setStatsRefreshInterval(value)}
                 className={`px-2 py-1 text-xs font-medium rounded transition-all ${
-                  preferences.statsRefreshInterval === value
-                    ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  preferences.statsRefreshInterval === value ? 'shadow-sm' : ''
                 }`}
+                style={
+                  preferences.statsRefreshInterval === value
+                    ? { background: 'var(--ws-surface-raised)', color: 'var(--ws-text)' }
+                    : { color: 'var(--ws-text-muted)' }
+                }
               >
                 {label}
               </button>

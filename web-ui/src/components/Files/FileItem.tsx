@@ -30,21 +30,29 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex items-center justify-between gap-4">
+    <div
+      className="rounded-lg p-4 flex items-center justify-between gap-4"
+      style={{ background: 'var(--ws-surface-raised)', border: '1px solid var(--ws-border)' }}
+    >
       <div className="flex-1 min-w-0">
         <h3
-          className="font-medium text-gray-900 dark:text-gray-100 truncate"
+          className="font-medium truncate"
+          style={{ color: 'var(--ws-text)' }}
           title={file.source || file.filePath}
         >
           {displayName}
         </h3>
-        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <div
+          className="flex items-center gap-4 mt-1 text-sm"
+          style={{ color: 'var(--ws-text-muted)' }}
+        >
           <span>{file.chunkCount} chunks</span>
-          {isRawData && <span className="text-blue-600 dark:text-blue-400">Ingested content</span>}
+          {isRawData && <span style={{ color: 'var(--ws-accent)' }}>Ingested content</span>}
         </div>
         {file.source && (
           <p
-            className="text-xs text-gray-400 dark:text-gray-500 truncate mt-1"
+            className="text-xs truncate mt-1"
+            style={{ color: 'var(--ws-text-muted)' }}
             title={file.filePath}
           >
             {file.filePath}
@@ -67,7 +75,8 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
               type="button"
               onClick={() => setShowConfirm(false)}
               disabled={isDeleting}
-              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="px-3 py-1.5 text-sm rounded-lg transition-colors"
+              style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
             >
               Cancel
             </button>
@@ -77,14 +86,14 @@ export function FileItem({ file, onDelete, isDeleting }: FileItemProps) {
             <button
               type="button"
               onClick={handleRead}
-              className="px-3 py-1.5 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 rounded-lg transition-colors"
             >
               Read
             </button>
             <button
               type="button"
               onClick={() => setShowConfirm(true)}
-              className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               Delete
             </button>

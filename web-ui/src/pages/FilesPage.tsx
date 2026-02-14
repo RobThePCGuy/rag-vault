@@ -72,9 +72,7 @@ export function FilesPage() {
     <div className="ws-page max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="ws-page-title text-2xl font-bold mb-2">
-            Ingested Files
-          </h1>
+          <h1 className="ws-page-title text-2xl font-bold mb-2">Ingested Files</h1>
           <p style={{ color: 'var(--ws-text-secondary)' }}>Manage your knowledge base content.</p>
         </div>
         {files.length > 0 && (
@@ -92,7 +90,9 @@ export function FilesPage() {
           className="flex flex-wrap items-center gap-3 p-3 rounded-lg"
           style={{ background: 'var(--ws-surface-1)', border: '1px solid var(--ws-border)' }}
         >
-          <span className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>Filter by:</span>
+          <span className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>
+            Filter by:
+          </span>
 
           {/* Collection filter */}
           {collections.length > 0 && (
@@ -163,8 +163,12 @@ export function FilesPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <span style={{ color: 'var(--ws-text-faint)' }}><Spinner /></span>
-          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>Loading files...</span>
+          <span style={{ color: 'var(--ws-text-faint)' }}>
+            <Spinner />
+          </span>
+          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>
+            Loading files...
+          </span>
         </div>
       ) : error ? (
         <div className="ws-error-box rounded-lg">
@@ -173,7 +177,10 @@ export function FilesPage() {
         </div>
       ) : filteredFiles.length === 0 ? (
         <div className="ws-surface text-center py-12">
-          <FilterIcon className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--ws-text-faint)' }} />
+          <FilterIcon
+            className="w-10 h-10 mx-auto mb-3"
+            style={{ color: 'var(--ws-text-faint)' }}
+          />
           <p style={{ color: 'var(--ws-text-secondary)' }}>
             {hasFilters ? 'No files match the selected filters.' : 'No files ingested yet.'}
           </p>

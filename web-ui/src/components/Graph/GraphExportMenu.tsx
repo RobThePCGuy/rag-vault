@@ -86,29 +86,47 @@ export function GraphExportMenu({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-1 z-50 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+            className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg shadow-lg overflow-hidden"
+            style={{
+              background: 'var(--ws-surface-raised)',
+              borderColor: 'var(--ws-border)',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+            }}
           >
             {/* Header */}
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Export Graph</h4>
+            <div
+              className="px-3 py-2"
+              style={{
+                borderBottom: '1px solid var(--ws-border)',
+                background: 'var(--ws-surface-1)',
+              }}
+            >
+              <h4 className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>
+                Export Graph
+              </h4>
             </div>
 
             {/* Options */}
             <div className="p-2">
               {/* Include positions toggle (for JSON) */}
-              <label className="flex items-center gap-2 px-2 py-1.5 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
+              <label
+                className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer"
+                style={{ color: 'var(--ws-text-secondary)' }}
+              >
                 <input
                   type="checkbox"
                   checked={includePositions}
                   onChange={(e) => setIncludePositions(e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  className="rounded"
+                  style={{ borderColor: 'var(--ws-border)', accentColor: 'var(--ws-accent)' }}
                 />
                 Include node positions
               </label>
             </div>
 
             {/* Export buttons */}
-            <div className="p-2 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-2" style={{ borderTop: '1px solid var(--ws-border)' }}>
               <ExportButton
                 icon={<JSONIcon className="w-4 h-4" />}
                 label="Export as JSON"
@@ -156,12 +174,18 @@ function ExportButton({ icon, label, description, onClick, disabled }: ExportBut
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full flex items-start gap-3 px-2 py-2 rounded-lg text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full flex items-start gap-3 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <span className="text-gray-500 dark:text-gray-400 mt-0.5">{icon}</span>
+      <span className="mt-0.5" style={{ color: 'var(--ws-text-muted)' }}>
+        {icon}
+      </span>
       <div>
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>
+          {label}
+        </p>
+        <p className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+          {description}
+        </p>
       </div>
     </button>
   )

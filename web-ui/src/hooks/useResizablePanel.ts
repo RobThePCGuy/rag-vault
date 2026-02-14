@@ -16,10 +16,10 @@ interface UseResizablePanelOptions {
 export function useResizablePanel(options: UseResizablePanelOptions) {
   const { storageKey, defaultWidth, min, max } = options
 
-  const [state, setState] = useLocalStorage<PanelState>(
-    `ws-panel-${storageKey}`,
-    { width: defaultWidth, collapsed: false }
-  )
+  const [state, setState] = useLocalStorage<PanelState>(`ws-panel-${storageKey}`, {
+    width: defaultWidth,
+    collapsed: false,
+  })
 
   const setWidth = useCallback(
     (w: number) => {

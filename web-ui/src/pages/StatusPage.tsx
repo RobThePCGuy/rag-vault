@@ -9,9 +9,7 @@ export function StatusPage() {
     <div className="ws-page max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="ws-page-title text-2xl font-bold mb-2">
-            System Status
-          </h1>
+          <h1 className="ws-page-title text-2xl font-bold mb-2">System Status</h1>
           <p style={{ color: 'var(--ws-text-secondary)' }}>
             Monitor your RAG system metrics and configuration.
           </p>
@@ -29,8 +27,12 @@ export function StatusPage() {
 
       {isLoading && !status ? (
         <div className="flex items-center justify-center py-12">
-          <span style={{ color: 'var(--ws-text-faint)' }}><Spinner /></span>
-          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>Loading status...</span>
+          <span style={{ color: 'var(--ws-text-faint)' }}>
+            <Spinner />
+          </span>
+          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>
+            Loading status...
+          </span>
         </div>
       ) : error ? (
         <div className="ws-error-box rounded-lg">

@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useLinks, type PinnedLink } from '../contexts/LinksContext'
 
-export interface UseBacklinksResult {
+interface UseBacklinksResult {
   backlinks: PinnedLink[]
   hasBacklinks: boolean
   backlinkCount: number

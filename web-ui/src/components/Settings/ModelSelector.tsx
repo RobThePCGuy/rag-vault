@@ -27,7 +27,8 @@ export function ModelSelector({
       {label && (
         <label
           htmlFor={id}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          className="block text-sm font-medium mb-1"
+          style={{ color: 'var(--ws-text-secondary)' }}
         >
           {label}
         </label>
@@ -38,7 +39,12 @@ export function ModelSelector({
           value={value || selectedModel?.id || ''}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled || isLoading}
-          className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-10"
+          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-10"
+          style={{
+            background: 'var(--ws-surface-raised)',
+            borderColor: 'var(--ws-border)',
+            color: 'var(--ws-text)',
+          }}
         >
           {isLoading ? (
             <option>Loading models...</option>
@@ -52,22 +58,30 @@ export function ModelSelector({
         </select>
         <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
           {isLoading ? (
-            <Spinner size="sm" className="text-gray-400" />
+            <Spinner size="sm" style={{ color: 'var(--ws-text-muted)' }} />
           ) : (
-            <ChevronDownIcon className="w-4 h-4 text-gray-400" />
+            <ChevronDownIcon className="w-4 h-4" style={{ color: 'var(--ws-text-muted)' }} />
           )}
         </div>
       </div>
       {selectedModel && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{selectedModel.description}</p>
+        <p className="mt-1 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+          {selectedModel.description}
+        </p>
       )}
     </div>
   )
 }
 
-function ChevronDownIcon({ className }: { className?: string }) {
+function ChevronDownIcon({
+  className,
+  style,
+}: {
+  className?: string
+  style?: React.CSSProperties
+}) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
     </svg>
   )

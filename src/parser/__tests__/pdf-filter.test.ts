@@ -7,7 +7,7 @@ import {
   detectSentencePatterns,
   filterPageBoundarySentences,
   joinFilteredPages,
-} from '../pdf-filter'
+} from '../pdf-filter.js'
 
 describe('pdf-filter', () => {
   describe('joinFilteredPages', () => {

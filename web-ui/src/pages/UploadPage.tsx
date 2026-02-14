@@ -158,11 +158,22 @@ export function UploadPage() {
               >
                 <div className="flex-shrink-0">
                   {item.status === 'pending' && (
-                    <div className="w-5 h-5 rounded-full border-2" style={{ borderColor: 'var(--ws-border-strong)' }} />
+                    <div
+                      className="w-5 h-5 rounded-full border-2"
+                      style={{ borderColor: 'var(--ws-border-strong)' }}
+                    />
                   )}
-                  {item.status === 'uploading' && <span style={{ color: 'var(--ws-accent)' }}><Spinner className="w-5 h-5" /></span>}
-                  {item.status === 'success' && <CheckIcon className="w-5 h-5" style={{ color: 'var(--ws-success)' }} />}
-                  {item.status === 'error' && <ErrorIcon className="w-5 h-5" style={{ color: 'var(--ws-danger)' }} />}
+                  {item.status === 'uploading' && (
+                    <span style={{ color: 'var(--ws-accent)' }}>
+                      <Spinner className="w-5 h-5" />
+                    </span>
+                  )}
+                  {item.status === 'success' && (
+                    <CheckIcon className="w-5 h-5" style={{ color: 'var(--ws-success)' }} />
+                  )}
+                  {item.status === 'error' && (
+                    <ErrorIcon className="w-5 h-5" style={{ color: 'var(--ws-danger)' }} />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: 'var(--ws-text)' }}>
@@ -174,10 +185,14 @@ export function UploadPage() {
                     </p>
                   )}
                   {item.status === 'error' && item.error && (
-                    <p className="text-xs" style={{ color: 'var(--ws-danger)' }}>{item.error}</p>
+                    <p className="text-xs" style={{ color: 'var(--ws-danger)' }}>
+                      {item.error}
+                    </p>
                   )}
                 </div>
-                <div className="text-xs" style={{ color: 'var(--ws-text-faint)' }}>{(item.file.size / 1024).toFixed(0)} KB</div>
+                <div className="text-xs" style={{ color: 'var(--ws-text-faint)' }}>
+                  {(item.file.size / 1024).toFixed(0)} KB
+                </div>
               </div>
             ))}
           </div>
@@ -204,7 +219,9 @@ export function UploadPage() {
       {/* Processing indicator for content paste */}
       {isIngesting && (
         <div className="ws-info-box rounded-lg flex items-center gap-3">
-          <span style={{ color: 'var(--ws-info)' }}><Spinner /></span>
+          <span style={{ color: 'var(--ws-info)' }}>
+            <Spinner />
+          </span>
           <span style={{ color: 'var(--ws-info)' }}>Processing content...</span>
         </div>
       )}
@@ -223,7 +240,9 @@ export function UploadPage() {
           <p className="font-medium">Content Ingested Successfully</p>
           <div className="text-sm mt-1 space-y-1">
             <p>Chunks created: {ingestResult.chunkCount}</p>
-            <p className="truncate" style={{ color: 'var(--ws-text-muted)' }}>{ingestResult.filePath}</p>
+            <p className="truncate" style={{ color: 'var(--ws-text-muted)' }}>
+              {ingestResult.filePath}
+            </p>
           </div>
         </div>
       )}

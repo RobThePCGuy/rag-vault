@@ -44,7 +44,12 @@ export function RightRail({ collapsed, onToggle, width }: RightRailProps) {
   if (collapsed) {
     return (
       <aside className="ws-right-rail ws-right-rail--collapsed">
-        <button type="button" className="ws-rail-toggle" onClick={onToggle} aria-label="Toggle right rail">
+        <button
+          type="button"
+          className="ws-rail-toggle"
+          onClick={onToggle}
+          aria-label="Toggle right rail"
+        >
           {'\u2039'}
         </button>
       </aside>
@@ -63,7 +68,12 @@ export function RightRail({ collapsed, onToggle, width }: RightRailProps) {
           variant="pill"
           className="ws-right-rail-tabs"
         />
-        <button type="button" className="ws-rail-toggle" onClick={onToggle} aria-label="Toggle right rail">
+        <button
+          type="button"
+          className="ws-rail-toggle"
+          onClick={onToggle}
+          aria-label="Toggle right rail"
+        >
           {'\u203A'}
         </button>
       </div>

@@ -11,7 +11,10 @@ export function ThemeToggle() {
   const { preferences, setTheme } = usePreferences()
 
   return (
-    <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+    <div
+      className="flex items-center gap-1 p-1 rounded-lg"
+      style={{ background: 'var(--ws-surface-1)' }}
+    >
       {themes.map(({ value, label, icon: Icon }) => (
         <button
           key={value}
@@ -19,12 +22,13 @@ export function ThemeToggle() {
           onClick={() => setTheme(value)}
           className={`
             flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all
-            ${
-              preferences.theme === value
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }
+            ${preferences.theme === value ? 'shadow-sm' : ''}
           `}
+          style={
+            preferences.theme === value
+              ? { background: 'var(--ws-surface-raised)', color: 'var(--ws-text)' }
+              : { color: 'var(--ws-text-secondary)' }
+          }
           title={`${label} theme`}
         >
           <Icon className="w-4 h-4" />

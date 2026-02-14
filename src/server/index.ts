@@ -119,16 +119,26 @@ export class RAGServer {
   }
 
   /**
+   * Create a new McpServer session sharing this RAGServer's backend resources.
+   * Used by the remote transport to create one MCP server per client session.
+   */
+  createSession(): McpServer {
+    const session = new McpServer({ name: 'rag-mcp-server', version: '1.0.0' })
+    this.setupHandlers(session)
+    return session
+  }
+
+  /**
    * Set up MCP handlers using tool() API
    * Note: Type casts are used to work around Zod version compatibility between project and SDK
    */
-  private setupHandlers(): void {
+  private setupHandlers(target: McpServer = this.server): void {
     // Use type assertion to work around Zod version incompatibility
     // biome-ignore lint/suspicious/noExplicitAny: Required for Zod version compatibility between project and SDK
     type ToolSchema = any
 
     // query_documents tool
-    this.server.tool(
+    target.tool(
       'query_documents',
       `Search ingested documents using hybrid semantic + keyword search. Advanced syntax supported:
 - "exact phrase" → Match phrase exactly
@@ -151,7 +161,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // ingest_file tool
-    this.server.tool(
+    target.tool(
       'ingest_file',
       'Ingest a document file (PDF, DOCX, TXT, MD, JSON, JSONL) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents. Optional metadata can include author, domain, tags, etc.',
       {
@@ -167,7 +177,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // ingest_data tool
-    this.server.tool(
+    target.tool(
       'ingest_data',
       'Ingest content as a string, not from a file. Use for: fetched web pages (format: html), copied text (format: text), or markdown strings (format: markdown). The source identifier enables re-ingestion to update existing content. Optional custom metadata can include author, domain, tags, etc. For files on disk, use ingest_file instead.',
       {
@@ -187,7 +197,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // delete_file tool (uses .refine(), so handle validation in handler)
-    this.server.tool(
+    target.tool(
       'delete_file',
       'Delete a previously ingested file or data from the vector database. Use filePath for files ingested via ingest_file, or source for data ingested via ingest_data. Either filePath or source must be provided.',
       {
@@ -208,7 +218,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // list_files tool
-    this.server.tool(
+    target.tool(
       'list_files',
       'List all ingested files in the vector database. Returns file paths and chunk counts for each document.',
       {} as ToolSchema,
@@ -221,7 +231,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // status tool
-    this.server.tool(
+    target.tool(
       'status',
       'Get system status including total documents, total chunks, database size, and configuration information.',
       {} as ToolSchema,
@@ -234,7 +244,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // feedback_pin tool
-    this.server.tool(
+    target.tool(
       'feedback_pin',
       'Pin a search result as relevant for a query. Pinned results will be boosted in future searches. Use when a result was particularly helpful.',
       {
@@ -267,7 +277,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // feedback_dismiss tool
-    this.server.tool(
+    target.tool(
       'feedback_dismiss',
       'Dismiss a search result as irrelevant for a query. Dismissed results will be penalized in future searches. Use when a result was unhelpful.',
       {
@@ -300,7 +310,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     )
 
     // feedback_stats tool
-    this.server.tool(
+    target.tool(
       'feedback_stats',
       'Get feedback statistics including total events, pinned pairs, and dismissed pairs.',
       {} as ToolSchema,

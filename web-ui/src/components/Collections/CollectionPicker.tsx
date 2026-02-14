@@ -110,17 +110,28 @@ export function CollectionPicker({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-80"
+          className="fixed z-50 rounded-lg shadow-xl w-80"
           style={
             position
-              ? { left: position.x, top: position.y }
-              : { left: '50%', top: '30%', transform: 'translateX(-50%)' }
+              ? {
+                  background: 'var(--ws-surface-raised)',
+                  border: '1px solid var(--ws-border)',
+                  left: position.x,
+                  top: position.y,
+                }
+              : {
+                  background: 'var(--ws-surface-raised)',
+                  border: '1px solid var(--ws-border)',
+                  left: '50%',
+                  top: '30%',
+                  transform: 'translateX(-50%)',
+                }
           }
         >
           {/* Header */}
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="px-3 py-2" style={{ borderBottom: '1px solid var(--ws-border)' }}>
             <div className="flex items-center gap-2">
-              <FolderIcon className="w-4 h-4 text-gray-400" />
+              <FolderIcon className="w-4 h-4" style={{ color: 'var(--ws-text-muted)' }} />
               <input
                 ref={inputRef}
                 type="text"
@@ -136,12 +147,14 @@ export function CollectionPicker({
                   }
                 }}
                 placeholder="Search or create collection..."
-                className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none"
+                className="flex-1 bg-transparent text-sm focus:outline-none"
+                style={{ color: 'var(--ws-text)' }}
               />
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+                className="p-1 rounded"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 <CloseIcon className="w-4 h-4" />
               </button>
@@ -154,32 +167,51 @@ export function CollectionPicker({
               // Create new collection form
               <div className="space-y-3 p-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'var(--ws-text-muted)' }}
+                  >
                     Name
                     <input
                       type="text"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="mt-1 w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="mt-1 w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2"
+                      style={{
+                        background: 'var(--ws-surface-1)',
+                        border: '1px solid var(--ws-border)',
+                        color: 'var(--ws-text)',
+                      }}
                     />
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'var(--ws-text-muted)' }}
+                  >
                     Description (optional)
                     <input
                       type="text"
                       value={newDescription}
                       onChange={(e) => setNewDescription(e.target.value)}
-                      className="mt-1 w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="mt-1 w-full px-2 py-1.5 text-sm rounded focus:outline-none focus:ring-2"
+                      style={{
+                        background: 'var(--ws-surface-1)',
+                        border: '1px solid var(--ws-border)',
+                        color: 'var(--ws-text)',
+                      }}
                       placeholder="What's this collection for?"
                     />
                   </label>
                 </div>
 
                 <div>
-                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <span
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'var(--ws-text-muted)' }}
+                  >
                     Color
                   </span>
                   <div className="flex flex-wrap gap-1">
@@ -189,10 +221,16 @@ export function CollectionPicker({
                         type="button"
                         onClick={() => setSelectedColor(color)}
                         className={`w-6 h-6 rounded-full ${COLLECTION_COLOR_CLASSES[color].bg} ${
-                          selectedColor === color
-                            ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-800'
-                            : ''
+                          selectedColor === color ? 'ring-2 ring-offset-2' : ''
                         }`}
+                        style={
+                          selectedColor === color
+                            ? ({
+                                '--tw-ring-color': 'var(--ws-accent)',
+                                '--tw-ring-offset-color': 'var(--ws-surface-raised)',
+                              } as React.CSSProperties)
+                            : undefined
+                        }
                       />
                     ))}
                   </div>
@@ -202,7 +240,8 @@ export function CollectionPicker({
                   <button
                     type="button"
                     onClick={() => setIsCreating(false)}
-                    className="flex-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    className="flex-1 px-3 py-1.5 text-sm rounded transition-colors"
+                    style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
                   >
                     Cancel
                   </button>
@@ -210,7 +249,8 @@ export function CollectionPicker({
                     type="button"
                     onClick={handleCreate}
                     disabled={!newName.trim()}
-                    className="flex-1 px-3 py-1.5 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex-1 px-3 py-1.5 text-sm text-white rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    style={{ background: 'var(--ws-accent)' }}
                   >
                     Create & Add
                   </button>
@@ -222,7 +262,10 @@ export function CollectionPicker({
                 {/* Current collections section */}
                 {documentCollections.length > 0 && !searchQuery && (
                   <div className="mb-2">
-                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1">
+                    <div
+                      className="text-xs font-medium px-2 py-1"
+                      style={{ color: 'var(--ws-text-muted)' }}
+                    >
                       In collections
                     </div>
                     {documentCollections.map((collection) => (
@@ -240,7 +283,10 @@ export function CollectionPicker({
                 {filteredCollections.length > 0 && (
                   <div>
                     {!searchQuery && documentCollections.length > 0 && (
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1">
+                      <div
+                        className="text-xs font-medium px-2 py-1"
+                        style={{ color: 'var(--ws-text-muted)' }}
+                      >
                         All collections
                       </div>
                     )}
@@ -265,7 +311,8 @@ export function CollectionPicker({
                       setIsCreating(true)
                       setNewName(searchQuery)
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors"
+                    style={{ color: 'var(--ws-accent)' }}
                   >
                     <PlusIcon className="w-4 h-4" />
                     Create "{searchQuery}"
@@ -276,7 +323,10 @@ export function CollectionPicker({
                 {filteredCollections.length === 0 &&
                   !showCreateOption &&
                   documentCollections.length === 0 && (
-                    <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div
+                      className="text-center py-4 text-sm"
+                      style={{ color: 'var(--ws-text-muted)' }}
+                    >
                       No collections yet. Type to create one.
                     </div>
                   )}
@@ -302,12 +352,16 @@ function CollectionItem({ collection, isSelected, onToggle }: CollectionItemProp
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      className="w-full flex items-center justify-between px-2 py-1.5 rounded transition-colors"
     >
       <div className="flex items-center gap-2 min-w-0">
         <span className={`w-3 h-3 rounded-full flex-shrink-0 ${colorClasses.bg}`} />
-        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{collection.name}</span>
-        <span className="text-xs text-gray-400">{collection.documents.length}</span>
+        <span className="text-sm truncate" style={{ color: 'var(--ws-text-secondary)' }}>
+          {collection.name}
+        </span>
+        <span className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+          {collection.documents.length}
+        </span>
       </div>
       {isSelected ? (
         <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
@@ -319,9 +373,9 @@ function CollectionItem({ collection, isSelected, onToggle }: CollectionItemProp
 }
 
 // Icons
-function FolderIcon({ className }: { className?: string }) {
+function FolderIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

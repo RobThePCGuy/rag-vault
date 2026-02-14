@@ -1,8 +1,5 @@
-"use strict";
 // Explainability utilities for chunk similarity
 // Provides keyword/phrase extraction without LLM dependencies
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.explainChunkSimilarity = explainChunkSimilarity;
 // Common English stopwords to filter out
 const STOPWORDS = new Set([
     'a',
@@ -227,7 +224,7 @@ function determineReasonLabel(text1, text2, isSameDocument, similarityScore) {
 /**
  * Generate explanation for chunk relationship
  */
-function explainChunkSimilarity(sourceText, targetText, isSameDocument, similarityScore) {
+export function explainChunkSimilarity(sourceText, targetText, isSameDocument, similarityScore) {
     return {
         sharedKeywords: findSharedKeywords(sourceText, targetText),
         sharedPhrases: findSharedPhrases(sourceText, targetText),

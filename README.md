@@ -1,7 +1,7 @@
 # RAG Vault
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP Registry](https://img.shields.io/badge/MCP-Registry-green.svg)](https://registry.modelcontextprotocol.io/servers/io.github.RobThePCGuy/rag-vault)
 
 **Your documents. Your machine. Your control.**
@@ -215,6 +215,51 @@ curl -X POST "http://localhost:3000/api/v1/chunks/batch-related" \
   -d '{"chunks": [{"filePath": "/path/to/doc.pdf", "chunkIndex": 0}], "limit": 3}'
 ```
 
+## Remote Mode
+
+RAG Vault can also run as an HTTP server for remote MCP clients like Claude.ai, Claude Desktop, or any client supporting Streamable HTTP or SSE transports.
+
+```bash
+# Start remote server (default port 3001)
+npx github:RobThePCGuy/rag-vault --remote
+
+# Custom port
+npx github:RobThePCGuy/rag-vault --remote --port 8080
+```
+
+Stdio mode is unchanged -- omit `--remote` and everything works as before with Cursor, Claude Code, and Codex.
+
+### Connecting from Claude Desktop
+
+Add to your Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "rag-vault-remote": {
+      "type": "url",
+      "url": "http://localhost:3001/mcp"
+    }
+  }
+}
+```
+
+Or via Claude Code CLI:
+
+```bash
+claude mcp add --transport http rag-vault http://localhost:3001/mcp
+```
+
+### Connecting from Claude.ai
+
+For Claude.ai (Pro/Max/Team/Enterprise), add as a custom connector with URL `https://your-host:3001/mcp`. For local development, expose your server with a tunnel:
+
+```bash
+cloudflared tunnel --url http://localhost:3001
+```
+
+Set `RAG_API_KEY` for authentication when exposing remotely. The server supports both Streamable HTTP (`/mcp`) and legacy SSE (`/sse`) transports, plus a health check at `/health`.
+
 ## Real-World Examples
 
 ### Search Your Codebase Documentation
@@ -277,7 +322,7 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 
 **Local by default**: Embeddings via Transformers.js. Storage via LanceDB. Network is only needed for initial model download or if you explicitly ingest remote URLs.
 
-**MCP tools included**: `ingest_file`, `ingest_data`, `query_documents`, `list_files`, and `delete_file`.
+**MCP tools included**: `query_documents`, `ingest_file`, `ingest_data`, `delete_file`, `list_files`, `status`, `feedback_pin`, `feedback_dismiss`, and `feedback_stats`.
 
 ## Supported Formats
 
@@ -300,7 +345,21 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 | `BASE_DIR` | Current directory | Only files under this path can be accessed |
 | `DB_PATH` | `./lancedb/` | Where vectors are stored |
 | `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace embedding model |
+| `RAG_EMBEDDING_DEVICE` | `auto` | Inference device hint (`auto`, `cpu`, `cuda`, `dml`, `webgpu`, etc.) |
 | `WEB_PORT` | `3000` | Port for web interface |
+
+One-command override (no `.env` edit):
+
+```bash
+# MCP mode
+npx github:RobThePCGuy/rag-vault --embedding-device dml
+
+# Web mode
+npx github:RobThePCGuy/rag-vault web --embedding-device dml
+
+# Explicitly force auto detection
+npx github:RobThePCGuy/rag-vault --gpu-auto
+```
 
 ### Search Tuning
 
@@ -358,7 +417,12 @@ Yes, after the first run. The model caches locally.
 <details>
 <summary><strong>What about GPU acceleration?</strong></summary>
 
-Transformers.js runs on CPU. GPU support is experimental, and CPU performance is solid for typical local vault sizes.
+RAG Vault now uses Transformers.js device auto-selection by default (`RAG_EMBEDDING_DEVICE=auto`), which can use GPU providers when available and fall back to CPU.
+
+Practical notes:
+- Windows Node runtime typically uses DirectML (`dml`).
+- Linux x64 can use CUDA when ONNX Runtime CUDA binaries are available.
+- You can force CPU with `RAG_EMBEDDING_DEVICE=cpu` if you prefer stability.
 
 </details>
 
@@ -425,14 +489,17 @@ pnpm test:integration
 # Build
 pnpm build
 
-# Run MCP server locally
+# Run MCP server locally (stdio)
 pnpm dev
+
+# Run MCP server locally (remote HTTP + SSE)
+pnpm dev:remote
 
 # Run web server locally
 pnpm web:dev
 
 # Release to npm (local, guarded)
-pnpm release:patch
+pnpm release          # patch
 pnpm release:minor
 pnpm release:major
 pnpm release:dry
@@ -458,15 +525,20 @@ Use `RUN_EMBEDDING_INTEGRATION=1` to explicitly opt into network/model-dependent
 
 ```
 src/
-├── server/      # MCP tool handlers
-├── vectordb/    # LanceDB + hybrid search
-├── chunker/     # Semantic text splitting
-├── embedder/    # Transformers.js wrapper
-├── parser/      # PDF, DOCX, HTML parsing
-├── web/         # Express server + REST API
-└── __tests__/   # Test suites
+├── bin/             # CLI subcommands (skills install)
+├── chunker/         # Semantic text splitting
+├── embedder/        # Transformers.js wrapper
+├── errors/          # Error handling utilities
+├── explainability/  # Keyword-based result explanations
+├── flywheel/        # Feedback loop (pin/dismiss reranking)
+├── parser/          # PDF, DOCX, HTML parsing
+├── query/           # Advanced query syntax parser
+├── server/          # MCP tool handlers + remote transport
+├── utils/           # Config, file helpers, process handlers
+├── vectordb/        # LanceDB + hybrid search
+└── web/             # Express server + REST API
 
-web-ui/          # React frontend
+web-ui/              # React frontend (Vite + Tailwind)
 ```
 
 ## Documentation

@@ -54,7 +54,12 @@ export function LeftRail({ collapsed, onToggle, width }: LeftRailProps) {
         </div>
       )}
 
-      <button type="button" className="ws-rail-toggle" onClick={onToggle} aria-label="Toggle left rail">
+      <button
+        type="button"
+        className="ws-rail-toggle"
+        onClick={onToggle}
+        aria-label="Toggle left rail"
+      >
         {collapsed ? '\u203A' : '\u2039'}
       </button>
     </aside>

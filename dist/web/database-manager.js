@@ -1,25 +1,19 @@
-"use strict";
 // DatabaseManager - Manages RAG database lifecycle and configuration
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseManager = exports.AVAILABLE_MODELS = void 0;
-const node_fs_1 = require("node:fs");
-const promises_1 = require("node:fs/promises");
-const node_os_1 = require("node:os");
-const node_path_1 = __importDefault(require("node:path"));
-const schemas_js_1 = require("../server/schemas.js");
-const file_utils_js_1 = require("../utils/file-utils.js");
+import { existsSync, realpathSync } from 'node:fs';
+import { mkdir, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import path from 'node:path';
+import { RecentDatabasesFileSchema, StatusResponseSchema } from '../server/schemas.js';
+import { atomicWriteFile } from '../utils/file-utils.js';
 // ============================================
 // Constants
 // ============================================
 /** Config directory for rag-vault */
-const CONFIG_DIR = node_path_1.default.join((0, node_os_1.homedir)(), '.rag-vault');
+const CONFIG_DIR = path.join(homedir(), '.rag-vault');
 /** Recent databases file path */
-const RECENT_DBS_FILE = node_path_1.default.join(CONFIG_DIR, 'recent-dbs.json');
+const RECENT_DBS_FILE = path.join(CONFIG_DIR, 'recent-dbs.json');
 /** User-added allowed roots file path */
-const ALLOWED_ROOTS_FILE = node_path_1.default.join(CONFIG_DIR, 'allowed-roots.json');
+const ALLOWED_ROOTS_FILE = path.join(CONFIG_DIR, 'allowed-roots.json');
 /** LanceDB directory name (indicator of a valid database) */
 const LANCEDB_DIR_NAME = 'chunks.lance';
 /** Maximum number of recent databases to track */
@@ -31,23 +25,23 @@ const MAX_RECENT_DATABASES = 10;
 function getEnvAllowedScanRoots() {
     const envRoots = process.env['ALLOWED_SCAN_ROOTS'];
     if (envRoots) {
-        return envRoots.split(',').map((p) => node_path_1.default.resolve(p.trim()));
+        return envRoots.split(',').map((p) => path.resolve(p.trim()));
     }
     // Default: only allow scanning within home directory
-    return [(0, node_os_1.homedir)()];
+    return [homedir()];
 }
 /**
  * Read user-added allowed roots from config file
  * Note: This is async to avoid blocking the event loop
  */
 async function readUserAllowedRoots() {
-    if (!(0, node_fs_1.existsSync)(ALLOWED_ROOTS_FILE)) {
+    if (!existsSync(ALLOWED_ROOTS_FILE)) {
         return [];
     }
     try {
-        const content = JSON.parse(await (0, promises_1.readFile)(ALLOWED_ROOTS_FILE, 'utf-8'));
+        const content = JSON.parse(await readFile(ALLOWED_ROOTS_FILE, 'utf-8'));
         if (Array.isArray(content.roots)) {
-            return content.roots.map((p) => node_path_1.default.resolve(p));
+            return content.roots.map((p) => path.resolve(p));
         }
         return [];
     }
@@ -60,7 +54,7 @@ async function readUserAllowedRoots() {
  * Uses atomic write to prevent race conditions
  */
 async function writeUserAllowedRoots(roots) {
-    await (0, file_utils_js_1.atomicWriteFile)(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2));
+    await atomicWriteFile(ALLOWED_ROOTS_FILE, JSON.stringify({ roots }, null, 2));
 }
 /**
  * Check if a path is within a set of allowed roots
@@ -69,7 +63,7 @@ function isPathWithinRoots(targetPath, allowedRoots) {
     let resolvedPath;
     try {
         // Resolve to absolute path and resolve symlinks
-        resolvedPath = (0, node_fs_1.existsSync)(targetPath) ? (0, node_fs_1.realpathSync)(targetPath) : node_path_1.default.resolve(targetPath);
+        resolvedPath = existsSync(targetPath) ? realpathSync(targetPath) : path.resolve(targetPath);
     }
     catch {
         // If we can't resolve the path, reject it
@@ -77,10 +71,10 @@ function isPathWithinRoots(targetPath, allowedRoots) {
     }
     // Check if the resolved path is within any allowed root
     return allowedRoots.some((root) => {
-        const normalizedRoot = node_path_1.default.normalize(root);
-        const normalizedTarget = node_path_1.default.normalize(resolvedPath);
+        const normalizedRoot = path.normalize(root);
+        const normalizedTarget = path.normalize(resolvedPath);
         // Ensure exact prefix match (avoid /home/user matching /home/username)
-        return (normalizedTarget === normalizedRoot || normalizedTarget.startsWith(normalizedRoot + node_path_1.default.sep));
+        return (normalizedTarget === normalizedRoot || normalizedTarget.startsWith(normalizedRoot + path.sep));
     });
 }
 /**
@@ -88,17 +82,17 @@ function isPathWithinRoots(targetPath, allowedRoots) {
  */
 function expandTilde(filePath) {
     if (filePath.startsWith('~/')) {
-        return node_path_1.default.join((0, node_os_1.homedir)(), filePath.slice(2));
+        return path.join(homedir(), filePath.slice(2));
     }
     if (filePath === '~') {
-        return (0, node_os_1.homedir)();
+        return homedir();
     }
     return filePath;
 }
 /**
  * Preset embedding models
  */
-exports.AVAILABLE_MODELS = [
+export const AVAILABLE_MODELS = [
     {
         id: 'Xenova/all-MiniLM-L6-v2',
         name: 'all-MiniLM-L6-v2',
@@ -148,11 +142,13 @@ exports.AVAILABLE_MODELS = [
  * - Persist recent databases list
  * - Discover databases by scanning directories
  */
-class DatabaseManager {
+export class DatabaseManager {
+    currentServer = null;
+    currentConfig = null;
+    serverFactory;
+    baseConfig;
+    switchPromise = null;
     constructor(serverFactory, baseConfig) {
-        this.currentServer = null;
-        this.currentConfig = null;
-        this.switchPromise = null;
         this.serverFactory = serverFactory;
         this.baseConfig = baseConfig;
     }
@@ -201,7 +197,7 @@ class DatabaseManager {
             throw new Error('Malformed server response: missing text in content');
         }
         // Parse and validate status response with Zod
-        const parsed = schemas_js_1.StatusResponseSchema.safeParse(JSON.parse(firstContent.text));
+        const parsed = StatusResponseSchema.safeParse(JSON.parse(firstContent.text));
         if (!parsed.success) {
             throw new Error(`Invalid status response: ${parsed.error.message}`);
         }
@@ -228,11 +224,11 @@ class DatabaseManager {
         const resolvedPath = expandTilde(newDbPath);
         await this.assertPathAllowedForMutation('Switch path', resolvedPath);
         // Validate the new path exists and is a valid database
-        if (!(0, node_fs_1.existsSync)(resolvedPath)) {
+        if (!existsSync(resolvedPath)) {
             throw new Error(`Database path does not exist: ${resolvedPath}`);
         }
-        const lanceDbPath = node_path_1.default.join(resolvedPath, LANCEDB_DIR_NAME);
-        if (!(0, node_fs_1.existsSync)(lanceDbPath)) {
+        const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME);
+        if (!existsSync(lanceDbPath)) {
             throw new Error(`Invalid database: ${resolvedPath} (missing LanceDB data)`);
         }
         // Look up stored model name from recent databases
@@ -293,14 +289,14 @@ class DatabaseManager {
         const resolvedPath = expandTilde(options.dbPath);
         await this.assertPathAllowedForMutation('Create path', resolvedPath);
         // Check if path already exists
-        if ((0, node_fs_1.existsSync)(resolvedPath)) {
-            const lanceDbPath = node_path_1.default.join(resolvedPath, LANCEDB_DIR_NAME);
-            if ((0, node_fs_1.existsSync)(lanceDbPath)) {
+        if (existsSync(resolvedPath)) {
+            const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME);
+            if (existsSync(lanceDbPath)) {
                 throw new Error(`Database already exists at: ${resolvedPath}`);
             }
         }
         // Create the directory if needed
-        await (0, promises_1.mkdir)(resolvedPath, { recursive: true });
+        await mkdir(resolvedPath, { recursive: true });
         // Switch to the new database (it will be empty initially)
         // The VectorStore will create the table on first data insertion
         await this.switchToNewDatabase(resolvedPath, options.modelName);
@@ -367,21 +363,21 @@ class DatabaseManager {
      */
     async getRecentDatabases() {
         await this.ensureConfigDir();
-        if (!(0, node_fs_1.existsSync)(RECENT_DBS_FILE)) {
+        if (!existsSync(RECENT_DBS_FILE)) {
             return [];
         }
         try {
-            const content = await (0, promises_1.readFile)(RECENT_DBS_FILE, 'utf-8');
+            const content = await readFile(RECENT_DBS_FILE, 'utf-8');
             const jsonData = JSON.parse(content);
             // Validate with Zod schema
-            const parsed = schemas_js_1.RecentDatabasesFileSchema.safeParse(jsonData);
+            const parsed = RecentDatabasesFileSchema.safeParse(jsonData);
             if (!parsed.success) {
                 console.error('Recent databases file has invalid format:', parsed.error.message);
                 console.error('File will be overwritten on next database access.');
                 return [];
             }
             // Filter out databases that no longer exist
-            const validDatabases = parsed.data.databases.filter((db) => (0, node_fs_1.existsSync)(db.path));
+            const validDatabases = parsed.data.databases.filter((db) => existsSync(db.path));
             return validDatabases;
         }
         catch (error) {
@@ -401,7 +397,7 @@ class DatabaseManager {
      * Get the base directory (dbPath directory)
      */
     getBaseDir() {
-        return this.currentConfig ? node_path_1.default.dirname(this.currentConfig.dbPath) : (0, node_os_1.homedir)();
+        return this.currentConfig ? path.dirname(this.currentConfig.dbPath) : homedir();
     }
     /**
      * Get all effective allowed roots (env + baseDir + user-added)
@@ -440,8 +436,8 @@ class DatabaseManager {
      * Add a user-allowed root
      */
     async addUserAllowedRoot(rootPath) {
-        const resolved = node_path_1.default.resolve(expandTilde(rootPath));
-        if (!(0, node_fs_1.existsSync)(resolved)) {
+        const resolved = path.resolve(expandTilde(rootPath));
+        if (!existsSync(resolved)) {
             throw new Error(`Path does not exist: ${resolved}`);
         }
         const roots = await readUserAllowedRoots();
@@ -454,7 +450,7 @@ class DatabaseManager {
      * Remove a user-allowed root
      */
     async removeUserAllowedRoot(rootPath) {
-        const resolved = node_path_1.default.resolve(expandTilde(rootPath));
+        const resolved = path.resolve(expandTilde(rootPath));
         const roots = await readUserAllowedRoots();
         const filtered = roots.filter((r) => r !== resolved);
         await writeUserAllowedRoots(filtered);
@@ -465,17 +461,17 @@ class DatabaseManager {
      * @param showHidden - Whether to include hidden files (starting with .)
      */
     async listDirectory(dirPath, showHidden = false) {
-        const resolved = node_path_1.default.resolve(expandTilde(dirPath));
+        const resolved = path.resolve(expandTilde(dirPath));
         // Allow browsing root directories and paths within allowed roots
         // For security, we still allow browsing but the user can only add paths as allowed roots
-        if (!(0, node_fs_1.existsSync)(resolved)) {
+        if (!existsSync(resolved)) {
             throw new Error(`Directory does not exist: ${resolved}`);
         }
-        const dirStat = await (0, promises_1.stat)(resolved);
+        const dirStat = await stat(resolved);
         if (!dirStat.isDirectory()) {
             throw new Error(`Path is not a directory: ${resolved}`);
         }
-        const entries = await (0, promises_1.readdir)(resolved, { withFileTypes: true });
+        const entries = await readdir(resolved, { withFileTypes: true });
         const results = [];
         for (const entry of entries) {
             // Skip hidden files/directories unless showHidden is true
@@ -483,7 +479,7 @@ class DatabaseManager {
                 continue;
             results.push({
                 name: entry.name,
-                path: node_path_1.default.join(resolved, entry.name),
+                path: path.join(resolved, entry.name),
                 isDirectory: entry.isDirectory(),
             });
         }
@@ -519,18 +515,18 @@ class DatabaseManager {
         const results = [];
         const recentDbs = await this.getRecentDatabases();
         const knownPaths = new Set(recentDbs.map((db) => db.path));
-        if (!(0, node_fs_1.existsSync)(resolvedPath)) {
+        if (!existsSync(resolvedPath)) {
             throw new Error(`Scan path does not exist: ${resolvedPath}`);
         }
-        const scanStat = await (0, promises_1.stat)(resolvedPath);
+        const scanStat = await stat(resolvedPath);
         if (!scanStat.isDirectory()) {
             throw new Error(`Scan path is not a directory: ${resolvedPath}`);
         }
         // Recursive scan function with depth tracking
         const scanDirectory = async (dirPath, currentDepth) => {
             // Check if this directory is a database
-            const lanceDbPath = node_path_1.default.join(dirPath, LANCEDB_DIR_NAME);
-            if ((0, node_fs_1.existsSync)(lanceDbPath)) {
+            const lanceDbPath = path.join(dirPath, LANCEDB_DIR_NAME);
+            if (existsSync(lanceDbPath)) {
                 results.push({
                     path: dirPath,
                     name: this.getNameFromPath(dirPath),
@@ -543,14 +539,14 @@ class DatabaseManager {
             if (currentDepth >= maxDepth)
                 return;
             try {
-                const entries = await (0, promises_1.readdir)(dirPath, { withFileTypes: true });
+                const entries = await readdir(dirPath, { withFileTypes: true });
                 for (const entry of entries) {
                     if (!entry.isDirectory())
                         continue;
                     // Skip hidden directories
                     if (entry.name.startsWith('.'))
                         continue;
-                    const subPath = node_path_1.default.join(dirPath, entry.name);
+                    const subPath = path.join(dirPath, entry.name);
                     await scanDirectory(subPath, currentDepth + 1);
                 }
             }
@@ -566,7 +562,7 @@ class DatabaseManager {
      * Get available embedding models
      */
     getAvailableModels() {
-        return exports.AVAILABLE_MODELS;
+        return AVAILABLE_MODELS;
     }
     /**
      * Export configuration (allowed roots)
@@ -591,8 +587,8 @@ class DatabaseManager {
         // Validate each path exists before importing
         const validRoots = [];
         for (const root of config.allowedRoots) {
-            const resolved = node_path_1.default.resolve(expandTilde(root));
-            if ((0, node_fs_1.existsSync)(resolved)) {
+            const resolved = path.resolve(expandTilde(root));
+            if (existsSync(resolved)) {
                 validRoots.push(resolved);
             }
             else {
@@ -641,7 +637,7 @@ class DatabaseManager {
             version: 1,
             databases: updated,
         };
-        await (0, file_utils_js_1.atomicWriteFile)(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2));
+        await atomicWriteFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2));
     }
     /**
      * Remove a database from the recent list
@@ -654,7 +650,7 @@ class DatabaseManager {
             version: 1,
             databases: filtered,
         };
-        await (0, file_utils_js_1.atomicWriteFile)(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2));
+        await atomicWriteFile(RECENT_DBS_FILE, JSON.stringify(fileContent, null, 2));
     }
     /**
      * Delete a database (removes from recent list and optionally deletes files)
@@ -673,9 +669,9 @@ class DatabaseManager {
         await this.removeFromRecent(resolvedPath);
         // Optionally delete files from disk
         if (deleteFiles) {
-            const lanceDbPath = node_path_1.default.join(resolvedPath, LANCEDB_DIR_NAME);
-            if ((0, node_fs_1.existsSync)(lanceDbPath)) {
-                await (0, promises_1.rm)(lanceDbPath, { recursive: true, force: true });
+            const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME);
+            if (existsSync(lanceDbPath)) {
+                await rm(lanceDbPath, { recursive: true, force: true });
                 console.log(`Deleted database files: ${lanceDbPath}`);
             }
         }
@@ -686,10 +682,10 @@ class DatabaseManager {
      */
     getNameFromPath(dbPath) {
         // Get the last directory name
-        const basename = node_path_1.default.basename(dbPath);
+        const basename = path.basename(dbPath);
         // If it's a generic name, include parent directory
         if (basename === 'db' || basename === 'data' || basename === 'rag') {
-            const parent = node_path_1.default.basename(node_path_1.default.dirname(dbPath));
+            const parent = path.basename(path.dirname(dbPath));
             return `${parent}/${basename}`;
         }
         return basename;
@@ -698,8 +694,8 @@ class DatabaseManager {
      * Ensure config directory exists
      */
     async ensureConfigDir() {
-        if (!(0, node_fs_1.existsSync)(CONFIG_DIR)) {
-            await (0, promises_1.mkdir)(CONFIG_DIR, { recursive: true });
+        if (!existsSync(CONFIG_DIR)) {
+            await mkdir(CONFIG_DIR, { recursive: true });
         }
     }
     /**
@@ -715,5 +711,4 @@ class DatabaseManager {
             `Add this path to allowed roots or set ALLOWED_SCAN_ROOTS environment variable.`);
     }
 }
-exports.DatabaseManager = DatabaseManager;
 //# sourceMappingURL=database-manager.js.map

@@ -33,19 +33,15 @@ export function LinkPopover({
   }, [onClose])
 
   return (
-    <div
-      ref={ref}
-      className="ws-link-popover"
-      style={{ left: position.x, top: position.y }}
-    >
+    <div ref={ref} className="ws-link-popover" style={{ left: position.x, top: position.y }}>
       <div className="ws-link-popover-header">
-        <span className={`ws-link-popover-status ${isResolved ? 'ws-link-popover-status--resolved' : 'ws-link-popover-status--unresolved'}`} />
+        <span
+          className={`ws-link-popover-status ${isResolved ? 'ws-link-popover-status--resolved' : 'ws-link-popover-status--unresolved'}`}
+        />
         <span className="ws-link-popover-title">{docTitle}</span>
         {heading && <span className="ws-link-popover-heading"># {heading}</span>}
       </div>
-      {preview && (
-        <p className="ws-link-popover-preview">{preview}</p>
-      )}
+      {preview && <p className="ws-link-popover-preview">{preview}</p>}
       <div className="ws-link-popover-actions">
         <button type="button" className="ws-link-popover-action" onClick={onNavigate}>
           Open

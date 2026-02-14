@@ -1,9 +1,4 @@
-"use strict";
 // Simple in-memory rate limiting middleware
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createRateLimiter = createRateLimiter;
-exports.getRateLimitConfigFromEnv = getRateLimitConfigFromEnv;
-exports.stopRateLimiterCleanup = stopRateLimiterCleanup;
 // Track active cleanup interval for graceful shutdown
 let cleanupInterval = null;
 // Track if rate limiter has been created (for warning)
@@ -25,7 +20,7 @@ const DEFAULT_CONFIG = {
  * @example
  * app.use('/api', createRateLimiter({ windowMs: 60000, maxRequests: 100 }))
  */
-function createRateLimiter(config = {}) {
+export function createRateLimiter(config = {}) {
     const { windowMs, maxRequests, message } = { ...DEFAULT_CONFIG, ...config };
     // Warn if rate limiter is being recreated (potential memory leak)
     if (rateLimiterCreated) {
@@ -95,7 +90,7 @@ function createRateLimiter(config = {}) {
  * - RATE_LIMIT_WINDOW_MS: Time window in milliseconds (default: 60000)
  * - RATE_LIMIT_MAX_REQUESTS: Max requests per window (default: 100)
  */
-function getRateLimitConfigFromEnv() {
+export function getRateLimitConfigFromEnv() {
     const windowMs = Number.parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '60000', 10);
     const maxRequests = Number.parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '100', 10);
     const config = {
@@ -113,7 +108,7 @@ function getRateLimitConfigFromEnv() {
  * Call this during graceful shutdown to prevent memory leaks.
  * Safe to call multiple times or when no interval is active.
  */
-function stopRateLimiterCleanup() {
+export function stopRateLimiterCleanup() {
     if (cleanupInterval) {
         clearInterval(cleanupInterval);
         cleanupInterval = null;

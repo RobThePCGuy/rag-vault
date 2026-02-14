@@ -6,19 +6,25 @@ export function Header() {
   const { config } = useCurrentConfig()
 
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 transition-colors">
+    <header
+      className="px-6 py-4 transition-colors"
+      style={{ background: 'var(--ws-surface-raised)', borderBottom: '1px solid var(--ws-border)' }}
+    >
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">MCP Local RAG</h1>
+        <h1 className="text-xl font-semibold" style={{ color: 'var(--ws-text)' }}>
+          MCP Local RAG
+        </h1>
         <div className="flex items-center gap-4">
           {config && (
             <Link
               to="/settings"
-              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors"
+              style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
               title={config.dbPath}
             >
-              <DatabaseIcon className="w-4 h-4 text-green-500 dark:text-green-400" />
+              <DatabaseIcon className="w-4 h-4 text-green-500" />
               <span className="font-medium">{config.name}</span>
-              <span className="text-gray-400 dark:text-gray-500">|</span>
+              <span style={{ color: 'var(--ws-text-muted)' }}>|</span>
               <span>{config.documentCount} docs</span>
             </Link>
           )}

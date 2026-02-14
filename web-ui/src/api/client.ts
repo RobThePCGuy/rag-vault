@@ -54,7 +54,7 @@ export interface IngestResult {
 /**
  * API error response
  */
-export interface ApiError {
+interface ApiError {
   error: string
 }
 
@@ -187,7 +187,7 @@ export async function getStatus(): Promise<SystemStatus> {
 /**
  * Document metadata
  */
-export interface DocumentMetadata {
+interface DocumentMetadata {
   fileName: string
   fileSize: number
   fileType: string
@@ -210,7 +210,7 @@ export interface DocumentChunk {
 /**
  * Explanation for why chunks are related (Explainability feature)
  */
-export interface ChunkExplanation {
+interface ChunkExplanation {
   sharedKeywords: string[]
   sharedPhrases: string[]
   reasonLabel: 'same_doc' | 'very_similar' | 'related_topic' | 'loosely_related'
@@ -359,12 +359,12 @@ function getConnectionReason(score: number, isSameDocument: boolean): string {
 /**
  * Feedback event types
  */
-export type FeedbackEventType = 'pin' | 'unpin' | 'dismiss_inferred' | 'click_related'
+type FeedbackEventType = 'pin' | 'unpin' | 'dismiss_inferred' | 'click_related'
 
 /**
  * Chunk reference for feedback
  */
-export interface FeedbackChunkRef {
+interface FeedbackChunkRef {
   filePath: string
   chunkIndex: number
   fingerprint?: string

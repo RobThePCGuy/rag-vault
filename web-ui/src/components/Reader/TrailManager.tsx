@@ -64,35 +64,48 @@ export function TrailManager({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col"
+        className="rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] flex flex-col"
+        style={{ background: 'var(--ws-surface-raised)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Trail Manager</h2>
+        <div
+          className="flex items-center justify-between px-4 py-3 border-b"
+          style={{ borderColor: 'var(--ws-border)' }}
+        >
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--ws-text)' }}>
+            Trail Manager
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+            className="p-1 rounded transition-colors"
+            style={{ color: 'var(--ws-text-muted)' }}
           >
             <CloseIcon />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <div className="flex border-b" style={{ borderColor: 'var(--ws-border)' }}>
           <button
             type="button"
             onClick={() => setActiveTab('current')}
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'current'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              activeTab === 'current' ? 'border-b-2' : ''
             }`}
+            style={
+              activeTab === 'current'
+                ? { color: 'var(--ws-accent)', borderColor: 'var(--ws-accent)' }
+                : { color: 'var(--ws-text-muted)' }
+            }
           >
             Current Trail
             {currentTrail && (
-              <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded">
+              <span
+                className="ml-2 text-xs px-1.5 py-0.5 rounded"
+                style={{ background: 'var(--ws-accent-subtle)', color: 'var(--ws-accent)' }}
+              >
                 {currentTrail.steps.length}
               </span>
             )}
@@ -101,14 +114,20 @@ export function TrailManager({
             type="button"
             onClick={() => setActiveTab('saved')}
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === 'saved'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+              activeTab === 'saved' ? 'border-b-2' : ''
             }`}
+            style={
+              activeTab === 'saved'
+                ? { color: 'var(--ws-accent)', borderColor: 'var(--ws-accent)' }
+                : { color: 'var(--ws-text-muted)' }
+            }
           >
             Saved Trails
             {savedTrails.length > 0 && (
-              <span className="ml-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded">
+              <span
+                className="ml-2 text-xs px-1.5 py-0.5 rounded"
+                style={{ background: 'var(--ws-surface-1)', color: 'var(--ws-text-secondary)' }}
+              >
                 {savedTrails.length}
               </span>
             )}
@@ -155,26 +174,34 @@ export function TrailManager({
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <div
+                      className="flex gap-2 pt-2 border-t"
+                      style={{ borderColor: 'var(--ws-border)' }}
+                    >
                       <button
                         type="button"
                         onClick={() => setSaveDialogOpen(true)}
                         disabled={currentTrail.steps.length < 2}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 px-3 py-2 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        style={{ background: 'var(--ws-accent)', color: 'white' }}
                       >
                         Save Trail
                       </button>
                       <button
                         type="button"
                         onClick={onClearCurrentTrail}
-                        className="px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        className="px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+                        style={{
+                          color: 'var(--ws-text-secondary)',
+                          background: 'var(--ws-surface-1)',
+                        }}
                       >
                         Clear
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <div className="text-center py-8" style={{ color: 'var(--ws-text-muted)' }}>
                     <TrailIcon />
                     <p className="mt-2">No active trail</p>
                     <p className="text-sm mt-1">Navigate between documents to start recording</p>
@@ -203,7 +230,7 @@ export function TrailManager({
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <div className="text-center py-8" style={{ color: 'var(--ws-text-muted)' }}>
                     <BookmarkIcon />
                     <p className="mt-2">No saved trails</p>
                     <p className="text-sm mt-1">Save your explorations to revisit later</p>
@@ -227,9 +254,10 @@ export function TrailManager({
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0.9 }}
-                className="bg-white dark:bg-gray-800 rounded-lg p-4 m-4 shadow-lg"
+                className="rounded-lg p-4 m-4 shadow-lg"
+                style={{ background: 'var(--ws-surface-raised)' }}
               >
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">
+                <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--ws-text)' }}>
                   Save Trail
                 </h3>
                 <input
@@ -237,7 +265,12 @@ export function TrailManager({
                   value={trailName}
                   onChange={(e) => setTrailName(e.target.value)}
                   placeholder="Enter trail name..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    borderColor: 'var(--ws-border)',
+                    background: 'var(--ws-surface-raised)',
+                    color: 'var(--ws-text)',
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSave()
                     if (e.key === 'Escape') setSaveDialogOpen(false)
@@ -248,14 +281,16 @@ export function TrailManager({
                     type="button"
                     onClick={handleSave}
                     disabled={!trailName.trim()}
-                    className="flex-1 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    className="flex-1 px-3 py-1.5 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+                    style={{ background: 'var(--ws-accent)', color: 'white' }}
                   >
                     Save
                   </button>
                   <button
                     type="button"
                     onClick={() => setSaveDialogOpen(false)}
-                    className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                    style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
                   >
                     Cancel
                   </button>
@@ -284,27 +319,28 @@ function TrailStepItem({ step, index, isLast, onNavigate }: TrailStepItemProps) 
       {/* Step number */}
       <div className="flex flex-col items-center">
         <div
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium"
+          style={
             isLast
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-          }`}
+              ? { background: 'var(--ws-accent)', color: 'white' }
+              : { background: 'var(--ws-surface-2)', color: 'var(--ws-text-secondary)' }
+          }
         >
           {index + 1}
         </div>
-        {!isLast && <div className="w-0.5 h-4 bg-gray-200 dark:bg-gray-700" />}
+        {!isLast && <div className="w-0.5 h-4" style={{ background: 'var(--ws-surface-2)' }} />}
       </div>
 
       {/* Step content */}
       <button
         type="button"
         onClick={onNavigate}
-        className="flex-1 text-left p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+        className="flex-1 text-left p-2 rounded-lg transition-colors"
       >
-        <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+        <div className="text-sm font-medium truncate" style={{ color: 'var(--ws-text)' }}>
           {displaySource}
         </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">
+        <div className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
           Chunk #{step.chunkKey.chunkIndex}
           {step.connectionReason && (
             <span className="ml-2 italic">via "{step.connectionReason}"</span>
@@ -325,13 +361,13 @@ function SavedTrailItem({ trail, onLoad, onDelete }: SavedTrailItemProps) {
   const [showConfirm, setShowConfirm] = useState(false)
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+    <div className="border rounded-lg p-3" style={{ borderColor: 'var(--ws-border)' }}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+          <h4 className="text-sm font-medium truncate" style={{ color: 'var(--ws-text)' }}>
             {trail.name}
           </h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-xs mt-0.5" style={{ color: 'var(--ws-text-muted)' }}>
             {trail.steps.length} steps &middot; {new Date(trail.updatedAt).toLocaleDateString()}
           </p>
         </div>
@@ -348,7 +384,8 @@ function SavedTrailItem({ trail, onLoad, onDelete }: SavedTrailItemProps) {
               <button
                 type="button"
                 onClick={() => setShowConfirm(false)}
-                className="px-2 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="px-2 py-1 text-xs font-medium rounded transition-colors"
+                style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
               >
                 Cancel
               </button>
@@ -358,14 +395,16 @@ function SavedTrailItem({ trail, onLoad, onDelete }: SavedTrailItemProps) {
               <button
                 type="button"
                 onClick={onLoad}
-                className="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium rounded transition-colors"
+                style={{ color: 'var(--ws-accent)' }}
               >
                 Load
               </button>
               <button
                 type="button"
                 onClick={() => setShowConfirm(true)}
-                className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                className="px-2 py-1 text-xs font-medium rounded transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 Delete
               </button>
@@ -393,7 +432,8 @@ function CloseIcon() {
 function TrailIcon() {
   return (
     <svg
-      className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500"
+      className="mx-auto h-10 w-10"
+      style={{ color: 'var(--ws-text-muted)' }}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -411,7 +451,8 @@ function TrailIcon() {
 function BookmarkIcon() {
   return (
     <svg
-      className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500"
+      className="mx-auto h-10 w-10"
+      style={{ color: 'var(--ws-text-muted)' }}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -459,7 +500,8 @@ function TrailTreeNode({
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-1 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className="mt-1 w-5 h-5 flex items-center justify-center"
+            style={{ color: 'var(--ws-text-muted)' }}
           >
             {isExpanded ? (
               <ChevronDownIcon className="w-4 h-4" />
@@ -473,14 +515,12 @@ function TrailTreeNode({
 
         {/* Branch label badge */}
         <div
-          className={`
-            flex items-center justify-center min-w-[2rem] h-6 px-1.5 rounded text-xs font-medium
-            ${
-              isActive
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-            }
-          `}
+          className="flex items-center justify-center min-w-[2rem] h-6 px-1.5 rounded text-xs font-medium"
+          style={
+            isActive
+              ? { background: 'var(--ws-accent)', color: 'white' }
+              : { background: 'var(--ws-surface-2)', color: 'var(--ws-text-secondary)' }
+          }
         >
           {node.branchLabel || depth + 1}
         </div>
@@ -492,19 +532,22 @@ function TrailTreeNode({
             onNavigate(node)
             onSetCurrent(node.id)
           }}
-          className={`
-            flex-1 text-left p-2 rounded-lg transition-colors
-            ${
-              isActive
-                ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700'
-                : 'hover:bg-gray-50 dark:hover:bg-gray-750'
-            }
-          `}
+          className="flex-1 text-left p-2 rounded-lg transition-colors"
+          style={
+            isActive
+              ? {
+                  background: 'var(--ws-accent-subtle)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  borderColor: 'var(--ws-accent)',
+                }
+              : {}
+          }
         >
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+          <div className="text-sm font-medium truncate" style={{ color: 'var(--ws-text)' }}>
             {displaySource}
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
             Chunk #{node.chunkKey.chunkIndex}
             {node.connectionReason && (
               <span className="ml-2 italic">via "{node.connectionReason}"</span>
@@ -515,7 +558,10 @@ function TrailTreeNode({
 
       {/* Children (branches) */}
       {isExpanded && node.children.length > 0 && (
-        <div className="ml-6 mt-1 space-y-1 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+        <div
+          className="ml-6 mt-1 space-y-1 border-l-2 pl-2"
+          style={{ borderColor: 'var(--ws-border)' }}
+        >
           {node.children.map((child) => (
             <TrailTreeNode
               key={child.id}

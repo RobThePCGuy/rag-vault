@@ -63,11 +63,15 @@ export function AnnotationNote({
       initial={{ opacity: 0, x: 10 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -10 }}
-      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden"
+      className="rounded-lg border shadow-sm overflow-hidden"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
     >
       {/* Header with highlighted text preview */}
-      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400 italic line-clamp-2">
+      <div
+        className="px-3 py-2 border-b"
+        style={{ background: 'var(--ws-surface-1)', borderColor: 'var(--ws-border)' }}
+      >
+        <p className="text-xs italic line-clamp-2" style={{ color: 'var(--ws-text-muted)' }}>
           "{highlight.text.length > 60 ? `${highlight.text.slice(0, 60)}...` : highlight.text}"
         </p>
       </div>
@@ -82,7 +86,8 @@ export function AnnotationNote({
               onKeyDown={handleKeyDown}
               onBlur={handleSaveNote}
               placeholder="Add a note..."
-              className="w-full px-2 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 rounded border-0 resize-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm rounded border-0 resize-none focus:ring-2 focus:ring-blue-500"
+              style={{ background: 'var(--ws-surface-1)', color: 'var(--ws-text)' }}
               rows={3}
             />
             <div className="flex justify-end gap-2 mt-2">
@@ -92,14 +97,16 @@ export function AnnotationNote({
                   setIsEditing(false)
                   setNoteText(annotation?.note || '')
                 }}
-                className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                className="px-2 py-1 text-xs"
+                style={{ color: 'var(--ws-text-secondary)' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveNote}
-                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-2 py-1 text-xs rounded"
+                style={{ background: 'var(--ws-accent)', color: 'white' }}
               >
                 Save
               </button>
@@ -110,7 +117,8 @@ export function AnnotationNote({
             {annotation?.note ? (
               <button
                 type="button"
-                className="text-left text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100"
+                className="text-left text-sm cursor-pointer"
+                style={{ color: 'var(--ws-text-secondary)' }}
                 onClick={() => setIsEditing(true)}
               >
                 {annotation.note}
@@ -119,7 +127,8 @@ export function AnnotationNote({
               <button
                 type="button"
                 onClick={() => setIsEditing(true)}
-                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 italic"
+                className="text-sm italic"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 + Add note...
               </button>
@@ -129,13 +138,17 @@ export function AnnotationNote({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 dark:border-gray-700/50">
+      <div
+        className="flex items-center justify-between px-3 py-2 border-t"
+        style={{ borderColor: 'var(--ws-border-subtle)' }}
+      >
         {/* Color picker */}
         <div className="relative">
           <button
             type="button"
             onClick={() => setShowColorPicker(!showColorPicker)}
-            className={`w-5 h-5 rounded-full ${currentColor?.bg} ring-1 ring-gray-300 dark:ring-gray-600`}
+            className={`w-5 h-5 rounded-full ${currentColor?.bg} ring-1`}
+            style={{ '--tw-ring-color': 'var(--ws-border)' } as React.CSSProperties}
             title="Change color"
           />
           {showColorPicker && (
@@ -148,7 +161,10 @@ export function AnnotationNote({
                 tabIndex={0}
                 aria-label="Close color picker"
               />
-              <div className="absolute bottom-full left-0 mb-2 z-20 flex gap-1 p-1.5 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+              <div
+                className="absolute bottom-full left-0 mb-2 z-20 flex gap-1 p-1.5 rounded-lg shadow-lg border"
+                style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+              >
                 {COLORS.map(({ color, bg, ring }) => (
                   <button
                     key={color}
@@ -174,7 +190,8 @@ export function AnnotationNote({
             <button
               type="button"
               onClick={onDeleteNote}
-              className="text-xs text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+              className="text-xs"
+              style={{ color: 'var(--ws-text-muted)' }}
               title="Delete note"
             >
               Remove note
@@ -183,7 +200,8 @@ export function AnnotationNote({
           <button
             type="button"
             onClick={onDeleteHighlight}
-            className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+            className="p-1"
+            style={{ color: 'var(--ws-text-muted)' }}
             title="Delete highlight"
           >
             <TrashIcon className="w-4 h-4" />

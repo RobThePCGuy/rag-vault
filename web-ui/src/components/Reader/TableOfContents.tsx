@@ -47,7 +47,8 @@ export function TableOfContents({
       <button
         type="button"
         onClick={onToggle}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+        style={{ color: 'var(--ws-text-secondary)' }}
         title={isOpen ? 'Hide table of contents' : 'Show table of contents'}
       >
         <TocIcon className="w-4 h-4" />
@@ -65,23 +66,29 @@ export function TableOfContents({
             animate={{ width: 240, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed left-0 top-16 bottom-0 z-40 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg overflow-hidden"
+            className="fixed left-0 top-16 bottom-0 z-40 border-r shadow-lg overflow-hidden"
+            style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
           >
             <div className="h-full flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <div
+                className="flex items-center justify-between px-4 py-3 border-b"
+                style={{ borderColor: 'var(--ws-border)' }}
+              >
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--ws-text)' }}>
                   Table of Contents
                 </h3>
                 {isFallback && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400">(auto)</span>
+                  <span className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+                    (auto)
+                  </span>
                 )}
               </div>
 
               {/* Entries */}
               <div className="flex-1 overflow-y-auto py-2">
                 {entries.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <div className="px-4 py-8 text-center" style={{ color: 'var(--ws-text-muted)' }}>
                     <p className="text-sm">No headings detected</p>
                   </div>
                 ) : (
@@ -120,18 +127,25 @@ function TocEntryItem({ entry, isCurrent, onClick }: TocEntryItemProps) {
       type="button"
       onClick={onClick}
       className={`
-        w-full text-left px-4 py-1.5 text-sm transition-colors
-        ${
-          isCurrent
-            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium border-l-2 border-blue-500'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-l-2 border-transparent'
-        }
+        w-full text-left px-4 py-1.5 text-sm transition-colors border-l-2
+        ${isCurrent ? 'font-medium' : 'border-transparent'}
       `}
-      style={{ paddingLeft }}
+      style={
+        isCurrent
+          ? {
+              background: 'var(--ws-accent-subtle)',
+              color: 'var(--ws-accent)',
+              borderColor: 'var(--ws-accent)',
+              paddingLeft,
+            }
+          : { color: 'var(--ws-text-secondary)', paddingLeft }
+      }
     >
       <span className="line-clamp-2">{entry.text}</span>
       {entry.type === 'allcaps' && (
-        <span className="ml-1 text-xs text-gray-400">{entry.chunkIndex}</span>
+        <span className="ml-1 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+          {entry.chunkIndex}
+        </span>
       )}
     </button>
   )

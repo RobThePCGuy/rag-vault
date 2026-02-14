@@ -1,8 +1,4 @@
-"use strict";
 // Centralized error classes for RAG operations
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.EmbeddingError = exports.ParserFileOperationError = exports.ParserValidationError = exports.DatabaseError = exports.ValidationError = exports.RAGError = void 0;
-exports.getErrorMessage = getErrorMessage;
 // ============================================
 // Error Codes
 // ============================================
@@ -34,7 +30,10 @@ const ErrorCodes = {
 /**
  * Base error class for RAG operations
  */
-class RAGError extends Error {
+export class RAGError extends Error {
+    code;
+    statusCode;
+    details;
     constructor(message, options = {}) {
         super(message, options.cause ? { cause: options.cause } : undefined);
         this.name = 'RAGError';
@@ -52,14 +51,13 @@ class RAGError extends Error {
         };
     }
 }
-exports.RAGError = RAGError;
 // ============================================
 // Validation Errors
 // ============================================
 /**
  * Validation error for invalid input
  */
-class ValidationError extends RAGError {
+export class ValidationError extends RAGError {
     constructor(message, details, cause) {
         const opts = {
             code: ErrorCodes.VALIDATION_ERROR,
@@ -73,14 +71,13 @@ class ValidationError extends RAGError {
         this.name = 'ValidationError';
     }
 }
-exports.ValidationError = ValidationError;
 // ============================================
 // Database Errors
 // ============================================
 /**
  * Database operation error
  */
-class DatabaseError extends RAGError {
+export class DatabaseError extends RAGError {
     constructor(message, cause, code = ErrorCodes.DATABASE_ERROR) {
         const opts = {
             code,
@@ -92,14 +89,13 @@ class DatabaseError extends RAGError {
         this.name = 'DatabaseError';
     }
 }
-exports.DatabaseError = DatabaseError;
 // ============================================
 // Parser Errors
 // ============================================
 /**
  * Parser validation error (equivalent to 400)
  */
-class ParserValidationError extends RAGError {
+export class ParserValidationError extends RAGError {
     constructor(message, cause) {
         const opts = {
             code: ErrorCodes.PARSER_VALIDATION_ERROR,
@@ -111,11 +107,10 @@ class ParserValidationError extends RAGError {
         this.name = 'ParserValidationError';
     }
 }
-exports.ParserValidationError = ParserValidationError;
 /**
  * Parser file operation error (equivalent to 500)
  */
-class ParserFileOperationError extends RAGError {
+export class ParserFileOperationError extends RAGError {
     constructor(message, cause) {
         const opts = {
             code: ErrorCodes.PARSER_FILE_OPERATION_ERROR,
@@ -127,14 +122,13 @@ class ParserFileOperationError extends RAGError {
         this.name = 'ParserFileOperationError';
     }
 }
-exports.ParserFileOperationError = ParserFileOperationError;
 // ============================================
 // Embedding Errors
 // ============================================
 /**
  * Embedding generation error
  */
-class EmbeddingError extends RAGError {
+export class EmbeddingError extends RAGError {
     constructor(message, cause) {
         const opts = {
             code: ErrorCodes.EMBEDDING_ERROR,
@@ -146,14 +140,13 @@ class EmbeddingError extends RAGError {
         this.name = 'EmbeddingError';
     }
 }
-exports.EmbeddingError = EmbeddingError;
 // ============================================
 // Utilities
 // ============================================
 /**
  * Get error message with optional stack trace (based on environment)
  */
-function getErrorMessage(error) {
+export function getErrorMessage(error) {
     if (process.env['NODE_ENV'] === 'production') {
         return error.message;
     }

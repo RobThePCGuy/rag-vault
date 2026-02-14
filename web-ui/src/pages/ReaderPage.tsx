@@ -213,19 +213,22 @@ export function ReaderPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6"
+              className="rounded-xl shadow-xl max-w-md w-full mx-4 p-6"
+              style={{ background: 'var(--ws-surface-raised)' }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
-                  <TrailIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div className="p-2 rounded-lg" style={{ background: 'var(--ws-accent-subtle)' }}>
+                  <span style={{ color: 'var(--ws-accent)' }}>
+                    <TrailIcon className="w-5 h-5" />
+                  </span>
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <h2 className="text-lg font-semibold" style={{ color: 'var(--ws-text)' }}>
                     Import Shared Trail
                   </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
                     {pendingTrail.decoded.steps.length} steps
                   </p>
                 </div>
@@ -252,7 +255,7 @@ export function ReaderPage() {
               {/* Trail preview */}
               {pendingTrail.validation.success && pendingTrail.validation.trail && (
                 <div className="mb-4 max-h-48 overflow-y-auto">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                  <p className="text-xs font-medium mb-2" style={{ color: 'var(--ws-text-muted)' }}>
                     Trail steps:
                   </p>
                   <div className="space-y-1">
@@ -261,15 +264,19 @@ export function ReaderPage() {
                         key={`${step.chunkKey.filePath}::${step.chunkKey.chunkIndex}`}
                         className="flex items-center gap-2 text-sm"
                       >
-                        <span className="text-gray-400 w-4">{idx + 1}.</span>
-                        <span className="text-gray-700 dark:text-gray-300 truncate">
+                        <span className="w-4" style={{ color: 'var(--ws-text-muted)' }}>
+                          {idx + 1}.
+                        </span>
+                        <span className="truncate" style={{ color: 'var(--ws-text-secondary)' }}>
                           {step.chunkKey.filePath.split('/').pop()}
                         </span>
-                        <span className="text-gray-400 text-xs">#{step.chunkKey.chunkIndex}</span>
+                        <span className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+                          #{step.chunkKey.chunkIndex}
+                        </span>
                       </div>
                     ))}
                     {pendingTrail.validation.trail.steps.length > 5 && (
-                      <p className="text-xs text-gray-400 pl-6">
+                      <p className="text-xs pl-6" style={{ color: 'var(--ws-text-muted)' }}>
                         +{pendingTrail.validation.trail.steps.length - 5} more steps
                       </p>
                     )}
@@ -282,7 +289,8 @@ export function ReaderPage() {
                 <button
                   type="button"
                   onClick={handleDismissTrailImport}
-                  className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 text-sm rounded-lg transition-colors"
+                  style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
                 >
                   Cancel
                 </button>
@@ -290,7 +298,8 @@ export function ReaderPage() {
                   <button
                     type="button"
                     onClick={handleImportTrail}
-                    className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 text-sm rounded-lg transition-colors"
+                    style={{ background: 'var(--ws-accent)', color: 'white' }}
                   >
                     Import & Navigate
                   </button>

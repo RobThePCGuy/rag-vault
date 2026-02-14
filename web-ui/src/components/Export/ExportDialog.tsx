@@ -63,30 +63,35 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full mx-4 p-6"
+            className="rounded-xl shadow-xl max-w-md w-full mx-4 p-6"
+            style={{ background: 'var(--ws-surface-raised)' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <ExportIcon className="w-5 h-5 text-blue-500" />
+              <h2
+                className="text-lg font-semibold flex items-center gap-2"
+                style={{ color: 'var(--ws-text)' }}
+              >
+                <ExportIcon className="w-5 h-5" style={{ color: 'var(--ws-accent)' }} />
                 Export Document
               </h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+                className="p-1 rounded transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 <CloseIcon className="w-5 h-5" />
               </button>
             </div>
 
             {/* Document Info */}
-            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-750 rounded-lg">
-              <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+            <div className="mb-4 p-3 rounded-lg" style={{ background: 'var(--ws-surface-1)' }}>
+              <h3 className="font-medium truncate" style={{ color: 'var(--ws-text)' }}>
                 {documentData.title}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-sm mt-1" style={{ color: 'var(--ws-text-muted)' }}>
                 {documentData.chunks.length} chunks
                 {hasAnnotations && ` • ${documentData.highlights.length} highlights`}
                 {hasPins && ` • ${documentData.pins.length + documentData.backlinks.length} links`}
@@ -95,7 +100,10 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
 
             {/* Format Selection */}
             <div className="mb-4">
-              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <span
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--ws-text-secondary)' }}
+              >
                 Export Format
               </span>
               <div className="flex gap-2" role="group" aria-label="Export format">
@@ -104,11 +112,16 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
                     key={f}
                     type="button"
                     onClick={() => setFormat(f)}
-                    className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                    className="flex-1 px-3 py-2 text-sm font-medium rounded-lg border transition-colors"
+                    style={
                       format === f
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                        : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    }`}
+                        ? {
+                            borderColor: 'var(--ws-accent)',
+                            background: 'var(--ws-accent-subtle)',
+                            color: 'var(--ws-accent)',
+                          }
+                        : { borderColor: 'var(--ws-border)', color: 'var(--ws-text-secondary)' }
+                    }
                   >
                     {f === 'markdown' ? 'Markdown' : f.toUpperCase()}
                   </button>
@@ -118,7 +131,10 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
 
             {/* Options */}
             <div className="mb-6 space-y-3">
-              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <span
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--ws-text-secondary)' }}
+              >
                 Include
               </span>
 
@@ -128,14 +144,20 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
                   checked={includeAnnotations}
                   onChange={(e) => setIncludeAnnotations(e.target.checked)}
                   disabled={!hasAnnotations}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  className="w-4 h-4 rounded"
+                  style={{ accentColor: 'var(--ws-accent)' }}
                 />
                 <span
-                  className={`text-sm ${!hasAnnotations ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
+                  className="text-sm"
+                  style={{
+                    color: !hasAnnotations ? 'var(--ws-text-muted)' : 'var(--ws-text-secondary)',
+                  }}
                 >
                   Highlights & annotations
                   {hasAnnotations && (
-                    <span className="text-gray-400 ml-1">({documentData.highlights.length})</span>
+                    <span className="ml-1" style={{ color: 'var(--ws-text-muted)' }}>
+                      ({documentData.highlights.length})
+                    </span>
                   )}
                 </span>
               </label>
@@ -146,14 +168,16 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
                   checked={includePins}
                   onChange={(e) => setIncludePins(e.target.checked)}
                   disabled={!hasPins}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  className="w-4 h-4 rounded"
+                  style={{ accentColor: 'var(--ws-accent)' }}
                 />
                 <span
-                  className={`text-sm ${!hasPins ? 'text-gray-400' : 'text-gray-700 dark:text-gray-300'}`}
+                  className="text-sm"
+                  style={{ color: !hasPins ? 'var(--ws-text-muted)' : 'var(--ws-text-secondary)' }}
                 >
                   Pins & backlinks
                   {hasPins && (
-                    <span className="text-gray-400 ml-1">
+                    <span className="ml-1" style={{ color: 'var(--ws-text-muted)' }}>
                       ({documentData.pins.length + documentData.backlinks.length})
                     </span>
                   )}
@@ -165,17 +189,20 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
                   type="checkbox"
                   checked={includeProvenance}
                   onChange={(e) => setIncludeProvenance(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  className="w-4 h-4 rounded"
+                  style={{ accentColor: 'var(--ws-accent)' }}
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="text-sm" style={{ color: 'var(--ws-text-secondary)' }}>
                   Chunk anchors
-                  <span className="text-gray-400 ml-1">(file::chunk references)</span>
+                  <span className="ml-1" style={{ color: 'var(--ws-text-muted)' }}>
+                    (file::chunk references)
+                  </span>
                 </span>
               </label>
             </div>
 
             {/* Format hints */}
-            <div className="mb-6 text-xs text-gray-500 dark:text-gray-400">
+            <div className="mb-6 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
               {format === 'markdown' && <p>Highlights will be marked with ==text== syntax.</p>}
               {format === 'json' && <p>Full structured data with all metadata.</p>}
               {format === 'html' && <p>Styled document with &lt;mark&gt; highlights.</p>}
@@ -186,14 +213,16 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="px-4 py-2 text-sm rounded-lg transition-colors"
+                style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-2)' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleExport}
-                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 text-sm text-white rounded-lg transition-colors"
+                style={{ background: 'var(--ws-accent)' }}
               >
                 Export
               </button>
@@ -206,9 +235,9 @@ export function ExportDialog({ isOpen, onClose, documentData }: ExportDialogProp
 }
 
 // Icons
-function ExportIcon({ className }: { className?: string }) {
+function ExportIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

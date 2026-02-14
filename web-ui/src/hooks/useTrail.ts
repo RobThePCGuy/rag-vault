@@ -7,7 +7,7 @@ import {
   type TrailStep,
 } from '../contexts/LinksContext'
 
-export interface UseTrailResult {
+interface UseTrailResult {
   currentTrail: Trail | null
   savedTrails: Trail[]
   isRecording: boolean

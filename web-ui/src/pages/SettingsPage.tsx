@@ -123,8 +123,12 @@ export function SettingsPage() {
 
       {isLoadingConfig && !config ? (
         <div className="flex items-center justify-center py-12">
-          <span style={{ color: 'var(--ws-text-faint)' }}><Spinner /></span>
-          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>Loading configuration...</span>
+          <span style={{ color: 'var(--ws-text-faint)' }}>
+            <Spinner />
+          </span>
+          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>
+            Loading configuration...
+          </span>
         </div>
       ) : configError ? (
         <div className="ws-error-box rounded-lg">
@@ -133,108 +137,108 @@ export function SettingsPage() {
         </div>
       ) : (
         <>
-        <WsTabs
-          tabs={settingsTabs}
-          activeId={activeTab}
-          onSelect={setActiveTab}
-          variant="underline"
-          className="mb-6"
-        />
+          <WsTabs
+            tabs={settingsTabs}
+            activeId={activeTab}
+            onSelect={setActiveTab}
+            variant="underline"
+            className="mb-6"
+          />
 
-        {activeTab === 'database' && (
-          <motion.div
-            className="space-y-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {/* Current Database */}
-            {config && (
+          {activeTab === 'database' && (
+            <motion.div
+              className="space-y-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {/* Current Database */}
+              {config && (
+                <motion.div variants={itemVariants}>
+                  <CurrentDatabaseCard
+                    config={config}
+                    onRefresh={() => refetch()}
+                    isFetching={isFetching}
+                  />
+                </motion.div>
+              )}
+
+              {/* Recent Databases / Switcher */}
+              {!isLoadingDatabases && (
+                <motion.div variants={itemVariants}>
+                  <DatabaseSwitcher
+                    databases={databases}
+                    currentDbPath={config?.dbPath}
+                    onSwitch={handleSwitch}
+                    onDelete={handleDelete}
+                    isLoading={isSwitching || isDeleting}
+                  />
+                </motion.div>
+              )}
+
+              {/* Create New Database */}
               <motion.div variants={itemVariants}>
-                <CurrentDatabaseCard
-                  config={config}
-                  onRefresh={() => refetch()}
-                  isFetching={isFetching}
+                <CreateDatabaseCard
+                  onCreate={handleCreate}
+                  isLoading={isCreating}
+                  error={createError}
                 />
               </motion.div>
-            )}
 
-            {/* Recent Databases / Switcher */}
-            {!isLoadingDatabases && (
+              {/* Scan for Databases */}
               <motion.div variants={itemVariants}>
-                <DatabaseSwitcher
-                  databases={databases}
-                  currentDbPath={config?.dbPath}
+                <ScanDatabasesCard
+                  onScan={handleScan}
                   onSwitch={handleSwitch}
-                  onDelete={handleDelete}
-                  isLoading={isSwitching || isDeleting}
+                  isScanning={isScanning}
+                  isSwitching={isSwitching}
+                  scanResults={scanResults}
+                  error={scanError}
+                  onReset={resetScan}
                 />
               </motion.div>
-            )}
-
-            {/* Create New Database */}
-            <motion.div variants={itemVariants}>
-              <CreateDatabaseCard
-                onCreate={handleCreate}
-                isLoading={isCreating}
-                error={createError}
-              />
             </motion.div>
+          )}
 
-            {/* Scan for Databases */}
-            <motion.div variants={itemVariants}>
-              <ScanDatabasesCard
-                onScan={handleScan}
-                onSwitch={handleSwitch}
-                isScanning={isScanning}
-                isSwitching={isSwitching}
-                scanResults={scanResults}
-                error={scanError}
-                onReset={resetScan}
-              />
-            </motion.div>
-          </motion.div>
-        )}
+          {activeTab === 'search' && (
+            <motion.div
+              className="space-y-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {/* Allowed Scan Roots */}
+              <motion.div variants={itemVariants}>
+                <AllowedRootsCard
+                  data={allowedRootsData}
+                  isLoading={isLoadingRoots}
+                  onAdd={addRoot}
+                  onRemove={removeRoot}
+                  isAdding={isAddingRoot}
+                  isRemoving={isRemovingRoot}
+                />
+              </motion.div>
 
-        {activeTab === 'search' && (
-          <motion.div
-            className="space-y-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {/* Allowed Scan Roots */}
-            <motion.div variants={itemVariants}>
-              <AllowedRootsCard
-                data={allowedRootsData}
-                isLoading={isLoadingRoots}
-                onAdd={addRoot}
-                onRemove={removeRoot}
-                isAdding={isAddingRoot}
-                isRemoving={isRemovingRoot}
-              />
+              {/* Hybrid Search Weight */}
+              <motion.div variants={itemVariants}>
+                <HybridWeightCard />
+              </motion.div>
             </motion.div>
+          )}
 
-            {/* Hybrid Search Weight */}
-            <motion.div variants={itemVariants}>
-              <HybridWeightCard />
+          {activeTab === 'data' && (
+            <motion.div
+              className="space-y-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {/* Export / Import */}
+              <motion.div variants={itemVariants}>
+                <ExportImportCard />
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-
-        {activeTab === 'data' && (
-          <motion.div
-            className="space-y-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {/* Export / Import */}
-            <motion.div variants={itemVariants}>
-              <ExportImportCard />
-            </motion.div>
-          </motion.div>
-        )}
+          )}
         </>
       )}
     </div>

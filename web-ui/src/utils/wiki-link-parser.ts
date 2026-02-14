@@ -12,10 +12,9 @@ const WIKI_LINK_RE = /\[\[([^\]|#^]+?)(?:#([^\]|^]+?))?(?:\^([^\]|]+?))?(?:\|([^
 
 export function parseWikiLinks(text: string): ParsedWikiLink[] {
   const links: ParsedWikiLink[] = []
-  let match: RegExpExecArray | null
   // Reset lastIndex for safety
   WIKI_LINK_RE.lastIndex = 0
-  while ((match = WIKI_LINK_RE.exec(text)) !== null) {
+  for (let match = WIKI_LINK_RE.exec(text); match !== null; match = WIKI_LINK_RE.exec(text)) {
     links.push({
       raw: match[0],
       docTitle: match[1]!.trim(),

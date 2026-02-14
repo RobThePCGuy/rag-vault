@@ -31,13 +31,9 @@ export function BookmarkButton({
         ${buttonPadding}
         rounded
         transition-colors
-        ${
-          isBookmarked
-            ? 'text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300'
-            : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-        }
         ${className}
       `}
+      style={isBookmarked ? { color: 'var(--ws-accent)' } : { color: 'var(--ws-text-muted)' }}
       title={isBookmarked ? 'Remove bookmark (b)' : 'Add bookmark (b)'}
       whileTap={{ scale: 0.9 }}
     >

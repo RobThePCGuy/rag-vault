@@ -77,7 +77,7 @@ export interface ExportedConfig {
 /**
  * Browse directory response
  */
-export interface BrowseDirectoryResponse {
+interface BrowseDirectoryResponse {
   entries: DirectoryEntry[]
   path: string
 }

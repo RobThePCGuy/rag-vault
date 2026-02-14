@@ -263,230 +263,266 @@ export function ExportImportCard() {
   ])
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
-          <SettingsIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-        </div>
-        <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Export / Import</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Backup and restore your vault data
-          </p>
+    <div className="ws-card" data-padding="lg">
+      <div className="ws-card-header">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg" style={{ background: 'var(--ws-accent-muted)' }}>
+            <SettingsIcon className="w-6 h-6" style={{ color: 'var(--ws-accent)' }} />
+          </div>
+          <div>
+            <div className="ws-card-title">Export / Import</div>
+            <div className="ws-card-subtitle">Backup and restore your vault data</div>
+          </div>
         </div>
       </div>
 
-      {/* Export Options Panel */}
-      {showExportOptions && (
-        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-750 rounded-lg border border-gray-200 dark:border-gray-600">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Select data to export
-          </h3>
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+      <div className="ws-card-body">
+        {/* Export Options Panel */}
+        {showExportOptions && (
+          <div
+            className="mb-4 p-4 rounded-lg"
+            style={{
+              background: 'var(--ws-surface-1)',
+              border: '1px solid var(--ws-border)',
+            }}
+          >
+            <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--ws-text-secondary)' }}>
+              Select data to export
+            </h3>
+            <div className="space-y-2">
+              <ExportCheckbox
                 checked={exportOptions.includeLinks}
-                onChange={(e) =>
-                  setExportOptions((prev) => ({ ...prev, includeLinks: e.target.checked }))
+                onChange={(checked) =>
+                  setExportOptions((prev) => ({ ...prev, includeLinks: checked }))
                 }
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                label="Links, trails & bookmarks"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Links, trails & bookmarks
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <ExportCheckbox
                 checked={exportOptions.includeAnnotations}
-                onChange={(e) =>
-                  setExportOptions((prev) => ({ ...prev, includeAnnotations: e.target.checked }))
+                onChange={(checked) =>
+                  setExportOptions((prev) => ({ ...prev, includeAnnotations: checked }))
                 }
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                label="Highlights & annotations"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Highlights & annotations
-              </span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <ExportCheckbox
                 checked={exportOptions.includeCollections}
-                onChange={(e) =>
-                  setExportOptions((prev) => ({ ...prev, includeCollections: e.target.checked }))
+                onChange={(checked) =>
+                  setExportOptions((prev) => ({ ...prev, includeCollections: checked }))
                 }
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                label="Collections"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Collections</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <ExportCheckbox
                 checked={exportOptions.includeTags}
-                onChange={(e) =>
-                  setExportOptions((prev) => ({ ...prev, includeTags: e.target.checked }))
+                onChange={(checked) =>
+                  setExportOptions((prev) => ({ ...prev, includeTags: checked }))
                 }
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                label="Tags"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Tags</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <ExportCheckbox
                 checked={exportOptions.includeServerConfig}
-                onChange={(e) =>
-                  setExportOptions((prev) => ({ ...prev, includeServerConfig: e.target.checked }))
+                onChange={(checked) =>
+                  setExportOptions((prev) => ({ ...prev, includeServerConfig: checked }))
                 }
-                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                label="Server config"
               />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Server config</span>
-            </label>
-          </div>
-          <div className="mt-4 flex gap-2">
-            <button
-              type="button"
-              onClick={handleUnifiedExport}
-              disabled={isProcessing}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-            >
-              {isProcessing ? <Spinner size="sm" /> : <DownloadIcon className="w-4 h-4" />}
-              Export
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowExportOptions(false)}
-              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Import Dialog */}
-      {showImportDialog && pendingImportData && (
-        <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-750 rounded-lg border border-gray-200 dark:border-gray-600">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Import vault backup
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            From: {new Date(pendingImportData.exportedAt).toLocaleDateString()}
-          </p>
-
-          {/* What will be imported */}
-          <div className="mb-3 text-xs text-gray-600 dark:text-gray-400">
-            <p className="font-medium mb-1">Contains:</p>
-            <ul className="list-disc list-inside space-y-0.5">
-              {pendingImportData.data.links && <li>Links, trails & bookmarks</li>}
-              {pendingImportData.data.annotations && <li>Highlights & annotations</li>}
-              {pendingImportData.data.collections && <li>Collections</li>}
-              {pendingImportData.data.tags && <li>Tags</li>}
-              {pendingImportData.data.serverConfig && <li>Server config</li>}
-            </ul>
-          </div>
-
-          {/* Import strategy */}
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Import strategy
-              <select
-                value={importStrategy}
-                onChange={(e) => setImportStrategy(e.target.value as ImportStrategy)}
-                className="mt-1 w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={handleUnifiedExport}
+                disabled={isProcessing}
+                className="ws-button flex-1"
+                data-variant="primary"
+                data-size="md"
               >
-                <option value="merge">Merge (skip duplicates)</option>
-                <option value="overwrite">Add all (may create duplicates)</option>
-              </select>
-            </label>
+                {isProcessing ? <Spinner size="sm" /> : <DownloadIcon className="w-4 h-4" />}
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowExportOptions(false)}
+                className="ws-button"
+                data-variant="ghost"
+                data-size="md"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
+        )}
 
-          <div className="flex gap-2">
+        {/* Import Dialog */}
+        {showImportDialog && pendingImportData && (
+          <div
+            className="mb-4 p-4 rounded-lg"
+            style={{
+              background: 'var(--ws-surface-1)',
+              border: '1px solid var(--ws-border)',
+            }}
+          >
+            <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--ws-text-secondary)' }}>
+              Import vault backup
+            </h3>
+            <p className="text-xs mb-3" style={{ color: 'var(--ws-text-muted)' }}>
+              From: {new Date(pendingImportData.exportedAt).toLocaleDateString()}
+            </p>
+
+            {/* What will be imported */}
+            <div className="mb-3 text-xs" style={{ color: 'var(--ws-text-secondary)' }}>
+              <p className="font-medium mb-1">Contains:</p>
+              <ul className="list-disc list-inside space-y-0.5">
+                {pendingImportData.data.links && <li>Links, trails & bookmarks</li>}
+                {pendingImportData.data.annotations && <li>Highlights & annotations</li>}
+                {pendingImportData.data.collections && <li>Collections</li>}
+                {pendingImportData.data.tags && <li>Tags</li>}
+                {pendingImportData.data.serverConfig && <li>Server config</li>}
+              </ul>
+            </div>
+
+            {/* Import strategy */}
+            <div className="mb-3">
+              <label
+                className="block text-xs font-medium mb-1"
+                style={{ color: 'var(--ws-text-muted)' }}
+              >
+                Import strategy
+                <select
+                  value={importStrategy}
+                  onChange={(e) => setImportStrategy(e.target.value as ImportStrategy)}
+                  className="ws-select mt-1 w-full"
+                >
+                  <option value="merge">Merge (skip duplicates)</option>
+                  <option value="overwrite">Add all (may create duplicates)</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleConfirmImport}
+                disabled={isProcessing}
+                className="ws-button flex-1"
+                data-variant="primary"
+                data-size="md"
+              >
+                {isProcessing ? <Spinner size="sm" /> : <UploadIcon className="w-4 h-4" />}
+                Import
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowImportDialog(false)
+                  setPendingImportData(null)
+                }}
+                className="ws-button"
+                data-variant="ghost"
+                data-size="md"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Main buttons */}
+        {!showExportOptions && !showImportDialog && (
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               type="button"
-              onClick={handleConfirmImport}
-              disabled={isProcessing}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              onClick={() => setShowExportOptions(true)}
+              disabled={isExporting || isProcessing}
+              className="ws-button flex-1"
+              data-variant="primary"
+              data-size="lg"
             >
-              {isProcessing ? <Spinner size="sm" /> : <UploadIcon className="w-4 h-4" />}
-              Import
+              {isExporting ? (
+                <>
+                  <Spinner size="sm" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <DownloadIcon className="w-4 h-4" />
+                  Export Vault
+                </>
+              )}
             </button>
+
             <button
               type="button"
-              onClick={() => {
-                setShowImportDialog(false)
-                setPendingImportData(null)
-              }}
-              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting || isProcessing}
+              className="ws-button flex-1"
+              data-variant="default"
+              data-size="lg"
             >
-              Cancel
+              {isImporting ? (
+                <>
+                  <Spinner size="sm" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <UploadIcon className="w-4 h-4" />
+                  Import Backup
+                </>
+              )}
             </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Main buttons */}
-      {!showExportOptions && !showImportDialog && (
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            type="button"
-            onClick={() => setShowExportOptions(true)}
-            disabled={isExporting || isProcessing}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isExporting ? (
-              <>
-                <Spinner size="sm" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <DownloadIcon className="w-4 h-4" />
-                Export Vault
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isImporting || isProcessing}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isImporting ? (
-              <>
-                <Spinner size="sm" />
-                Importing...
-              </>
-            ) : (
-              <>
-                <UploadIcon className="w-4 h-4" />
-                Import Backup
-              </>
-            )}
-          </button>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-        </div>
-      )}
-
-      <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-        Export saves all your vault data including links, annotations, collections, and tags. Import
-        restores from a previously exported backup.
-      </p>
+        <p className="mt-4 text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+          Export saves all your vault data including links, annotations, collections, and tags.
+          Import restores from a previously exported backup.
+        </p>
+      </div>
     </div>
   )
 }
 
-function SettingsIcon({ className }: { className?: string }) {
+// ============================================
+// Sub-components
+// ============================================
+
+interface ExportCheckboxProps {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  label: string
+}
+
+function ExportCheckbox({ checked, onChange, label }: ExportCheckboxProps) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 rounded"
+        style={{ accentColor: 'var(--ws-accent)' }}
+      />
+      <span className="text-sm" style={{ color: 'var(--ws-text-secondary)' }}>
+        {label}
+      </span>
+    </label>
+  )
+}
+
+// ============================================
+// Icons
+// ============================================
+
+function SettingsIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

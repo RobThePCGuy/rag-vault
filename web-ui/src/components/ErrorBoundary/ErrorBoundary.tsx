@@ -39,8 +39,14 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+        <div
+          className="min-h-screen flex items-center justify-center p-4"
+          style={{ background: 'var(--ws-surface-1)' }}
+        >
+          <div
+            className="max-w-md w-full rounded-lg shadow-lg p-6 text-center"
+            style={{ background: 'var(--ws-surface-raised)' }}
+          >
             <div className="text-red-500 mb-4">
               <svg
                 className="w-16 h-16 mx-auto"
@@ -56,14 +62,17 @@ export class ErrorBoundary extends Component<Props, State> {
                 />
               </svg>
             </div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-xl font-semibold mb-2" style={{ color: 'var(--ws-text)' }}>
               Something went wrong
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="mb-4" style={{ color: 'var(--ws-text-secondary)' }}>
               An unexpected error occurred. Please try again.
             </p>
             {this.state.error && (
-              <pre className="text-left text-sm bg-gray-100 dark:bg-gray-700 p-3 rounded mb-4 overflow-auto max-h-32 text-gray-700 dark:text-gray-300">
+              <pre
+                className="text-left text-sm p-3 rounded mb-4 overflow-auto max-h-32"
+                style={{ background: 'var(--ws-surface-1)', color: 'var(--ws-text-secondary)' }}
+              >
                 {this.state.error.message}
               </pre>
             )}
@@ -71,14 +80,16 @@ export class ErrorBoundary extends Component<Props, State> {
               <button
                 type="button"
                 onClick={this.handleRetry}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 text-white rounded-lg transition-colors"
+                style={{ background: 'var(--ws-accent)' }}
               >
                 Try Again
               </button>
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                className="px-4 py-2 rounded-lg transition-colors"
+                style={{ background: 'var(--ws-surface-2)', color: 'var(--ws-text-secondary)' }}
               >
                 Reload Page
               </button>

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getDocumentChunks, type DocumentChunk } from '../api/client'
 
-export interface UseDocumentChunksResult {
+interface UseDocumentChunksResult {
   chunks: DocumentChunk[]
   isLoading: boolean
   error: Error | null

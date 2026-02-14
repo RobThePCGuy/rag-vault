@@ -6,6 +6,7 @@ import App from './App'
 import { AnnotationsProvider } from './contexts/AnnotationsContext'
 import { CollectionsProvider } from './contexts/CollectionsContext'
 import { GraphStateProvider } from './contexts/GraphStateContext'
+import { LinkIndexProvider } from './contexts/LinkIndexContext'
 import { LinksProvider } from './contexts/LinksContext'
 import { PreferencesProvider } from './contexts/PreferencesContext'
 import { ReadingModeProvider } from './contexts/ReadingModeContext'
@@ -39,19 +40,21 @@ createRoot(rootElement).render(
             <SelectionProvider>
               <TabsProvider dbId="default">
                 <LinksProvider>
-                  <AnnotationsProvider>
-                    <TagsProvider>
-                      <CollectionsProvider>
-                        <GraphStateProvider>
-                          <ReadingModeProvider>
-                            <ReadingStatsProvider>
-                              <App />
-                            </ReadingStatsProvider>
-                          </ReadingModeProvider>
-                        </GraphStateProvider>
-                      </CollectionsProvider>
-                    </TagsProvider>
-                  </AnnotationsProvider>
+                  <LinkIndexProvider>
+                    <AnnotationsProvider>
+                      <TagsProvider>
+                        <CollectionsProvider>
+                          <GraphStateProvider>
+                            <ReadingModeProvider>
+                              <ReadingStatsProvider>
+                                <App />
+                              </ReadingStatsProvider>
+                            </ReadingModeProvider>
+                          </GraphStateProvider>
+                        </CollectionsProvider>
+                      </TagsProvider>
+                    </AnnotationsProvider>
+                  </LinkIndexProvider>
                 </LinksProvider>
               </TabsProvider>
             </SelectionProvider>

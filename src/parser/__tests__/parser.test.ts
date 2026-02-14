@@ -3,7 +3,7 @@
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { DocumentParser, ParserFileOperationError, ParserValidationError } from '../index'
+import { DocumentParser, ParserFileOperationError, ParserValidationError } from '../index.js'
 
 describe('DocumentParser', () => {
   let parser: DocumentParser

@@ -84,11 +84,15 @@ export function DraftingBoard({
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col"
+        className="rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col"
+        style={{ background: 'var(--ws-surface-raised)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div
+          className="flex items-center justify-between px-4 py-3"
+          style={{ borderBottom: '1px solid var(--ws-border)' }}
+        >
           {isEditingTitle ? (
             <input
               type="text"
@@ -96,13 +100,15 @@ export function DraftingBoard({
               onChange={(e) => onUpdateTitle(e.target.value)}
               onBlur={() => setIsEditingTitle(false)}
               onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
-              className="text-lg font-semibold text-gray-900 dark:text-gray-100 bg-transparent border-b border-blue-500 focus:outline-none"
+              className="text-lg font-semibold bg-transparent focus:outline-none"
+              style={{ color: 'var(--ws-text)', borderBottom: '1px solid var(--ws-accent)' }}
             />
           ) : (
             <button
               type="button"
               onClick={() => setIsEditingTitle(true)}
-              className="text-lg font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400"
+              className="text-lg font-semibold"
+              style={{ color: 'var(--ws-text)' }}
             >
               {draft.title}
             </button>
@@ -114,23 +120,32 @@ export function DraftingBoard({
               <button
                 type="button"
                 onClick={() => setExportDropdownOpen(!exportDropdownOpen)}
-                className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                style={{ color: 'var(--ws-text-secondary)' }}
               >
                 Export
               </button>
               {exportDropdownOpen && (
-                <div className="absolute right-0 mt-1 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+                <div
+                  className="absolute right-0 mt-1 w-32 rounded-lg shadow-lg py-1"
+                  style={{
+                    background: 'var(--ws-surface-raised)',
+                    border: '1px solid var(--ws-border)',
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => handleExport('markdown')}
-                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="w-full text-left px-3 py-1.5 text-sm"
+                    style={{ color: 'var(--ws-text)' }}
                   >
                     Markdown
                   </button>
                   <button
                     type="button"
                     onClick={() => handleExport('json')}
-                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="w-full text-left px-3 py-1.5 text-sm"
+                    style={{ color: 'var(--ws-text)' }}
                   >
                     JSON
                   </button>
@@ -141,7 +156,8 @@ export function DraftingBoard({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+              className="p-1 rounded transition-colors"
+              style={{ color: 'var(--ws-text-muted)' }}
             >
               <CloseIcon />
             </button>
@@ -151,7 +167,7 @@ export function DraftingBoard({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {draft.items.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-8" style={{ color: 'var(--ws-text-muted)' }}>
               <DocumentIcon />
               <p className="mt-2">No items yet</p>
               <p className="text-sm mt-1">Add content using "Send to Draft" or the form below</p>
@@ -179,12 +195,17 @@ export function DraftingBoard({
         </div>
 
         {/* Add item form */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="p-4" style={{ borderTop: '1px solid var(--ws-border)' }}>
           <div className="flex gap-2">
             <select
               value={newItemType}
               onChange={(e) => setNewItemType(e.target.value as 'heading' | 'note')}
-              className="px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+              className="px-2 py-1.5 text-sm rounded-lg"
+              style={{
+                border: '1px solid var(--ws-border)',
+                background: 'var(--ws-surface-raised)',
+                color: 'var(--ws-text-secondary)',
+              }}
             >
               <option value="note">Note</option>
               <option value="heading">Heading</option>
@@ -195,13 +216,19 @@ export function DraftingBoard({
               onChange={(e) => setNewItemContent(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
               placeholder={newItemType === 'heading' ? 'Section heading...' : 'Add a note...'}
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-1.5 text-sm rounded-lg focus:outline-none focus:ring-2"
+              style={{
+                border: '1px solid var(--ws-border)',
+                background: 'var(--ws-surface-raised)',
+                color: 'var(--ws-text-secondary)',
+              }}
             />
             <button
               type="button"
               onClick={handleAddItem}
               disabled={!newItemContent.trim()}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ background: 'var(--ws-accent)' }}
             >
               Add
             </button>
@@ -223,7 +250,8 @@ function CloseIcon() {
 function DocumentIcon() {
   return (
     <svg
-      className="mx-auto h-10 w-10 text-gray-400 dark:text-gray-500"
+      className="mx-auto h-10 w-10"
+      style={{ color: 'var(--ws-text-muted)' }}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"

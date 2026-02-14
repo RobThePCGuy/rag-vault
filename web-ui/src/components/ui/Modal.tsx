@@ -57,17 +57,26 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       <div
         ref={modalRef}
         tabIndex={-1}
-        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col"
+        className="relative rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[85vh] flex flex-col"
+        style={{ background: 'var(--ws-surface-raised)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <div
+          className="flex items-center justify-between px-6 py-4 border-b"
+          style={{ borderColor: 'var(--ws-border)' }}
+        >
+          <h2
+            id="modal-title"
+            className="text-lg font-semibold"
+            style={{ color: 'var(--ws-text)' }}
+          >
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+            className="transition-colors"
+            style={{ color: 'var(--ws-text-muted)' }}
             aria-label="Close modal"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

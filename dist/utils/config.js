@@ -1,20 +1,13 @@
-"use strict";
 // Shared configuration builder for RAG servers
 // Used by both MCP server (src/index.ts) and Web server (src/web/index.ts)
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildRAGConfig = buildRAGConfig;
-exports.validateRAGConfig = validateRAGConfig;
-exports.validateAllowedScanRoots = validateAllowedScanRoots;
-const node_fs_1 = require("node:fs");
-const node_path_1 = __importDefault(require("node:path"));
-const config_parsers_js_1 = require("./config-parsers.js");
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { parseGroupingMode, parseHybridWeight, parseMaxDistance } from './config-parsers.js';
 /**
  * Configuration validation error (internal use only)
  */
 class ConfigValidationError extends Error {
+    field;
     constructor(message, field) {
         super(message);
         this.field = field;
@@ -43,7 +36,7 @@ const DEFAULTS = {
  * - RAG_GROUPING: Quality filter grouping mode ('similar' | 'related')
  * - RAG_HYBRID_WEIGHT: Hybrid search weight (0.0-1.0)
  */
-function buildRAGConfig(overrides) {
+export function buildRAGConfig(overrides) {
     const config = {
         dbPath: process.env['DB_PATH'] || overrides?.dbPath || DEFAULTS.dbPath,
         modelName: process.env['MODEL_NAME'] || overrides?.modelName || DEFAULTS.modelName,
@@ -52,9 +45,9 @@ function buildRAGConfig(overrides) {
         maxFileSize: Number.parseInt(process.env['MAX_FILE_SIZE'] || String(overrides?.maxFileSize || DEFAULTS.maxFileSize), 10),
     };
     // Add quality filter settings only if defined
-    const maxDistance = (0, config_parsers_js_1.parseMaxDistance)(process.env['RAG_MAX_DISTANCE']) ?? overrides?.maxDistance;
-    const grouping = (0, config_parsers_js_1.parseGroupingMode)(process.env['RAG_GROUPING']) ?? overrides?.grouping;
-    const hybridWeight = (0, config_parsers_js_1.parseHybridWeight)(process.env['RAG_HYBRID_WEIGHT']) ?? overrides?.hybridWeight;
+    const maxDistance = parseMaxDistance(process.env['RAG_MAX_DISTANCE']) ?? overrides?.maxDistance;
+    const grouping = parseGroupingMode(process.env['RAG_GROUPING']) ?? overrides?.grouping;
+    const hybridWeight = parseHybridWeight(process.env['RAG_HYBRID_WEIGHT']) ?? overrides?.hybridWeight;
     if (maxDistance !== undefined) {
         config.maxDistance = maxDistance;
     }
@@ -73,7 +66,7 @@ function buildRAGConfig(overrides) {
  * @param config - The configuration to validate
  * @throws ConfigValidationError if validation fails
  */
-function validateRAGConfig(config) {
+export function validateRAGConfig(config) {
     // Validate dbPath - must be a valid path format
     if (!config.dbPath || typeof config.dbPath !== 'string') {
         throw new ConfigValidationError('dbPath must be a non-empty string', 'dbPath');
@@ -115,17 +108,17 @@ function validateRAGConfig(config) {
  *
  * @returns Array of validated root paths
  */
-function validateAllowedScanRoots() {
+export function validateAllowedScanRoots() {
     const envRoots = process.env['ALLOWED_SCAN_ROOTS'];
     if (!envRoots) {
         return [];
     }
-    const roots = envRoots.split(',').map((p) => node_path_1.default.resolve(p.trim()));
+    const roots = envRoots.split(',').map((p) => path.resolve(p.trim()));
     const validRoots = [];
     for (const root of roots) {
         if (!root)
             continue;
-        if (!(0, node_fs_1.existsSync)(root)) {
+        if (!existsSync(root)) {
             console.warn(`ALLOWED_SCAN_ROOTS: Path does not exist: ${root}`);
             continue;
         }

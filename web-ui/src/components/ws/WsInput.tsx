@@ -12,7 +12,7 @@ export const WsInput = forwardRef<HTMLInputElement, WsInputProps>(
       className={`ws-input ${className}`}
       {...props}
     />
-  ),
+  )
 )
 
 WsInput.displayName = 'WsInput'

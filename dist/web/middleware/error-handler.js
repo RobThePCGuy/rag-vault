@@ -1,9 +1,5 @@
-"use strict";
 // Express error handling middleware
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.errorHandler = errorHandler;
-exports.notFoundHandler = notFoundHandler;
-const index_js_1 = require("../../errors/index.js");
+import { RAGError } from '../../errors/index.js';
 /**
  * Express error handling middleware
  *
@@ -17,7 +13,7 @@ const index_js_1 = require("../../errors/index.js");
  * // Add as the last middleware
  * app.use(errorHandler)
  */
-function errorHandler(err, _req, res, _next) {
+export function errorHandler(err, _req, res, _next) {
     // Log the error
     console.error('Request error:', err);
     // Build error response
@@ -25,7 +21,7 @@ function errorHandler(err, _req, res, _next) {
         error: err.message,
     };
     let statusCode = 500;
-    if (err instanceof index_js_1.RAGError) {
+    if (err instanceof RAGError) {
         statusCode = err.statusCode;
         response.code = err.code;
         // Only include details in non-production
@@ -44,7 +40,7 @@ function errorHandler(err, _req, res, _next) {
 /**
  * 404 Not Found handler
  */
-function notFoundHandler(_req, res) {
+export function notFoundHandler(_req, res) {
     res.status(404).json({ error: 'Not found' });
 }
 //# sourceMappingURL=error-handler.js.map

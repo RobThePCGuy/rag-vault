@@ -5,7 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 // Types
 // ============================================
 
-export interface ChunkStat {
+interface ChunkStat {
   totalTimeMs: number
   readCount: number
   lastReadAt: string
@@ -26,13 +26,13 @@ export interface DocumentReadingStats {
   chunkStats: Record<number, ChunkStat>
 }
 
-export interface ReadingStatsStore {
+interface ReadingStatsStore {
   version: 1
   vaultId: string
   documents: Record<string, DocumentReadingStats>
 }
 
-export interface ReadingStatsContextValue {
+interface ReadingStatsContextValue {
   // Get stats for a document
   getDocumentStats: (filePath: string) => DocumentReadingStats | undefined
   getChunkStats: (filePath: string, chunkIndex: number) => ChunkStat | undefined

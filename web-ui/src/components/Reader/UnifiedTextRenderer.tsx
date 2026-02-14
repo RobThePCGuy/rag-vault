@@ -219,8 +219,7 @@ export function UnifiedTextRenderer({
             'ring-orange-500',
             'dark:ring-orange-400',
             'ring-offset-1',
-            'ring-offset-white',
-            'dark:ring-offset-gray-900'
+            'ring-offset-white'
           )
           // If no annotation, add subtle background
           if (!annotationType) {

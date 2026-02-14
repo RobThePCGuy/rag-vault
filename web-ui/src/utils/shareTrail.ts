@@ -27,7 +27,7 @@ export interface TrailImportResult {
 /**
  * Encode a trail for URL sharing
  */
-export function encodeTrail(trail: Trail, vaultId: string): string {
+function encodeTrail(trail: Trail, vaultId: string): string {
   const shareable: ShareableTrail = {
     v: 1,
     vault: vaultId,
@@ -127,7 +127,7 @@ export function parseTrailFromUrl(): string | null {
 // Import/Validation
 // ============================================
 
-export interface TrailValidationOptions {
+interface TrailValidationOptions {
   currentVaultId: string
   checkFileExists?: (filePath: string) => boolean
 }

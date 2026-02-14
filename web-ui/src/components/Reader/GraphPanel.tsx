@@ -56,13 +56,16 @@ export function GraphPanel({
       <button
         type="button"
         onClick={onToggle}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+        style={{ color: 'var(--ws-text-secondary)' }}
         title={isOpen ? 'Hide knowledge graph' : 'Show knowledge graph'}
       >
         <GraphIcon className="w-4 h-4" />
         <span className="hidden sm:inline">Graph</span>
         {graphData.nodes.length > 0 && (
-          <span className="text-xs text-gray-400">({graphData.nodes.length})</span>
+          <span className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+            ({graphData.nodes.length})
+          </span>
         )}
       </button>
 
@@ -74,15 +77,19 @@ export function GraphPanel({
             animate={{ height: 300, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute bottom-0 left-0 right-0 z-30 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden"
+            className="absolute bottom-0 left-0 right-0 z-30 border-t overflow-hidden"
+            style={{ borderColor: 'var(--ws-border)', background: 'var(--ws-surface-raised)' }}
           >
             <div className="h-full flex flex-col">
               {/* Header */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div
+                className="flex items-center justify-between px-4 py-2 border-b"
+                style={{ borderColor: 'var(--ws-border)', background: 'var(--ws-surface-1)' }}
+              >
+                <h3 className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>
                   Knowledge Graph
                   {activeChunkIndex !== null && (
-                    <span className="ml-2 text-gray-500 dark:text-gray-400">
+                    <span className="ml-2" style={{ color: 'var(--ws-text-muted)' }}>
                       (centered on #{activeChunkIndex})
                     </span>
                   )}
@@ -90,7 +97,8 @@ export function GraphPanel({
                 <button
                   type="button"
                   onClick={onToggle}
-                  className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded"
+                  className="p-1 rounded"
+                  style={{ color: 'var(--ws-text-muted)' }}
                 >
                   <CloseIcon className="w-4 h-4" />
                 </button>
@@ -99,7 +107,10 @@ export function GraphPanel({
               {/* Graph */}
               <div className="flex-1 p-2">
                 {graphData.nodes.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
+                  <div
+                    className="h-full flex items-center justify-center"
+                    style={{ color: 'var(--ws-text-muted)' }}
+                  >
                     <div className="text-center">
                       <GraphIcon className="w-10 h-10 mx-auto mb-2 opacity-50" />
                       <p className="text-sm">No graph data available</p>

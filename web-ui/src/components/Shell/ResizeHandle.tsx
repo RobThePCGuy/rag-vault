@@ -40,6 +40,7 @@ export function ResizeHandle({ onResize, direction }: ResizeHandleProps) {
       onMouseDown={handleMouseDown}
       role="separator"
       aria-orientation="vertical"
+      aria-valuenow={50}
       tabIndex={0}
     />
   )

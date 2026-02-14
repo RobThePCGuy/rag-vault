@@ -1,4 +1,3 @@
-"use strict";
 // Shared types for web module
-Object.defineProperty(exports, "__esModule", { value: true });
+export {};
 //# sourceMappingURL=types.js.map

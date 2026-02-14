@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { useLinks, type ChunkKey, type PinOptions, type PinnedLink } from '../contexts/LinksContext'
 
-export interface UsePinsResult {
+interface UsePinsResult {
   pins: PinnedLink[]
   pinnedChunkKeys: Set<string>
   createPin: (

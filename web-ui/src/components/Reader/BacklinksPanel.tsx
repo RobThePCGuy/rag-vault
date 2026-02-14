@@ -23,17 +23,22 @@ export function BacklinksPanel({
   }
 
   return (
-    <div className="border-t border-gray-200 dark:border-gray-700">
+    <div className="border-t" style={{ borderColor: 'var(--ws-border)' }}>
       {/* Header */}
       <button
         type="button"
         onClick={() => onToggleExpand?.()}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 transition-colors"
       >
         <div className="flex items-center gap-2">
           <BacklinkIcon />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Backlinks</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+          <span className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>
+            Backlinks
+          </span>
+          <span
+            className="text-xs px-1.5 py-0.5 rounded"
+            style={{ color: 'var(--ws-text-muted)', background: 'var(--ws-surface-1)' }}
+          >
             {backlinks.length}
           </span>
         </div>
@@ -88,7 +93,9 @@ function BacklinkItem({ link, onNavigate }: BacklinkItemProps) {
         </span>
       </div>
 
-      <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">{link.sourceText}</p>
+      <p className="text-xs line-clamp-2" style={{ color: 'var(--ws-text-secondary)' }}>
+        {link.sourceText}
+      </p>
 
       {link.label && (
         <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 italic">"{link.label}"</p>
@@ -127,7 +134,8 @@ interface ChevronIconProps {
 function ChevronIcon({ isExpanded }: ChevronIconProps) {
   return (
     <svg
-      className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+      className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+      style={{ color: 'var(--ws-text-muted)' }}
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"

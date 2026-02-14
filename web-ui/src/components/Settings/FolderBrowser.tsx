@@ -60,25 +60,38 @@ export function FolderBrowser({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+      <div
+        className="rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
+        style={{ background: 'var(--ws-surface-raised)' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+        <div
+          className="flex items-center justify-between p-4 border-b"
+          style={{ borderColor: 'var(--ws-border)' }}
+        >
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--ws-text)' }}>
+            {title}
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="p-1 transition-colors"
+            style={{ color: 'var(--ws-text-muted)' }}
           >
             <CloseIcon className="w-5 h-5" />
           </button>
         </div>
 
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1 px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+        <div
+          className="flex items-center gap-1 px-4 py-2 border-b overflow-x-auto"
+          style={{ background: 'var(--ws-surface-1)', borderColor: 'var(--ws-border)' }}
+        >
           <button
             type="button"
             onClick={() => handleNavigate('/')}
-            className="px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            className="px-2 py-1 text-sm rounded"
+            style={{ color: 'var(--ws-text-secondary)' }}
           >
             /
           </button>
@@ -86,11 +99,12 @@ export function FolderBrowser({
             const partPath = `/${pathParts.slice(0, index + 1).join('/')}`
             return (
               <span key={partPath} className="flex items-center">
-                <span className="text-gray-400">/</span>
+                <span style={{ color: 'var(--ws-text-muted)' }}>/</span>
                 <button
                   type="button"
                   onClick={() => handleNavigate(partPath)}
-                  className="px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded truncate max-w-32"
+                  className="px-2 py-1 text-sm rounded truncate max-w-32"
+                  style={{ color: 'var(--ws-text-secondary)' }}
                 >
                   {part}
                 </button>
@@ -109,7 +123,8 @@ export function FolderBrowser({
               type="checkbox"
               checked={preferences.showHiddenFiles}
               onChange={handleToggleHidden}
-              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-amber-600 focus:ring-amber-500 dark:bg-gray-700"
+              className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+              style={{ borderColor: 'var(--ws-border)' }}
             />
             <span className="text-xs text-amber-700 dark:text-amber-300 whitespace-nowrap">
               Show hidden
@@ -118,11 +133,16 @@ export function FolderBrowser({
         </div>
 
         {/* Directory listing */}
-        <div className="flex-1 overflow-auto p-2 min-h-[300px] bg-white dark:bg-gray-800">
+        <div
+          className="flex-1 overflow-auto p-2 min-h-[300px]"
+          style={{ background: 'var(--ws-surface-raised)' }}
+        >
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Spinner className="text-gray-400" />
-              <span className="ml-3 text-gray-500 dark:text-gray-400">Loading...</span>
+              <Spinner style={{ color: 'var(--ws-text-muted)' }} />
+              <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>
+                Loading...
+              </span>
             </div>
           ) : error ? (
             <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg">
@@ -136,10 +156,10 @@ export function FolderBrowser({
                 <button
                   type="button"
                   onClick={handleGoUp}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors"
                 >
-                  <FolderUpIcon className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-600 dark:text-gray-400">..</span>
+                  <FolderUpIcon className="w-5 h-5" style={{ color: 'var(--ws-text-muted)' }} />
+                  <span style={{ color: 'var(--ws-text-secondary)' }}>..</span>
                 </button>
               )}
 
@@ -149,7 +169,7 @@ export function FolderBrowser({
               ))}
 
               {data?.entries.length === 0 && (
-                <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <p className="text-center py-8" style={{ color: 'var(--ws-text-muted)' }}>
                   This directory is empty
                 </p>
               )}
@@ -158,11 +178,19 @@ export function FolderBrowser({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div
+          className="flex items-center justify-end gap-3 p-4 border-t"
+          style={{ borderColor: 'var(--ws-border)', background: 'var(--ws-surface-1)' }}
+        >
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 text-sm font-medium border rounded-lg transition-colors"
+            style={{
+              color: 'var(--ws-text-secondary)',
+              background: 'var(--ws-surface-raised)',
+              borderColor: 'var(--ws-border)',
+            }}
           >
             Cancel
           </button>
@@ -191,7 +219,8 @@ function DirectoryEntryRow({
   if (!entry.isDirectory) {
     return (
       <div
-        className={`flex items-center gap-3 px-3 py-2 ${isHidden ? 'opacity-50' : ''} text-gray-400 dark:text-gray-500`}
+        className={`flex items-center gap-3 px-3 py-2 ${isHidden ? 'opacity-50' : ''}`}
+        style={{ color: 'var(--ws-text-muted)' }}
       >
         <FileIcon className="w-5 h-5" />
         <span className="truncate">{entry.name}</span>
@@ -203,10 +232,12 @@ function DirectoryEntryRow({
     <button
       type="button"
       onClick={() => onNavigate(entry.path)}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${isHidden ? 'opacity-60' : ''}`}
+      className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors ${isHidden ? 'opacity-60' : ''}`}
     >
       <FolderIcon className="w-5 h-5 text-amber-500" />
-      <span className="text-gray-900 dark:text-white truncate">{entry.name}</span>
+      <span className="truncate" style={{ color: 'var(--ws-text)' }}>
+        {entry.name}
+      </span>
     </button>
   )
 }
@@ -227,9 +258,9 @@ function FolderIcon({ className }: { className?: string }) {
   )
 }
 
-function FolderUpIcon({ className }: { className?: string }) {
+function FolderUpIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

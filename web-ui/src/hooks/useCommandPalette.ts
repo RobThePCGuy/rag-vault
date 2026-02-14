@@ -162,7 +162,7 @@ export function useCommandPalette(): UseCommandPaletteReturn {
     return allActions.filter(
       (action) =>
         fuzzyMatch(action.label, query) ||
-        (action.description && fuzzyMatch(action.description, query)),
+        (action.description && fuzzyMatch(action.description, query))
     )
   }, [allActions, query])
 

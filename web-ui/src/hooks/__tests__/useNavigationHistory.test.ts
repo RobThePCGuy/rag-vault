@@ -153,21 +153,21 @@ describe('useNavigationHistory', () => {
     expect(result.current.history).toHaveLength(3)
   })
 
-  it('caps history at MAX_HISTORY (50) entries, dropping oldest', () => {
+  it('caps history at MAX_HISTORY (100) entries, dropping oldest', () => {
     const { result } = renderHook(() => useNavigationHistory())
 
-    for (let i = 0; i < 55; i++) {
+    for (let i = 0; i < 105; i++) {
       act(() => {
         result.current.push(`doc-${i}`)
       })
     }
 
-    expect(result.current.history).toHaveLength(50)
+    expect(result.current.history).toHaveLength(100)
     // Oldest entries should have been dropped
     expect(result.current.history[0]!.docId).toBe('doc-5')
-    expect(result.current.history[49]!.docId).toBe('doc-54')
-    expect(result.current.currentIndex).toBe(49)
-    expect(result.current.current!.docId).toBe('doc-54')
+    expect(result.current.history[99]!.docId).toBe('doc-104')
+    expect(result.current.currentIndex).toBe(99)
+    expect(result.current.current!.docId).toBe('doc-104')
   })
 
   it('goBack when at start returns null', () => {

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { getRelatedChunks, type RelatedChunk, type RelatedChunksOptions } from '../api/client'
 
-export interface UseRelatedChunksResult {
+interface UseRelatedChunksResult {
   related: RelatedChunk[]
   isLoading: boolean
   error: Error | null

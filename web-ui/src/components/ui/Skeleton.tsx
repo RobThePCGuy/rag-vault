@@ -6,7 +6,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ className = '', variant = 'text', width, height }: SkeletonProps) {
-  const baseClasses = 'animate-pulse bg-gray-200 dark:bg-gray-700'
+  const baseClasses = 'animate-pulse'
 
   const variantClasses = {
     text: 'rounded',
@@ -14,7 +14,7 @@ export function Skeleton({ className = '', variant = 'text', width, height }: Sk
     rectangular: 'rounded-lg',
   }
 
-  const style: React.CSSProperties = {}
+  const style: React.CSSProperties = { background: 'var(--ws-surface-2)' }
   if (width) style.width = typeof width === 'number' ? `${width}px` : width
   if (height) style.height = typeof height === 'number' ? `${height}px` : height
 
@@ -44,7 +44,8 @@ export function SkeletonCard({ className = '', lines = 3 }: SkeletonCardProps) {
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 ${className}`}
+      className={`border rounded-lg p-6 ${className}`}
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
     >
       <div className="flex items-center gap-3 mb-4">
         <Skeleton variant="circular" width={40} height={40} />

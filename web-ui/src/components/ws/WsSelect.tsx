@@ -14,7 +14,7 @@ export const WsSelect = forwardRef<HTMLSelectElement, WsSelectProps>(
     >
       {children}
     </select>
-  ),
+  )
 )
 
 WsSelect.displayName = 'WsSelect'

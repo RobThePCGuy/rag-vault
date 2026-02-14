@@ -32,7 +32,7 @@ export function WsTabs({
     const focusable = listRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
     if (!focusable?.length) return
 
-    const current = Array.from(focusable).findIndex((el) => el === document.activeElement)
+    const current = Array.from(focusable).indexOf(document.activeElement as HTMLButtonElement)
     let next = current
 
     if (e.key === 'ArrowRight') {

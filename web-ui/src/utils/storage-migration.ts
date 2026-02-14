@@ -74,9 +74,7 @@ export function migrateLinksStore(dbId: string): PinsStoreV2 {
     version: 2,
     pins: Array.isArray(v1?.pins) ? (v1.pins as Array<Record<string, unknown>>) : [],
     trails: Array.isArray(v1?.trails) ? (v1.trails as Array<Record<string, unknown>>) : [],
-    bookmarks: Array.isArray(v1?.bookmarks)
-      ? (v1.bookmarks as Array<Record<string, unknown>>)
-      : [],
+    bookmarks: Array.isArray(v1?.bookmarks) ? (v1.bookmarks as Array<Record<string, unknown>>) : [],
   }
 
   writeJson(v2PinsKey(dbId), v2)

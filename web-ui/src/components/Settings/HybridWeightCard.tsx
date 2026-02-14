@@ -44,16 +44,19 @@ export function HybridWeightCard() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+    <div
+      className="border rounded-lg p-6"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+    >
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 bg-cyan-50 dark:bg-cyan-900/30 rounded-lg">
           <SearchIcon className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
         </div>
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+          <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
             Hybrid Search Weight
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
             Balance between semantic and keyword matching
           </p>
         </div>
@@ -61,19 +64,25 @@ export function HybridWeightCard() {
 
       {isFetching ? (
         <div className="flex items-center justify-center py-8">
-          <Spinner className="text-gray-400" />
-          <span className="ml-3 text-gray-500 dark:text-gray-400">Loading settings...</span>
+          <Spinner style={{ color: 'var(--ws-text-muted)' }} />
+          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>
+            Loading settings...
+          </span>
         </div>
       ) : (
         <>
           {/* Weight slider */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Semantic</span>
-              <span className="text-sm font-mono text-gray-900 dark:text-white">
+              <span className="text-sm" style={{ color: 'var(--ws-text-secondary)' }}>
+                Semantic
+              </span>
+              <span className="text-sm font-mono" style={{ color: 'var(--ws-text)' }}>
                 {localWeight.toFixed(2)}
               </span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">Keyword</span>
+              <span className="text-sm" style={{ color: 'var(--ws-text-secondary)' }}>
+                Keyword
+              </span>
             </div>
 
             <input
@@ -83,11 +92,12 @@ export function HybridWeightCard() {
               step="0.05"
               value={localWeight}
               onChange={handleChange}
-              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-600"
+              className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-cyan-600"
+              style={{ background: 'var(--ws-surface-2)' }}
             />
 
             {/* Description */}
-            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+            <p className="text-sm text-center" style={{ color: 'var(--ws-text-secondary)' }}>
               {getWeightDescription(localWeight)}
             </p>
           </div>
@@ -114,7 +124,8 @@ export function HybridWeightCard() {
                 type="button"
                 onClick={handleReset}
                 disabled={isSetting}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm rounded-lg transition-colors"
+                style={{ color: 'var(--ws-text-secondary)' }}
               >
                 Reset
               </button>
@@ -124,14 +135,14 @@ export function HybridWeightCard() {
       )}
 
       {/* Help text */}
-      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-        <p className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+      <div className="mt-4 p-3 rounded-lg" style={{ background: 'var(--ws-surface-1)' }}>
+        <p className="text-xs space-y-1" style={{ color: 'var(--ws-text-secondary)' }}>
           <span className="block">
-            <strong className="text-gray-700 dark:text-gray-300">Lower values (0.0-0.4):</strong>{' '}
+            <strong style={{ color: 'var(--ws-text-secondary)' }}>Lower values (0.0-0.4):</strong>{' '}
             Better for conceptual questions, finding related ideas
           </span>
           <span className="block">
-            <strong className="text-gray-700 dark:text-gray-300">Higher values (0.6-1.0):</strong>{' '}
+            <strong style={{ color: 'var(--ws-text-secondary)' }}>Higher values (0.6-1.0):</strong>{' '}
             Better for exact terms, code, error messages
           </span>
         </p>

@@ -1,8 +1,5 @@
-"use strict";
 // Express async handler wrapper
 // Eliminates try/catch boilerplate in route handlers
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.asyncHandler = asyncHandler;
 /**
  * Wraps an async route handler to automatically catch errors
  * and pass them to Express error middleware
@@ -13,7 +10,7 @@ exports.asyncHandler = asyncHandler;
  *   res.json({ results })
  * }))
  */
-function asyncHandler(handler) {
+export function asyncHandler(handler) {
     return async (req, res, next) => {
         try {
             await handler(req, res, next);

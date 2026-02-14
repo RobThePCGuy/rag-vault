@@ -22,7 +22,29 @@ export interface EmbedderConfig {
   batchSize: number
   /** Model cache directory */
   cacheDir: string
+  /**
+   * Device hint for Transformers.js runtime.
+   * Examples: auto, cpu, cuda, dml, webgpu
+   */
+  device?: string
 }
+
+const SUPPORTED_EMBEDDING_DEVICES = [
+  'auto',
+  'gpu',
+  'cpu',
+  'wasm',
+  'webgpu',
+  'cuda',
+  'dml',
+  'webnn',
+  'webnn-npu',
+  'webnn-gpu',
+  'webnn-cpu',
+] as const
+
+type EmbeddingDevice = (typeof SUPPORTED_EMBEDDING_DEVICES)[number]
+const SUPPORTED_EMBEDDING_DEVICE_SET = new Set<string>(SUPPORTED_EMBEDDING_DEVICES)
 
 // ============================================
 // Embedder Class
@@ -65,11 +87,13 @@ export class Embedder {
     try {
       // Set cache directory BEFORE creating pipeline
       env.cacheDir = this.config.cacheDir
+      const device = this.resolveDevice()
 
       console.error(`Embedder: Setting cache directory to "${this.config.cacheDir}"`)
+      console.error(`Embedder: Using device preference "${device}"`)
       console.error(`Embedder: Loading model "${this.config.modelPath}"...`)
       // Use type assertion to avoid TS2590 (union type too complex with @types/jsdom)
-      this.model = await pipeline('feature-extraction', this.config.modelPath)
+      this.model = await pipeline('feature-extraction', this.config.modelPath, { device })
       console.error('Embedder: Model loaded successfully')
     } catch (error) {
       // Some ONNX caches fail with "Protobuf parsing failed". Retry once with isolated cache path.
@@ -82,7 +106,8 @@ export class Embedder {
         try {
           await mkdir(recoveryCacheDir, { recursive: true })
           env.cacheDir = recoveryCacheDir
-          this.model = await pipeline('feature-extraction', this.config.modelPath)
+          const device = this.resolveDevice()
+          this.model = await pipeline('feature-extraction', this.config.modelPath, { device })
           console.error('Embedder: Model loaded successfully via recovery cache')
           return
         } catch (recoveryError) {
@@ -238,5 +263,27 @@ export class Embedder {
   private getRecoveryCacheDir(): string {
     const safeModelName = this.config.modelPath.replace(/[^a-z0-9_./-]/gi, '_').replace(/\//g, '__')
     return path.join(this.config.cacheDir, '.recovery-cache', safeModelName)
+  }
+
+  /**
+   * Resolve device preference for Transformers.js.
+   * Priority: constructor config -> RAG_EMBEDDING_DEVICE env -> auto
+   */
+  private resolveDevice(): EmbeddingDevice {
+    const rawDevice = this.config.device ?? process.env['RAG_EMBEDDING_DEVICE'] ?? 'auto'
+    const normalized = rawDevice.trim().toLowerCase()
+
+    if (normalized === 'directml') {
+      return 'dml'
+    }
+
+    if (SUPPORTED_EMBEDDING_DEVICE_SET.has(normalized)) {
+      return normalized as EmbeddingDevice
+    }
+
+    console.warn(
+      `Embedder: Unsupported device "${rawDevice}". Falling back to "auto". Supported values: ${SUPPORTED_EMBEDDING_DEVICES.join(', ')}`
+    )
+    return 'auto'
   }
 }

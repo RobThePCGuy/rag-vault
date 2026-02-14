@@ -104,17 +104,30 @@ export function TagPicker({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-72"
+          className="fixed z-50 rounded-lg shadow-xl border w-72"
           style={
             position
-              ? { left: position.x, top: position.y }
-              : { left: '50%', top: '30%', transform: 'translateX(-50%)' }
+              ? {
+                  background: 'var(--ws-surface-raised)',
+                  borderColor: 'var(--ws-border)',
+                  left: position.x,
+                  top: position.y,
+                }
+              : {
+                  background: 'var(--ws-surface-raised)',
+                  borderColor: 'var(--ws-border)',
+                  left: '50%',
+                  top: '30%',
+                  transform: 'translateX(-50%)',
+                }
           }
         >
           {/* Header */}
-          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--ws-border)' }}>
             <div className="flex items-center gap-2">
-              <TagIcon className="w-4 h-4 text-gray-400" />
+              <span style={{ color: 'var(--ws-text-muted)' }}>
+                <TagIcon className="w-4 h-4" />
+              </span>
               <input
                 ref={inputRef}
                 type="text"
@@ -122,12 +135,14 @@ export function TagPicker({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search or create tag..."
-                className="flex-1 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none"
+                className="flex-1 bg-transparent text-sm placeholder-gray-400 focus:outline-none"
+                style={{ color: 'var(--ws-text)' }}
               />
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+                className="p-1 rounded"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 <CloseIcon className="w-4 h-4" />
               </button>
@@ -140,13 +155,21 @@ export function TagPicker({
               // Create new tag form
               <div className="space-y-3 p-2">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <label
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'var(--ws-text-muted)' }}
+                  >
                     Tag name
                     <input
                       type="text"
                       value={newTagName}
                       onChange={(e) => setNewTagName(e.target.value)}
-                      className="mt-1 w-full px-2 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="mt-1 w-full px-2 py-1.5 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{
+                        background: 'var(--ws-surface-1)',
+                        borderColor: 'var(--ws-border)',
+                        color: 'var(--ws-text)',
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           handleCreateTag()
@@ -157,7 +180,10 @@ export function TagPicker({
                 </div>
 
                 <div>
-                  <span className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <span
+                    className="block text-xs font-medium mb-1"
+                    style={{ color: 'var(--ws-text-muted)' }}
+                  >
                     Color
                   </span>
                   <div className="flex flex-wrap gap-1">
@@ -167,9 +193,7 @@ export function TagPicker({
                         type="button"
                         onClick={() => setSelectedColor(color)}
                         className={`w-6 h-6 rounded-full ${TAG_COLOR_CLASSES[color].bg} ${
-                          selectedColor === color
-                            ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-800'
-                            : ''
+                          selectedColor === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''
                         }`}
                       />
                     ))}
@@ -180,7 +204,8 @@ export function TagPicker({
                   <button
                     type="button"
                     onClick={() => setIsCreating(false)}
-                    className="flex-1 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    className="flex-1 px-3 py-1.5 text-sm rounded transition-colors"
+                    style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
                   >
                     Cancel
                   </button>
@@ -188,7 +213,8 @@ export function TagPicker({
                     type="button"
                     onClick={handleCreateTag}
                     disabled={!newTagName.trim()}
-                    className="flex-1 px-3 py-1.5 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex-1 px-3 py-1.5 text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    style={{ background: 'var(--ws-accent)', color: 'white' }}
                   >
                     Create
                   </button>
@@ -200,7 +226,10 @@ export function TagPicker({
                 {/* Applied tags section */}
                 {appliedTags.length > 0 && !searchQuery && (
                   <div className="mb-2">
-                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1">
+                    <div
+                      className="text-xs font-medium px-2 py-1"
+                      style={{ color: 'var(--ws-text-muted)' }}
+                    >
                       Applied
                     </div>
                     {appliedTags.map((tag) => (
@@ -218,7 +247,10 @@ export function TagPicker({
                 {filteredTags.length > 0 && (
                   <div>
                     {!searchQuery && appliedTags.length > 0 && (
-                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1">
+                      <div
+                        className="text-xs font-medium px-2 py-1"
+                        style={{ color: 'var(--ws-text-muted)' }}
+                      >
                         Suggestions
                       </div>
                     )}
@@ -243,7 +275,8 @@ export function TagPicker({
                       setIsCreating(true)
                       setNewTagName(searchQuery)
                     }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors"
+                    style={{ color: 'var(--ws-accent)' }}
                   >
                     <PlusIcon className="w-4 h-4" />
                     Create "{searchQuery}"
@@ -252,7 +285,10 @@ export function TagPicker({
 
                 {/* Empty state */}
                 {filteredTags.length === 0 && !showCreateOption && appliedTags.length === 0 && (
-                  <div className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
+                  <div
+                    className="text-center py-4 text-sm"
+                    style={{ color: 'var(--ws-text-muted)' }}
+                  >
                     No tags yet. Type to create one.
                   </div>
                 )}
@@ -278,7 +314,7 @@ function TagItem({ tag, isApplied, onToggle }: TagItemProps) {
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+      className="w-full flex items-center justify-between px-2 py-1.5 rounded transition-colors"
     >
       <div className="flex items-center gap-2">
         <span
@@ -286,7 +322,11 @@ function TagItem({ tag, isApplied, onToggle }: TagItemProps) {
         >
           {tag.name}
         </span>
-        {tag.usageCount > 0 && <span className="text-xs text-gray-400">×{tag.usageCount}</span>}
+        {tag.usageCount > 0 && (
+          <span className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+            ×{tag.usageCount}
+          </span>
+        )}
       </div>
       {isApplied ? (
         <CheckIcon className="w-4 h-4 text-green-500" />

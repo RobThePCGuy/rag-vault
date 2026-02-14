@@ -32,7 +32,7 @@ export interface TagsStore {
   taggedItems: TaggedItem[]
 }
 
-export interface TagsContextValue {
+interface TagsContextValue {
   // Tags
   tags: Tag[]
   createTag: (name: string, color: TagColor) => Tag

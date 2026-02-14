@@ -47,17 +47,24 @@ export function DatabaseSwitcher({
 
   if (otherDatabases.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+      <div
+        className="border rounded-lg p-6"
+        style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+      >
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-            <SwitchIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 rounded-lg" style={{ background: 'var(--ws-accent-subtle)' }}>
+            <SwitchIcon className="w-6 h-6" style={{ color: 'var(--ws-accent)' }} />
           </div>
           <div>
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Recent Databases</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Switch between databases</p>
+            <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
+              Recent Databases
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
+              Switch between databases
+            </p>
           </div>
         </div>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">
+        <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
           No other databases available. Create a new database or scan for existing ones.
         </p>
       </div>
@@ -65,14 +72,21 @@ export function DatabaseSwitcher({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+    <div
+      className="border rounded-lg p-6"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+    >
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-          <SwitchIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="p-2 rounded-lg" style={{ background: 'var(--ws-accent-subtle)' }}>
+          <SwitchIcon className="w-6 h-6" style={{ color: 'var(--ws-accent)' }} />
         </div>
         <div>
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Recent Databases</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Switch between databases</p>
+          <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
+            Recent Databases
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
+            Switch between databases
+          </p>
         </div>
       </div>
 
@@ -80,17 +94,24 @@ export function DatabaseSwitcher({
         {otherDatabases.map((db) => (
           <div
             key={db.path}
-            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
+            className="flex items-center justify-between p-3 rounded-lg"
+            style={{ background: 'var(--ws-surface-1)' }}
           >
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900 dark:text-white">{db.name}</p>
+              <p className="font-medium" style={{ color: 'var(--ws-text)' }}>
+                {db.name}
+              </p>
               <p
-                className="text-sm text-gray-500 dark:text-gray-400 font-mono truncate max-w-xs"
+                className="text-sm font-mono truncate max-w-xs"
+                style={{ color: 'var(--ws-text-muted)' }}
                 title={db.path}
               >
                 {db.path}
               </p>
-              <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+              <div
+                className="flex items-center gap-2 text-xs"
+                style={{ color: 'var(--ws-text-muted)' }}
+              >
                 <span>Last used: {formatDate(db.lastAccessed)}</span>
                 {db.modelName && (
                   <>
@@ -120,7 +141,8 @@ export function DatabaseSwitcher({
                 type="button"
                 onClick={() => handleDeleteClick(db)}
                 disabled={isLoading || deletingPath === db.path}
-                className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
                 title="Remove database"
               >
                 {deletingPath === db.path ? (
@@ -137,11 +159,14 @@ export function DatabaseSwitcher({
       {/* Delete confirmation dialog */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md mx-4 shadow-xl">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+          <div
+            className="rounded-lg p-6 max-w-md mx-4 shadow-xl"
+            style={{ background: 'var(--ws-surface-raised)' }}
+          >
+            <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--ws-text)' }}>
               Remove Database
             </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="mb-4" style={{ color: 'var(--ws-text-secondary)' }}>
               Remove <span className="font-medium">{confirmDelete.name}</span> from your recent
               databases?
             </p>
@@ -150,7 +175,8 @@ export function DatabaseSwitcher({
                 type="button"
                 onClick={() => handleDeleteConfirm(false)}
                 disabled={isLoading}
-                className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+                className="w-full px-4 py-2 text-sm font-medium rounded-lg disabled:opacity-50 transition-colors"
+                style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
               >
                 Remove from list only
               </button>
@@ -166,7 +192,8 @@ export function DatabaseSwitcher({
                 type="button"
                 onClick={() => setConfirmDelete(null)}
                 disabled={isLoading}
-                className="w-full px-4 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                className="w-full px-4 py-2 text-sm font-medium transition-colors"
+                style={{ color: 'var(--ws-text-muted)' }}
               >
                 Cancel
               </button>
@@ -178,9 +205,9 @@ export function DatabaseSwitcher({
   )
 }
 
-function SwitchIcon({ className }: { className?: string }) {
+function SwitchIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className={className} style={style} fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

@@ -4,7 +4,7 @@ import type { GraphData, GraphEdge } from '../components/Graph/types'
 // Types
 // ============================================
 
-export interface PathfindingResult {
+interface PathfindingResult {
   found: boolean
   path: string[] // Node IDs from start to end
   distance: number

@@ -26,7 +26,7 @@ export const slipVariants = {
     y: 0,
     rotate: -0.3,
     scale: 1,
-    transition: { delay: i * 0.06, duration: 0.3, ease: 'easeOut' },
+    transition: { delay: i * 0.06, duration: 0.3, ease: 'easeOut' as const },
   }),
   exit: { opacity: 0, x: -20, transition: { duration: 0.15 } },
 }

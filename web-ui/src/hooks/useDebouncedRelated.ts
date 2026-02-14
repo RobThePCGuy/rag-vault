@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { getBatchRelatedChunks, type ChunkKey, type RelatedChunk } from '../api/client'
 
-export interface UseDebouncedRelatedResult {
+interface UseDebouncedRelatedResult {
   relatedChunks: Record<string, RelatedChunk[]>
   isLoading: boolean
   error: Error | null

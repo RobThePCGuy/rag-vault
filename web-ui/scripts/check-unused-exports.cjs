@@ -10,7 +10,7 @@ const { execSync } = require('child_process')
 try {
   // Run ts-prune with tsx support
   const output = execSync(
-    'npx ts-prune --project tsconfig.json --ignore "__tests__|test|vitest|.test.|.spec."',
+    'pnpm dlx ts-prune --project tsconfig.json --ignore "__tests__|test|vitest|.test.|.spec."',
     { encoding: 'utf8' }
   )
 

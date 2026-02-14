@@ -147,7 +147,11 @@ export function HeatmapStats({
   }
 
   if (connectionCount === 0) {
-    return <span className="text-xs text-gray-400 dark:text-gray-500">No connections found</span>
+    return (
+      <span className="text-xs" style={{ color: 'var(--ws-text-muted)' }}>
+        No connections found
+      </span>
+    )
   }
 
   return (

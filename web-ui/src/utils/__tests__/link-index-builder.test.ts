@@ -100,9 +100,7 @@ describe('buildLinkIndex', () => {
     const docs: ScanDocument[] = [
       {
         filePath: 'notes/rich.md',
-        chunks: [
-          { chunkIndex: 0, text: 'See [[Doc#Intro^abc|click here]]' },
-        ],
+        chunks: [{ chunkIndex: 0, text: 'See [[Doc#Intro^abc|click here]]' }],
       },
     ]
     const index = buildLinkIndex(docs)
@@ -121,9 +119,7 @@ describe('buildLinkIndex', () => {
 
   it('records correct position offsets for links', () => {
     const text = 'Start [[Alpha]] end'
-    const docs: ScanDocument[] = [
-      { filePath: 'notes/pos.md', chunks: [{ chunkIndex: 0, text }] },
-    ]
+    const docs: ScanDocument[] = [{ filePath: 'notes/pos.md', chunks: [{ chunkIndex: 0, text }] }]
     const index = buildLinkIndex(docs)
 
     const edge = index.outgoing['notes/pos.md']![0]!
@@ -136,9 +132,7 @@ describe('buildLinkIndex', () => {
     const docs: ScanDocument[] = [
       {
         filePath: 'notes/dup.md',
-        chunks: [
-          { chunkIndex: 0, text: '[[Same]] and [[Same]] and [[Same]]' },
-        ],
+        chunks: [{ chunkIndex: 0, text: '[[Same]] and [[Same]] and [[Same]]' }],
       },
     ]
     const index = buildLinkIndex(docs)
@@ -158,9 +152,7 @@ describe('buildLinkIndex', () => {
       },
       {
         filePath: 'vault/projects.md',
-        chunks: [
-          { chunkIndex: 0, text: '[[Idea A]] is relevant to [[Idea C]]' },
-        ],
+        chunks: [{ chunkIndex: 0, text: '[[Idea A]] is relevant to [[Idea C]]' }],
       },
     ]
     const index = buildLinkIndex(docs)

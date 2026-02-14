@@ -1,12 +1,5 @@
-"use strict";
 // Advanced Query Syntax Parser
 // Supports: phrases, boolean operators, field filters, exclusions
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseQuery = parseQuery;
-exports.toSemanticQuery = toSemanticQuery;
-exports.toFtsQuery = toFtsQuery;
-exports.shouldExclude = shouldExclude;
-exports.matchesFilters = matchesFilters;
 /**
  * Tokenize a query string into tokens
  */
@@ -103,7 +96,7 @@ function tokenize(query) {
  * @param query - Raw query string
  * @returns Parsed query structure
  */
-function parseQuery(query) {
+export function parseQuery(query) {
     const result = {
         semanticTerms: [],
         phrases: [],
@@ -159,7 +152,7 @@ function parseQuery(query) {
  * Convert parsed query to a semantic search query string
  * Joins semantic terms and phrases for embedding
  */
-function toSemanticQuery(parsed) {
+export function toSemanticQuery(parsed) {
     // Combine semantic terms for vector search
     const terms = [...parsed.semanticTerms];
     // Filter out excluded terms from semantic query
@@ -173,7 +166,7 @@ function toSemanticQuery(parsed) {
  * Convert parsed query to a full-text search query string
  * Uses FTS-compatible syntax for phrase matching
  */
-function toFtsQuery(parsed) {
+export function toFtsQuery(parsed) {
     const parts = [];
     // Add phrases with quotes for exact match
     for (const phrase of parsed.phrases) {
@@ -191,14 +184,14 @@ function toFtsQuery(parsed) {
 /**
  * Check if a result should be excluded based on exclude terms
  */
-function shouldExclude(text, excludeTerms) {
+export function shouldExclude(text, excludeTerms) {
     const lowerText = text.toLowerCase();
     return excludeTerms.some((term) => lowerText.includes(term.toLowerCase()));
 }
 /**
  * Check if a result matches the metadata filters
  */
-function matchesFilters(metadata, filters) {
+export function matchesFilters(metadata, filters) {
     if (filters.length === 0)
         return true;
     if (!metadata)

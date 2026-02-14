@@ -52,17 +52,20 @@ export function AllowedRootsCard({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+    <div
+      className="border rounded-lg p-6"
+      style={{ background: 'var(--ws-surface-raised)', borderColor: 'var(--ws-border)' }}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
             <ShieldIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+            <h2 className="text-lg font-medium" style={{ color: 'var(--ws-text)' }}>
               Allowed Scan Roots
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm" style={{ color: 'var(--ws-text-muted)' }}>
               Directories where database scanning is permitted
             </p>
           </div>
@@ -89,20 +92,27 @@ export function AllowedRootsCard({
 
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
-          <Spinner className="text-gray-400" />
-          <span className="ml-3 text-gray-500 dark:text-gray-400">Loading allowed roots...</span>
+          <Spinner style={{ color: 'var(--ws-text-muted)' }} />
+          <span className="ml-3" style={{ color: 'var(--ws-text-muted)' }}>
+            Loading allowed roots...
+          </span>
         </div>
       ) : (
         <div className="space-y-2">
           {data?.roots.map((root) => (
             <div
               key={root}
-              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg"
+              className="flex items-center justify-between p-3 rounded-lg"
+              style={{ background: 'var(--ws-surface-1)' }}
             >
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <FolderIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                <FolderIcon
+                  className="w-5 h-5 flex-shrink-0"
+                  style={{ color: 'var(--ws-text-muted)' }}
+                />
                 <span
-                  className="font-mono text-sm text-gray-700 dark:text-gray-300 truncate"
+                  className="font-mono text-sm truncate"
+                  style={{ color: 'var(--ws-text-secondary)' }}
                   title={root}
                 >
                   {root}
@@ -132,24 +142,24 @@ export function AllowedRootsCard({
           ))}
 
           {data?.roots.length === 0 && (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+            <p className="text-center py-4" style={{ color: 'var(--ws-text-muted)' }}>
               No allowed roots configured
             </p>
           )}
         </div>
       )}
 
-      <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+      <div className="mt-4 text-xs space-y-1" style={{ color: 'var(--ws-text-muted)' }}>
         <p>
-          <strong className="text-gray-700 dark:text-gray-300">Base Dir:</strong> Current database
+          <strong style={{ color: 'var(--ws-text-secondary)' }}>Base Dir:</strong> Current database
           directory (always allowed)
         </p>
         <p>
-          <strong className="text-gray-700 dark:text-gray-300">Env:</strong> Set via
+          <strong style={{ color: 'var(--ws-text-secondary)' }}>Env:</strong> Set via
           ALLOWED_SCAN_ROOTS environment variable
         </p>
         <p>
-          <strong className="text-gray-700 dark:text-gray-300">Custom:</strong> User-added roots
+          <strong style={{ color: 'var(--ws-text-secondary)' }}>Custom:</strong> User-added roots
           (can be removed)
         </p>
       </div>
@@ -185,9 +195,9 @@ function PlusIcon({ className }: { className?: string }) {
   )
 }
 
-function FolderIcon({ className }: { className?: string }) {
+function FolderIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 20 20">
+    <svg className={className} style={style} fill="currentColor" viewBox="0 0 20 20">
       <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
     </svg>
   )

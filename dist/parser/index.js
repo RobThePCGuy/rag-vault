@@ -1,13 +1,7 @@
-"use strict";
 // DocumentParser implementation with PDF/DOCX/TXT/MD/JSON/JSONL support
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DocumentParser = exports.ParserValidationError = exports.ParserFileOperationError = void 0;
-const node_fs_1 = require("node:fs");
-const promises_1 = require("node:fs/promises");
-const node_path_1 = require("node:path");
+import { realpathSync, statSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { extname, isAbsolute, relative, resolve } from 'node:path';
 // ============================================
 // RAG Content Filtering Constants
 // ============================================
@@ -79,14 +73,12 @@ function looksLikeProse(str) {
     const proseRatio = (str.match(/[a-zA-Z\s]/g) || []).length / str.length;
     return proseRatio >= 0.7;
 }
-const mammoth_1 = __importDefault(require("mammoth"));
-const pdf_mjs_1 = require("pdfjs-dist/legacy/build/pdf.mjs");
-const index_js_1 = require("../errors/index.js");
-const pdf_filter_js_1 = require("./pdf-filter.js");
+import mammoth from 'mammoth';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { ParserFileOperationError, ParserValidationError } from '../errors/index.js';
+import { filterPageBoundarySentences } from './pdf-filter.js';
 // Re-export error classes for backwards compatibility
-var index_js_2 = require("../errors/index.js");
-Object.defineProperty(exports, "ParserFileOperationError", { enumerable: true, get: function () { return index_js_2.ParserFileOperationError; } });
-Object.defineProperty(exports, "ParserValidationError", { enumerable: true, get: function () { return index_js_2.ParserValidationError; } });
+export { ParserFileOperationError, ParserValidationError } from '../errors/index.js';
 // ============================================
 // DocumentParser Class
 // ============================================
@@ -98,7 +90,8 @@ Object.defineProperty(exports, "ParserValidationError", { enumerable: true, get:
  * - File size validation (100MB limit)
  * - Parse 5 formats (PDF/DOCX/TXT/MD/JSON)
  */
-class DocumentParser {
+export class DocumentParser {
+    config;
     constructor(config) {
         this.config = config;
     }
@@ -110,31 +103,31 @@ class DocumentParser {
      */
     validateFilePath(filePath) {
         // Check if path is absolute
-        if (!(0, node_path_1.isAbsolute)(filePath)) {
-            throw new index_js_1.ParserValidationError(`File path must be absolute path (received: ${filePath}). Please provide an absolute path within BASE_DIR.`);
+        if (!isAbsolute(filePath)) {
+            throw new ParserValidationError(`File path must be absolute path (received: ${filePath}). Please provide an absolute path within BASE_DIR.`);
         }
         // Resolve symlinks for both base and target to prevent symlink escape attacks.
         // Fall back to resolve() only when path does not exist yet.
         const resolveCanonicalPath = (targetPath) => {
             try {
-                return (0, node_fs_1.realpathSync)(targetPath);
+                return realpathSync(targetPath);
             }
             catch (error) {
                 const nodeError = error;
                 if (nodeError.code === 'ENOENT') {
-                    return (0, node_path_1.resolve)(targetPath);
+                    return resolve(targetPath);
                 }
-                throw new index_js_1.ParserValidationError(`Failed to resolve path for security validation: ${targetPath}`);
+                throw new ParserValidationError(`Failed to resolve path for security validation: ${targetPath}`);
             }
         };
         // Check if path is within BASE_DIR using relative-path boundary check.
         // This avoids prefix bypasses such as /base matching /base2.
         const baseDir = resolveCanonicalPath(this.config.baseDir);
         const normalizedPath = resolveCanonicalPath(filePath);
-        const relativePath = (0, node_path_1.relative)(baseDir, normalizedPath);
-        const isOutsideBaseDir = relativePath.startsWith('..') || relativePath === '..' || (0, node_path_1.isAbsolute)(relativePath);
+        const relativePath = relative(baseDir, normalizedPath);
+        const isOutsideBaseDir = relativePath.startsWith('..') || relativePath === '..' || isAbsolute(relativePath);
         if (isOutsideBaseDir) {
-            throw new index_js_1.ParserValidationError(`File path must be within BASE_DIR (${baseDir}). Received path outside BASE_DIR: ${filePath}`);
+            throw new ParserValidationError(`File path must be within BASE_DIR (${baseDir}). Received path outside BASE_DIR: ${filePath}`);
         }
     }
     /**
@@ -146,16 +139,16 @@ class DocumentParser {
      */
     validateFileSize(filePath) {
         try {
-            const stats = (0, node_fs_1.statSync)(filePath);
+            const stats = statSync(filePath);
             if (stats.size > this.config.maxFileSize) {
-                throw new index_js_1.ParserValidationError(`File size exceeds limit: ${stats.size} > ${this.config.maxFileSize}`);
+                throw new ParserValidationError(`File size exceeds limit: ${stats.size} > ${this.config.maxFileSize}`);
             }
         }
         catch (error) {
-            if (error instanceof index_js_1.ParserValidationError) {
+            if (error instanceof ParserValidationError) {
                 throw error;
             }
-            throw new index_js_1.ParserFileOperationError(`Failed to check file size: ${filePath}`, error);
+            throw new ParserFileOperationError(`Failed to check file size: ${filePath}`, error);
         }
     }
     /**
@@ -171,7 +164,7 @@ class DocumentParser {
         this.validateFilePath(filePath);
         this.validateFileSize(filePath);
         // Format detection (PDF uses parsePdf directly)
-        const ext = (0, node_path_1.extname)(filePath).toLowerCase();
+        const ext = extname(filePath).toLowerCase();
         switch (ext) {
             case '.docx':
                 return await this.parseDocx(filePath);
@@ -185,7 +178,7 @@ class DocumentParser {
             case '.ndjson':
                 return await this.parseJsonl(filePath);
             default:
-                throw new index_js_1.ParserValidationError(`Unsupported file format: ${ext}`);
+                throw new ParserValidationError(`Unsupported file format: ${ext}`);
         }
     }
     /**
@@ -206,8 +199,8 @@ class DocumentParser {
         this.validateFilePath(filePath);
         this.validateFileSize(filePath);
         try {
-            const buffer = await (0, promises_1.readFile)(filePath);
-            const pdf = await (0, pdf_mjs_1.getDocument)({
+            const buffer = await readFile(filePath);
+            const pdf = await getDocument({
                 data: new Uint8Array(buffer),
                 useSystemFonts: true,
                 isEvalSupported: false,
@@ -221,21 +214,21 @@ class DocumentParser {
                     .filter((item) => 'str' in item)
                     .map((item) => ({
                     text: item.str,
-                    x: item.transform[4],
-                    y: item.transform[5],
-                    fontSize: Math.abs(item.transform[0]),
+                    x: item.transform[4] ?? 0,
+                    y: item.transform[5] ?? 0,
+                    fontSize: Math.abs(item.transform[0] ?? 0),
                     hasEOL: item.hasEOL ?? false,
                 }));
                 pages.push({ pageNum: i, items });
             }
             // Apply sentence-level header/footer filtering
             // This handles variable content like page numbers ("7 of 75") using semantic similarity
-            const text = await (0, pdf_filter_js_1.filterPageBoundarySentences)(pages, embedder);
+            const text = await filterPageBoundarySentences(pages, embedder);
             console.error(`Parsed PDF: ${filePath} (${text.length} characters, ${pdf.numPages} pages)`);
             return text;
         }
         catch (error) {
-            throw new index_js_1.ParserFileOperationError(`Failed to parse PDF: ${filePath}`, error);
+            throw new ParserFileOperationError(`Failed to parse PDF: ${filePath}`, error);
         }
     }
     /**
@@ -247,12 +240,12 @@ class DocumentParser {
      */
     async parseDocx(filePath) {
         try {
-            const result = await mammoth_1.default.extractRawText({ path: filePath });
+            const result = await mammoth.extractRawText({ path: filePath });
             console.error(`Parsed DOCX: ${filePath} (${result.value.length} characters)`);
             return result.value;
         }
         catch (error) {
-            throw new index_js_1.ParserFileOperationError(`Failed to parse DOCX: ${filePath}`, error);
+            throw new ParserFileOperationError(`Failed to parse DOCX: ${filePath}`, error);
         }
     }
     /**
@@ -264,12 +257,12 @@ class DocumentParser {
      */
     async parseTxt(filePath) {
         try {
-            const text = await (0, promises_1.readFile)(filePath, 'utf-8');
+            const text = await readFile(filePath, 'utf-8');
             console.error(`Parsed TXT: ${filePath} (${text.length} characters)`);
             return text;
         }
         catch (error) {
-            throw new index_js_1.ParserFileOperationError(`Failed to parse TXT: ${filePath}`, error);
+            throw new ParserFileOperationError(`Failed to parse TXT: ${filePath}`, error);
         }
     }
     /**
@@ -281,12 +274,12 @@ class DocumentParser {
      */
     async parseMd(filePath) {
         try {
-            const text = await (0, promises_1.readFile)(filePath, 'utf-8');
+            const text = await readFile(filePath, 'utf-8');
             console.error(`Parsed MD: ${filePath} (${text.length} characters)`);
             return text;
         }
         catch (error) {
-            throw new index_js_1.ParserFileOperationError(`Failed to parse MD: ${filePath}`, error);
+            throw new ParserFileOperationError(`Failed to parse MD: ${filePath}`, error);
         }
     }
     /**
@@ -304,10 +297,10 @@ class DocumentParser {
      */
     async parseJson(filePath) {
         try {
-            const content = await (0, promises_1.readFile)(filePath, 'utf-8');
+            const content = await readFile(filePath, 'utf-8');
             // Check size limit before parsing to prevent memory exhaustion
             if (content.length > MAX_JSON_CONTENT_SIZE) {
-                throw new index_js_1.ParserValidationError(`JSON content size (${content.length} bytes) exceeds limit (${MAX_JSON_CONTENT_SIZE} bytes)`);
+                throw new ParserValidationError(`JSON content size (${content.length} bytes) exceeds limit (${MAX_JSON_CONTENT_SIZE} bytes)`);
             }
             try {
                 const data = JSON.parse(content);
@@ -325,9 +318,9 @@ class DocumentParser {
             }
         }
         catch (error) {
-            if (error instanceof index_js_1.ParserFileOperationError)
+            if (error instanceof ParserFileOperationError)
                 throw error;
-            throw new index_js_1.ParserFileOperationError(`Failed to parse JSON: ${filePath}`, error);
+            throw new ParserFileOperationError(`Failed to parse JSON: ${filePath}`, error);
         }
     }
     /**
@@ -339,13 +332,13 @@ class DocumentParser {
      */
     async parseJsonl(filePath) {
         try {
-            const content = await (0, promises_1.readFile)(filePath, 'utf-8');
+            const content = await readFile(filePath, 'utf-8');
             return this.parseJsonlContent(content, filePath);
         }
         catch (error) {
-            if (error instanceof index_js_1.ParserFileOperationError)
+            if (error instanceof ParserFileOperationError)
                 throw error;
-            throw new index_js_1.ParserFileOperationError(`Failed to parse JSONL: ${filePath}`, error);
+            throw new ParserFileOperationError(`Failed to parse JSONL: ${filePath}`, error);
         }
     }
     /**
@@ -459,5 +452,4 @@ class DocumentParser {
         return '';
     }
 }
-exports.DocumentParser = DocumentParser;
 //# sourceMappingURL=index.js.map

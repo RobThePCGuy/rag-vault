@@ -1,23 +1,20 @@
-"use strict";
 // RAGServer implementation with MCP tools
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RAGServer = void 0;
-const node_crypto_1 = require("node:crypto");
-const promises_1 = require("node:fs/promises");
-const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
-const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
-const zod_1 = require("zod");
-const index_js_1 = require("../chunker/index.js");
-const index_js_2 = require("../embedder/index.js");
-const index_js_3 = require("../errors/index.js");
-const keywords_js_1 = require("../explainability/keywords.js");
-const feedback_js_1 = require("../flywheel/feedback.js");
-const html_parser_js_1 = require("../parser/html-parser.js");
-const index_js_4 = require("../parser/index.js");
-const index_js_5 = require("../query/index.js");
-const index_js_6 = require("../vectordb/index.js");
-const raw_data_utils_js_1 = require("./raw-data-utils.js");
-const schemas_js_1 = require("./schemas.js");
+import { randomUUID } from 'node:crypto';
+import { readFile, unlink } from 'node:fs/promises';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+import { SemanticChunker } from '../chunker/index.js';
+import { Embedder } from '../embedder/index.js';
+import { getErrorMessage } from '../errors/index.js';
+import { explainChunkSimilarity } from '../explainability/keywords.js';
+import { getFeedbackStore } from '../flywheel/feedback.js';
+import { parseHtml } from '../parser/html-parser.js';
+import { DocumentParser } from '../parser/index.js';
+import { matchesFilters, parseQuery, shouldExclude, toSemanticQuery } from '../query/index.js';
+import { VectorStore } from '../vectordb/index.js';
+import { extractSourceFromPath, generateRawDataPath, isManagedRawDataPath, saveRawData, } from './raw-data-utils.js';
+import { DeleteFileSchema, } from './schemas.js';
 // ============================================
 // RAGServer Class
 // ============================================
@@ -30,10 +27,16 @@ const schemas_js_1 = require("./schemas.js");
  * - Error handling
  * - Initialization (LanceDB, Transformers.js)
  */
-class RAGServer {
+export class RAGServer {
+    server;
+    vectorStore;
+    embedder;
+    chunker;
+    parser;
+    dbPath;
     constructor(config) {
         this.dbPath = config.dbPath;
-        this.server = new mcp_js_1.McpServer({
+        this.server = new McpServer({
             name: 'rag-mcp-server',
             version: '1.0.0',
         });
@@ -52,35 +55,44 @@ class RAGServer {
         if (config.hybridWeight !== undefined) {
             vectorStoreConfig.hybridWeight = config.hybridWeight;
         }
-        this.vectorStore = new index_js_6.VectorStore(vectorStoreConfig);
-        this.embedder = new index_js_2.Embedder({
+        this.vectorStore = new VectorStore(vectorStoreConfig);
+        this.embedder = new Embedder({
             modelPath: config.modelName,
             batchSize: 16,
             cacheDir: config.cacheDir,
         });
-        this.chunker = new index_js_1.SemanticChunker();
-        this.parser = new index_js_4.DocumentParser({
+        this.chunker = new SemanticChunker();
+        this.parser = new DocumentParser({
             baseDir: config.baseDir,
             maxFileSize: config.maxFileSize,
         });
         this.setupHandlers();
     }
     /**
+     * Create a new McpServer session sharing this RAGServer's backend resources.
+     * Used by the remote transport to create one MCP server per client session.
+     */
+    createSession() {
+        const session = new McpServer({ name: 'rag-mcp-server', version: '1.0.0' });
+        this.setupHandlers(session);
+        return session;
+    }
+    /**
      * Set up MCP handlers using tool() API
      * Note: Type casts are used to work around Zod version compatibility between project and SDK
      */
-    setupHandlers() {
+    setupHandlers(target = this.server) {
         // query_documents tool
-        this.server.tool('query_documents', `Search ingested documents using hybrid semantic + keyword search. Advanced syntax supported:
+        target.tool('query_documents', `Search ingested documents using hybrid semantic + keyword search. Advanced syntax supported:
 - "exact phrase" → Match phrase exactly
 - field:value → Filter by custom metadata (e.g., domain:legal, author:john)
 - term1 AND term2 → Both terms required (default)
 - term1 OR term2 → Either term matches
 - -term → Exclude results containing term
 Results include score (0 = most relevant, higher = less relevant). Set explain=true to see why each result matched.`, {
-            query: zod_1.z.string(),
-            limit: zod_1.z.number().optional(),
-            explain: zod_1.z.boolean().optional(),
+            query: z.string(),
+            limit: z.number().optional(),
+            explain: z.boolean().optional(),
         }, async (args) => {
             const results = await this.executeQueryDocuments(args);
             return {
@@ -88,9 +100,9 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         });
         // ingest_file tool
-        this.server.tool('ingest_file', 'Ingest a document file (PDF, DOCX, TXT, MD, JSON, JSONL) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents. Optional metadata can include author, domain, tags, etc.', {
-            filePath: zod_1.z.string(),
-            metadata: zod_1.z.record(zod_1.z.string()).optional(),
+        target.tool('ingest_file', 'Ingest a document file (PDF, DOCX, TXT, MD, JSON, JSONL) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents. Optional metadata can include author, domain, tags, etc.', {
+            filePath: z.string(),
+            metadata: z.record(z.string()).optional(),
         }, async (args) => {
             const result = await this.executeIngestFile(args);
             return {
@@ -98,12 +110,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         });
         // ingest_data tool
-        this.server.tool('ingest_data', 'Ingest content as a string, not from a file. Use for: fetched web pages (format: html), copied text (format: text), or markdown strings (format: markdown). The source identifier enables re-ingestion to update existing content. Optional custom metadata can include author, domain, tags, etc. For files on disk, use ingest_file instead.', {
-            content: zod_1.z.string(),
-            metadata: zod_1.z.object({
-                source: zod_1.z.string(),
-                format: zod_1.z.enum(['text', 'html', 'markdown']),
-                custom: zod_1.z.record(zod_1.z.string()).optional(),
+        target.tool('ingest_data', 'Ingest content as a string, not from a file. Use for: fetched web pages (format: html), copied text (format: text), or markdown strings (format: markdown). The source identifier enables re-ingestion to update existing content. Optional custom metadata can include author, domain, tags, etc. For files on disk, use ingest_file instead.', {
+            content: z.string(),
+            metadata: z.object({
+                source: z.string(),
+                format: z.enum(['text', 'html', 'markdown']),
+                custom: z.record(z.string()).optional(),
             }),
         }, async (args) => {
             const result = await this.executeIngestData(args);
@@ -112,12 +124,12 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         });
         // delete_file tool (uses .refine(), so handle validation in handler)
-        this.server.tool('delete_file', 'Delete a previously ingested file or data from the vector database. Use filePath for files ingested via ingest_file, or source for data ingested via ingest_data. Either filePath or source must be provided.', {
-            filePath: zod_1.z.string().optional(),
-            source: zod_1.z.string().optional(),
+        target.tool('delete_file', 'Delete a previously ingested file or data from the vector database. Use filePath for files ingested via ingest_file, or source for data ingested via ingest_data. Either filePath or source must be provided.', {
+            filePath: z.string().optional(),
+            source: z.string().optional(),
         }, async (args) => {
             // Validate with refinement separately
-            const parsed = schemas_js_1.DeleteFileSchema.safeParse(args);
+            const parsed = DeleteFileSchema.safeParse(args);
             if (!parsed.success) {
                 throw new Error(`Invalid arguments: ${parsed.error.message}`);
             }
@@ -127,25 +139,25 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         });
         // list_files tool
-        this.server.tool('list_files', 'List all ingested files in the vector database. Returns file paths and chunk counts for each document.', {}, async () => {
+        target.tool('list_files', 'List all ingested files in the vector database. Returns file paths and chunk counts for each document.', {}, async () => {
             const files = await this.executeListFiles();
             return {
                 content: [{ type: 'text', text: JSON.stringify(files, null, 2) }],
             };
         });
         // status tool
-        this.server.tool('status', 'Get system status including total documents, total chunks, database size, and configuration information.', {}, async () => {
+        target.tool('status', 'Get system status including total documents, total chunks, database size, and configuration information.', {}, async () => {
             const status = await this.executeStatus();
             return {
                 content: [{ type: 'text', text: JSON.stringify(status, null, 2) }],
             };
         });
         // feedback_pin tool
-        this.server.tool('feedback_pin', 'Pin a search result as relevant for a query. Pinned results will be boosted in future searches. Use when a result was particularly helpful.', {
-            sourceQuery: zod_1.z.string().describe('The query that returned this result'),
-            targetFilePath: zod_1.z.string().describe('File path of the result to pin'),
-            targetChunkIndex: zod_1.z.number().describe('Chunk index of the result to pin'),
-            targetFingerprint: zod_1.z
+        target.tool('feedback_pin', 'Pin a search result as relevant for a query. Pinned results will be boosted in future searches. Use when a result was particularly helpful.', {
+            sourceQuery: z.string().describe('The query that returned this result'),
+            targetFilePath: z.string().describe('File path of the result to pin'),
+            targetChunkIndex: z.number().describe('Chunk index of the result to pin'),
+            targetFingerprint: z
                 .string()
                 .optional()
                 .describe('Optional fingerprint for resilient matching'),
@@ -161,7 +173,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                     content: [
                         {
                             type: 'text',
-                            text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }),
+                            text: JSON.stringify({ error: getErrorMessage(error) }),
                         },
                     ],
                     isError: true,
@@ -169,11 +181,11 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             }
         });
         // feedback_dismiss tool
-        this.server.tool('feedback_dismiss', 'Dismiss a search result as irrelevant for a query. Dismissed results will be penalized in future searches. Use when a result was unhelpful.', {
-            sourceQuery: zod_1.z.string().describe('The query that returned this result'),
-            targetFilePath: zod_1.z.string().describe('File path of the result to dismiss'),
-            targetChunkIndex: zod_1.z.number().describe('Chunk index of the result to dismiss'),
-            targetFingerprint: zod_1.z
+        target.tool('feedback_dismiss', 'Dismiss a search result as irrelevant for a query. Dismissed results will be penalized in future searches. Use when a result was unhelpful.', {
+            sourceQuery: z.string().describe('The query that returned this result'),
+            targetFilePath: z.string().describe('File path of the result to dismiss'),
+            targetChunkIndex: z.number().describe('Chunk index of the result to dismiss'),
+            targetFingerprint: z
                 .string()
                 .optional()
                 .describe('Optional fingerprint for resilient matching'),
@@ -189,7 +201,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                     content: [
                         {
                             type: 'text',
-                            text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }),
+                            text: JSON.stringify({ error: getErrorMessage(error) }),
                         },
                     ],
                     isError: true,
@@ -197,7 +209,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             }
         });
         // feedback_stats tool
-        this.server.tool('feedback_stats', 'Get feedback statistics including total events, pinned pairs, and dismissed pairs.', {}, async () => {
+        target.tool('feedback_stats', 'Get feedback statistics including total events, pinned pairs, and dismissed pairs.', {}, async () => {
             try {
                 const stats = this.executeFeedbackStats();
                 return {
@@ -209,7 +221,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                     content: [
                         {
                             type: 'text',
-                            text: JSON.stringify({ error: (0, index_js_3.getErrorMessage)(error) }),
+                            text: JSON.stringify({ error: getErrorMessage(error) }),
                         },
                     ],
                     isError: true,
@@ -266,8 +278,8 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
      */
     async executeQueryDocuments(args) {
         // Parse query for advanced syntax
-        const parsed = (0, index_js_5.parseQuery)(args.query);
-        const semanticQuery = (0, index_js_5.toSemanticQuery)(parsed);
+        const parsed = parseQuery(args.query);
+        const semanticQuery = toSemanticQuery(parsed);
         // Generate query embedding from semantic terms
         const queryVector = await this.embedder.embed(semanticQuery || args.query);
         // Request extra results to account for post-filtering (capped at 20)
@@ -277,7 +289,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         // Hybrid search (vector + BM25 keyword matching)
         let searchResults = await this.vectorStore.search(queryVector, args.query, requestLimit);
         // Apply flywheel reranking based on user feedback
-        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        const feedbackStore = getFeedbackStore();
         const sourceRef = {
             filePath: '__query__',
             chunkIndex: 0,
@@ -288,11 +300,11 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         if (parsed.excludeTerms.length > 0 || parsed.filters.length > 0) {
             searchResults = searchResults.filter((result) => {
                 // Exclude results containing excluded terms
-                if ((0, index_js_5.shouldExclude)(result.text, parsed.excludeTerms)) {
+                if (shouldExclude(result.text, parsed.excludeTerms)) {
                     return false;
                 }
                 // Filter by metadata if filters specified (only if custom metadata exists)
-                if (parsed.filters.length > 0 && !(0, index_js_5.matchesFilters)(result.metadata?.custom, parsed.filters)) {
+                if (parsed.filters.length > 0 && !matchesFilters(result.metadata?.custom, parsed.filters)) {
                     return false;
                 }
                 return true;
@@ -309,8 +321,8 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                 score: result.score,
             };
             // Restore source for raw-data files (ingested via ingest_data)
-            if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, result.filePath)) {
-                const source = (0, raw_data_utils_js_1.extractSourceFromPath)(result.filePath);
+            if (isManagedRawDataPath(this.dbPath, result.filePath)) {
+                const source = extractSourceFromPath(result.filePath);
                 if (source) {
                     queryResult.source = source;
                 }
@@ -321,7 +333,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             }
             // Add explanation if requested
             if (args.explain) {
-                const explanation = (0, keywords_js_1.explainChunkSimilarity)(args.query, result.text, false, // Not same document (query vs result)
+                const explanation = explainChunkSimilarity(args.query, result.text, false, // Not same document (query vs result)
                 result.score);
                 queryResult.explanation = explanation;
             }
@@ -357,9 +369,9 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         // since the path is internally generated and content is already processed
         const isPdf = args.filePath.toLowerCase().endsWith('.pdf');
         let text;
-        if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, args.filePath)) {
+        if (isManagedRawDataPath(this.dbPath, args.filePath)) {
             // Raw-data files: skip validation, read directly
-            text = await (0, promises_1.readFile)(args.filePath, 'utf-8');
+            text = await readFile(args.filePath, 'utf-8');
             console.error(`Read raw-data file: ${args.filePath} (${text.length} characters)`);
         }
         else if (isPdf) {
@@ -403,7 +415,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                 throw new Error(`Missing embedding for chunk ${index}`);
             }
             return {
-                id: (0, node_crypto_1.randomUUID)(),
+                id: randomUUID(),
                 filePath: args.filePath,
                 chunkIndex: chunk.index,
                 text: chunk.text,
@@ -454,7 +466,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         }
         catch (error) {
-            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            const errorMessage = getErrorMessage(error);
             console.error('Failed to ingest file:', errorMessage);
             throw new Error(`Failed to ingest file: ${errorMessage}`);
         }
@@ -468,7 +480,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         // For HTML content, convert to Markdown first
         if (args.metadata.format === 'html') {
             console.error(`Parsing HTML from: ${args.metadata.source}`);
-            const markdown = await (0, html_parser_js_1.parseHtml)(args.content, args.metadata.source);
+            const markdown = await parseHtml(args.content, args.metadata.source);
             if (!markdown.trim()) {
                 throw new Error('Failed to extract content from HTML. The page may have no readable content.');
             }
@@ -477,7 +489,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             console.error(`Converted HTML to Markdown: ${markdown.length} characters`);
         }
         // Save content to raw-data directory
-        const rawDataPath = await (0, raw_data_utils_js_1.saveRawData)(this.dbPath, args.metadata.source, contentToSave, formatToSave);
+        const rawDataPath = await saveRawData(this.dbPath, args.metadata.source, contentToSave, formatToSave);
         console.error(`Saved raw data: ${args.metadata.source} -> ${rawDataPath}`);
         // Call executeIngestFile internally with rollback on failure
         try {
@@ -489,7 +501,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         catch (ingestError) {
             // Rollback: delete the raw-data file if ingest fails
             try {
-                await (0, promises_1.unlink)(rawDataPath);
+                await unlink(rawDataPath);
                 console.error(`Rolled back raw-data file: ${rawDataPath}`);
             }
             catch {
@@ -514,7 +526,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         }
         catch (error) {
-            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            const errorMessage = getErrorMessage(error);
             console.error('Failed to ingest data:', errorMessage);
             throw new Error(`Failed to ingest data: ${errorMessage}`);
         }
@@ -526,8 +538,8 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         const files = await this.vectorStore.listFiles();
         // Enrich raw-data files with source information
         return files.map((file) => {
-            if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, file.filePath)) {
-                const source = (0, raw_data_utils_js_1.extractSourceFromPath)(file.filePath);
+            if (isManagedRawDataPath(this.dbPath, file.filePath)) {
+                const source = extractSourceFromPath(file.filePath);
                 if (source) {
                     return { ...file, source };
                 }
@@ -585,7 +597,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
      * Execute feedback_pin logic
      */
     executeFeedbackPin(args) {
-        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        const feedbackStore = getFeedbackStore();
         // Create source reference from query (using query text as fingerprint)
         const sourceRef = {
             filePath: '__query__',
@@ -613,7 +625,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
      * Execute feedback_dismiss logic
      */
     executeFeedbackDismiss(args) {
-        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        const feedbackStore = getFeedbackStore();
         // Create source reference from query (using query text as fingerprint)
         const sourceRef = {
             filePath: '__query__',
@@ -641,7 +653,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
      * Execute feedback_stats logic
      */
     executeFeedbackStats() {
-        const feedbackStore = (0, feedback_js_1.getFeedbackStore)();
+        const feedbackStore = getFeedbackStore();
         return feedbackStore.getStats();
     }
     /**
@@ -653,7 +665,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         if (args.source) {
             // Generate raw-data path from source (extension is always .md)
             // Internal path generation is secure, skip baseDir validation
-            targetPath = (0, raw_data_utils_js_1.generateRawDataPath)(this.dbPath, args.source, 'markdown');
+            targetPath = generateRawDataPath(this.dbPath, args.source, 'markdown');
             skipValidation = true;
         }
         else if (args.filePath) {
@@ -669,9 +681,9 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         // Delete chunks from vector database
         await this.vectorStore.deleteChunks(targetPath);
         // Also delete physical raw-data file if applicable
-        if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, targetPath)) {
+        if (isManagedRawDataPath(this.dbPath, targetPath)) {
             try {
-                await (0, promises_1.unlink)(targetPath);
+                await unlink(targetPath);
                 console.error(`Deleted raw-data file: ${targetPath}`);
             }
             catch {
@@ -701,7 +713,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         }
         catch (error) {
-            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            const errorMessage = getErrorMessage(error);
             console.error('Failed to delete file:', errorMessage);
             throw new Error(`Failed to delete file: ${errorMessage}`);
         }
@@ -714,8 +726,8 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             const chunks = await this.vectorStore.getDocumentChunks(filePath);
             // Enrich with source information for raw-data files
             const enrichedChunks = chunks.map((chunk) => {
-                if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, chunk.filePath)) {
-                    const source = (0, raw_data_utils_js_1.extractSourceFromPath)(chunk.filePath);
+                if (isManagedRawDataPath(this.dbPath, chunk.filePath)) {
+                    const source = extractSourceFromPath(chunk.filePath);
                     if (source) {
                         return { ...chunk, source };
                     }
@@ -732,7 +744,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         }
         catch (error) {
-            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            const errorMessage = getErrorMessage(error);
             console.error('Failed to get document chunks:', errorMessage);
             throw new Error(`Failed to get document chunks: ${errorMessage}`);
         }
@@ -745,8 +757,8 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             const relatedChunks = await this.vectorStore.findRelatedChunks(filePath, chunkIndex, limit ?? 5, excludeSameDocument ?? true);
             // Enrich with source information for raw-data files
             const enrichedChunks = relatedChunks.map((chunk) => {
-                if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, chunk.filePath)) {
-                    const source = (0, raw_data_utils_js_1.extractSourceFromPath)(chunk.filePath);
+                if (isManagedRawDataPath(this.dbPath, chunk.filePath)) {
+                    const source = extractSourceFromPath(chunk.filePath);
                     if (source) {
                         return { ...chunk, source };
                     }
@@ -763,7 +775,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         }
         catch (error) {
-            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            const errorMessage = getErrorMessage(error);
             console.error('Failed to find related chunks:', errorMessage);
             throw new Error(`Failed to find related chunks: ${errorMessage}`);
         }
@@ -781,8 +793,8 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                 );
                 // Enrich with source information
                 results[key] = relatedChunks.map((related) => {
-                    if ((0, raw_data_utils_js_1.isManagedRawDataPath)(this.dbPath, related.filePath)) {
-                        const source = (0, raw_data_utils_js_1.extractSourceFromPath)(related.filePath);
+                    if (isManagedRawDataPath(this.dbPath, related.filePath)) {
+                        const source = extractSourceFromPath(related.filePath);
                         if (source) {
                             return { ...related, source };
                         }
@@ -800,7 +812,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
             };
         }
         catch (error) {
-            const errorMessage = (0, index_js_3.getErrorMessage)(error);
+            const errorMessage = getErrorMessage(error);
             console.error('Failed to batch find related chunks:', errorMessage);
             throw new Error(`Failed to batch find related chunks: ${errorMessage}`);
         }
@@ -809,10 +821,9 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
      * Start the server
      */
     async run() {
-        const transport = new stdio_js_1.StdioServerTransport();
+        const transport = new StdioServerTransport();
         await this.server.connect(transport);
         console.error('RAGServer running on stdio transport');
     }
 }
-exports.RAGServer = RAGServer;
 //# sourceMappingURL=index.js.map

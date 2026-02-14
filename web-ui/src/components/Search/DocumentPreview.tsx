@@ -40,27 +40,33 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
     <Modal isOpen={isOpen} onClose={onClose} title="Document Preview">
       <div className="space-y-4">
         {/* Metadata */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-sm">
+        <div
+          className="grid grid-cols-2 gap-4 p-4 rounded-lg text-sm"
+          style={{ background: 'var(--ws-surface-1)' }}
+        >
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Source:</span>
-            <p className="font-medium text-gray-900 dark:text-gray-100 break-all">
+            <span style={{ color: 'var(--ws-text-muted)' }}>Source:</span>
+            <p className="font-medium break-all" style={{ color: 'var(--ws-text)' }}>
               {displaySource}
             </p>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Chunk:</span>
-            <p className="font-medium text-gray-900 dark:text-gray-100">#{result.chunkIndex}</p>
+            <span style={{ color: 'var(--ws-text-muted)' }}>Chunk:</span>
+            <p className="font-medium" style={{ color: 'var(--ws-text)' }}>
+              #{result.chunkIndex}
+            </p>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Score:</span>
-            <p className="font-medium text-gray-900 dark:text-gray-100">
+            <span style={{ color: 'var(--ws-text-muted)' }}>Score:</span>
+            <p className="font-medium" style={{ color: 'var(--ws-text)' }}>
               {result.score.toFixed(4)}
             </p>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">File Path:</span>
+            <span style={{ color: 'var(--ws-text-muted)' }}>File Path:</span>
             <p
-              className="font-medium text-gray-900 dark:text-gray-100 break-all truncate"
+              className="font-medium break-all truncate"
+              style={{ color: 'var(--ws-text)' }}
               title={result.filePath}
             >
               {result.filePath}
@@ -71,11 +77,14 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
         {/* Content */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Content</h3>
+            <h3 className="text-sm font-medium" style={{ color: 'var(--ws-text-secondary)' }}>
+              Content
+            </h3>
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-colors"
+              style={{ color: 'var(--ws-text-secondary)', background: 'var(--ws-surface-1)' }}
             >
               {copied ? (
                 <>
@@ -90,8 +99,14 @@ export function DocumentPreview({ result, isOpen, onClose }: DocumentPreviewProp
               )}
             </button>
           </div>
-          <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+          <div
+            className="p-4 rounded-lg"
+            style={{ background: 'var(--ws-surface-raised)', border: '1px solid var(--ws-border)' }}
+          >
+            <p
+              className="text-sm whitespace-pre-wrap"
+              style={{ color: 'var(--ws-text-secondary)' }}
+            >
               {result.text}
             </p>
           </div>

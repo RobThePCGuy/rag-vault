@@ -16,7 +16,7 @@ export interface AnnotationSummaryItem {
   chunkPreview: string
 }
 
-export interface UseDocumentAnnotationsOptions {
+interface UseDocumentAnnotationsOptions {
   filePath: string
   sortBy?: 'chunk' | 'date' | 'color'
   filterColor?: HighlightColor | null

@@ -1,13 +1,7 @@
-"use strict";
 // PDF Header/Footer Filter
 // - Detects and removes repeating patterns across pages
 // - Semantic similarity-based header/footer detection (sentence-level)
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DEFAULT_SENTENCE_PATTERN_CONFIG = void 0;
-exports.joinFilteredPages = joinFilteredPages;
-exports.detectSentencePatterns = detectSentencePatterns;
-exports.filterPageBoundarySentences = filterPageBoundarySentences;
-const sentence_splitter_js_1 = require("../chunker/sentence-splitter.js");
+import { splitIntoSentences } from '../chunker/sentence-splitter.js';
 // ============================================
 // Text Joining
 // ============================================
@@ -43,7 +37,7 @@ function joinPageItems(items) {
  * @param pages - Filtered page data
  * @returns Joined text with proper line breaks
  */
-function joinFilteredPages(pages) {
+export function joinFilteredPages(pages) {
     return pages
         .map((page) => joinPageItems(page.items))
         .filter((text) => text.length > 0)
@@ -85,7 +79,7 @@ function splitItemsIntoSentencesWithY(items) {
         prevY = item.y;
     }
     // Split into sentences
-    const sentences = (0, sentence_splitter_js_1.splitIntoSentences)(fullText);
+    const sentences = splitIntoSentences(fullText);
     // Map each sentence to Y coordinate of its first character's item
     const sentencesWithY = [];
     let searchStart = 0;
@@ -143,7 +137,7 @@ function mergeSentencesByY(sentences) {
 // Sentence-Level Header/Footer Detection
 // ============================================
 // Use shared cosine similarity function
-const math_js_1 = require("../utils/math.js");
+import { cosineSimilarity } from '../utils/math.js';
 /**
  * Calculate median pairwise similarity for a list of embeddings
  *
@@ -160,7 +154,7 @@ function medianPairwiseSimilarity(embeddings) {
             const embI = embeddings[i];
             const embJ = embeddings[j];
             if (embI && embJ) {
-                similarities.push((0, math_js_1.cosineSimilarity)(embI, embJ));
+                similarities.push(cosineSimilarity(embI, embJ));
             }
         }
     }
@@ -177,7 +171,7 @@ function medianPairwiseSimilarity(embeddings) {
     return similarities[mid] ?? 0;
 }
 /** Default configuration for sentence-level pattern detection */
-exports.DEFAULT_SENTENCE_PATTERN_CONFIG = {
+export const DEFAULT_SENTENCE_PATTERN_CONFIG = {
     similarityThreshold: 0.85,
     minPages: 3,
     samplePages: 5,
@@ -203,8 +197,8 @@ exports.DEFAULT_SENTENCE_PATTERN_CONFIG = {
  * @param config - Configuration options
  * @returns Detection result
  */
-async function detectSentencePatterns(pages, embedder, config = {}) {
-    const cfg = { ...exports.DEFAULT_SENTENCE_PATTERN_CONFIG, ...config };
+export async function detectSentencePatterns(pages, embedder, config = {}) {
+    const cfg = { ...DEFAULT_SENTENCE_PATTERN_CONFIG, ...config };
     const result = {
         removeFirstSentence: false,
         removeLastSentence: false,
@@ -270,8 +264,8 @@ async function detectSentencePatterns(pages, embedder, config = {}) {
  * @param config - Configuration options
  * @returns Filtered text with header/footer sentences removed
  */
-async function filterPageBoundarySentences(pages, embedder, config = {}) {
-    const cfg = { ...exports.DEFAULT_SENTENCE_PATTERN_CONFIG, ...config };
+export async function filterPageBoundarySentences(pages, embedder, config = {}) {
+    const cfg = { ...DEFAULT_SENTENCE_PATTERN_CONFIG, ...config };
     // Need minimum pages to detect patterns
     if (pages.length < cfg.minPages) {
         return joinFilteredPages(pages);

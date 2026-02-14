@@ -7,9 +7,7 @@ export function SearchPage() {
   return (
     <div className="ws-page max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="ws-page-title text-2xl font-bold mb-2">
-          Search Documents
-        </h1>
+        <h1 className="ws-page-title text-2xl font-bold mb-2">Search Documents</h1>
         <p style={{ color: 'var(--ws-text-secondary)' }}>
           Search through your ingested documents using semantic and keyword matching.
         </p>

@@ -5,9 +5,9 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 // Types
 // ============================================
 
-export type ReadingMode = 'skim' | 'full'
+type ReadingMode = 'skim' | 'full'
 
-export interface ReadingModeContextValue {
+interface ReadingModeContextValue {
   mode: ReadingMode
   setMode: (mode: ReadingMode) => void
   toggleMode: () => void

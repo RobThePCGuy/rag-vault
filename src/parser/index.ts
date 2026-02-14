@@ -82,7 +82,15 @@ function looksLikeProse(str: string): boolean {
 }
 import mammoth from 'mammoth'
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
-import type { TextItem } from 'pdfjs-dist/types/src/display/api'
+type TextItem = {
+  str: string
+  dir: string
+  transform: number[]
+  width: number
+  height: number
+  fontName: string
+  hasEOL: boolean
+}
 import { ParserFileOperationError, ParserValidationError } from '../errors/index.js'
 import { type EmbedderInterface, type PageData, filterPageBoundarySentences } from './pdf-filter.js'
 
@@ -258,9 +266,9 @@ export class DocumentParser {
           .filter((item): item is TextItem => 'str' in item)
           .map((item) => ({
             text: item.str,
-            x: item.transform[4],
-            y: item.transform[5],
-            fontSize: Math.abs(item.transform[0]),
+            x: item.transform[4] ?? 0,
+            y: item.transform[5] ?? 0,
+            fontSize: Math.abs(item.transform[0] ?? 0),
             hasEOL: item.hasEOL ?? false,
           }))
 

@@ -5,10 +5,9 @@ import type { ReactNode } from 'react'
 import { useSearch } from '../useSearch'
 import * as client from '../../api/client'
 
-// Mock the API client
-vi.mock('../../api/client', () => ({
-  searchDocuments: vi.fn(),
-}))
+// Mock the API client (auto-mock all exports to avoid partial mock interference
+// when test files run in parallel)
+vi.mock('../../api/client')
 
 const mockSearchDocuments = vi.mocked(client.searchDocuments)
 

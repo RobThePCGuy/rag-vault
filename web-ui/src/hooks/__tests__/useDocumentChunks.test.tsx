@@ -5,10 +5,9 @@ import type { ReactNode } from 'react'
 import { useDocumentChunks } from '../useDocumentChunks'
 import * as client from '../../api/client'
 
-// Mock the API client
-vi.mock('../../api/client', () => ({
-  getDocumentChunks: vi.fn(),
-}))
+// Mock the API client (auto-mock all exports to avoid partial mock interference
+// when test files run in parallel)
+vi.mock('../../api/client')
 
 const mockGetDocumentChunks = vi.mocked(client.getDocumentChunks)
 

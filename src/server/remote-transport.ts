@@ -67,7 +67,7 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
   })
 
   // Handle preflight separately to avoid return-type issues
-  app.options('*', (_req, res) => {
+  app.options('{*path}', (_req, res) => {
     res.sendStatus(204)
   })
 

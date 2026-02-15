@@ -359,7 +359,7 @@ async function createHttpServerInternal(
     app.use(express.static(config.staticDir))
 
     // SPA fallback - serve index.html for all non-API routes
-    app.get('*', (req, res) => {
+    app.get('{*path}', (req, res) => {
       if (!req.path.startsWith('/api/')) {
         res.sendFile(path.join(config.staticDir as string, 'index.html'))
       }

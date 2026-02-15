@@ -1,6 +1,6 @@
 {
   "name": "@robthepcguy/rag-vault",
-  "version": "1.5.3",
+  "version": "1.7.0",
   "type": "module",
   "description": "Local RAG MCP Server - Easy-to-setup document search with minimal configuration",
   "main": "dist/index.js",

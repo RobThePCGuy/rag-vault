@@ -2,6 +2,7 @@
 // Entry point for RAG Web Server
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildRAGConfig, validateAllowedScanRoots, validateRAGConfig } from '../utils/config.js';
 import { onShutdown, setupGracefulShutdown, setupProcessHandlers, } from '../utils/process-handlers.js';
 import { stopRateLimiterCleanup } from './middleware/index.js';
@@ -36,8 +37,9 @@ async function main() {
         // Check multiple locations: cwd for dev, package dir for npx/global install
         let staticDir;
         const cwd = process.cwd();
-        // __dirname points to dist/web/ when compiled, so go up to package root
-        const packageDir = path.resolve(__dirname, '../..');
+        // import.meta.url points to dist/web/ when compiled, so go up to package root
+        const currentDir = path.dirname(fileURLToPath(import.meta.url));
+        const packageDir = path.resolve(currentDir, '../..');
         const possiblePaths = [
             path.resolve(cwd, 'web-ui/dist'), // Dev: running from repo root
             path.resolve(packageDir, 'web-ui/dist'), // npx/global: relative to package

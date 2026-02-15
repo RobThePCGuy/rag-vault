@@ -367,7 +367,9 @@ async function createHttpServerInternal(
   }
 
   // 404 handler for API routes
-  app.use('/api/*', notFoundHandler)
+  // NOTE: Express 5 no longer accepts unnamed wildcards like '/api/*'.
+  // Mount on '/api' after all API routers so only unmatched API requests reach this handler.
+  app.use('/api', notFoundHandler)
 
   // Error handling middleware
   app.use(errorHandler)

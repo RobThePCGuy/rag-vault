@@ -76,6 +76,7 @@ Add to `.mcp.json` in your project directory:
         "BASE_DIR": "./documents",
         "DB_PATH": "./documents/.rag-db",
         "CACHE_DIR": "./.cache",
+        "RAG_EMBEDDING_DEVICE": "cpu",
         "RAG_HYBRID_WEIGHT": "0.6",
         "RAG_GROUPING": "related"
       }
@@ -344,15 +345,20 @@ Query → Embed → Vector search → Keyword boost → Quality filter → Resul
 |----------|---------|--------------|
 | `BASE_DIR` | Current directory | Only files under this path can be accessed |
 | `DB_PATH` | `./lancedb/` | Where vectors are stored |
+| `CACHE_DIR` | `./models/` | Model cache directory |
 | `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace embedding model |
-| `RAG_EMBEDDING_DEVICE` | `auto` | Inference device hint (`auto`, `cpu`, `cuda`, `dml`, `webgpu`, etc.) |
+| `MAX_FILE_SIZE` | `104857600` (100 MB) | Maximum file size in bytes for ingestion |
+| `RAG_EMBEDDING_DEVICE` | `auto` | Inference device: `auto`, `cpu`, `cuda`, `dml`, `webgpu`, `wasm`, `gpu`, `webnn` |
 | `WEB_PORT` | `3000` | Port for web interface |
+| `UPLOAD_DIR` | `./uploads/` | Temporary directory for web UI file uploads |
+
+> **Windows users:** `RAG_EMBEDDING_DEVICE=auto` attempts GPU providers (DirectML) which can fail if ONNX Runtime GPU binaries are not available. If you see embedding initialization errors, set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config for reliable operation. See the [GPU acceleration FAQ](#frequently-asked-questions) for details.
 
 One-command override (no `.env` edit):
 
 ```bash
 # MCP mode
-npx github:RobThePCGuy/rag-vault --embedding-device dml
+npx github:RobThePCGuy/rag-vault --embedding-device cpu
 
 # Web mode
 npx github:RobThePCGuy/rag-vault web --embedding-device dml
@@ -365,9 +371,13 @@ npx github:RobThePCGuy/rag-vault --gpu-auto
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `RAG_HYBRID_WEIGHT` | `0.6` | Keyword boost strength. 0 = semantic-only, higher = stronger boost for exact keyword matches |
-| `RAG_GROUPING` | unset | `similar` = top group only, `related` = top 2 groups |
+| `RAG_HYBRID_WEIGHT` | `0.6` | Keyword boost strength. `0` = semantic-only, `1.0` = BM25-only, higher = stronger boost for exact keyword matches |
+| `RAG_GROUPING` | unset | Quality filter grouping mode: `similar` = top group only, `related` = top 2 groups |
 | `RAG_MAX_DISTANCE` | unset | Filter out results below this relevance threshold |
+| `RAG_GROUPING_STD_MULTIPLIER` | `1.5` | Standard-deviation multiplier for detecting relevance gaps between result groups |
+| `RAG_HYBRID_CANDIDATE_MULTIPLIER` | `2` | Multiplier for number of vector candidates to fetch before keyword reranking |
+| `RAG_FTS_MAX_FAILURES` | `3` | Number of full-text search failures before temporarily disabling FTS |
+| `RAG_FTS_COOLDOWN_MS` | `300000` (5 min) | Cooldown period before retrying FTS after max failures reached |
 
 ### Security (optional)
 
@@ -417,12 +427,19 @@ Yes, after the first run. The model caches locally.
 <details>
 <summary><strong>What about GPU acceleration?</strong></summary>
 
-RAG Vault now uses Transformers.js device auto-selection by default (`RAG_EMBEDDING_DEVICE=auto`), which can use GPU providers when available and fall back to CPU.
+RAG Vault uses Transformers.js device auto-selection by default (`RAG_EMBEDDING_DEVICE=auto`). When GPU providers are properly configured, this can speed up embedding generation.
 
-Practical notes:
-- Windows Node runtime typically uses DirectML (`dml`).
-- Linux x64 can use CUDA when ONNX Runtime CUDA binaries are available.
-- You can force CPU with `RAG_EMBEDDING_DEVICE=cpu` if you prefer stability.
+**Important:** On Windows, `auto` tries DirectML (`dml`) which requires ONNX Runtime GPU binaries. If those binaries are not installed or your GPU setup is incomplete, the server will fail to start entirely — it does not gracefully fall back to CPU. The same applies on Linux without CUDA binaries.
+
+**Recommendation:** If you encounter embedding initialization errors, set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config. CPU mode is reliable on all platforms and fast enough for most workloads (the default model is only ~90MB).
+
+```json
+"env": {
+  "RAG_EMBEDDING_DEVICE": "cpu"
+}
+```
+
+Supported device values: `auto`, `cpu`, `cuda`, `dml`, `gpu`, `wasm`, `webgpu`, `webnn`, `webnn-npu`, `webnn-gpu`, `webnn-cpu`. The alias `directml` is also accepted and maps to `dml`.
 
 </details>
 
@@ -458,6 +475,8 @@ Copy the `DB_PATH` directory (default: `./lancedb/`).
 |---------|----------|
 | No results found | Documents must be ingested first. Run "List all ingested files" to check. |
 | Model download failed | Check internet connection. Model is ~90MB from HuggingFace. |
+| Embedding initialization fails | Set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config. The `auto` default can fail on Windows without GPU binaries. |
+| `Protobuf parsing failed` | Corrupted model cache. Delete `CACHE_DIR` (default: `./models/`) and restart. RAG Vault also auto-retries with an isolated recovery cache. |
 | File too large | Default limit is 100MB. Set `MAX_FILE_SIZE` higher or split the file. |
 | Path outside BASE_DIR | All file paths must be under `BASE_DIR`. Use absolute paths. |
 | MCP tools not showing | Verify config syntax, restart your AI tool completely (Cmd+Q on Mac). |

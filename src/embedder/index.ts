@@ -27,6 +27,11 @@ export interface EmbedderConfig {
    * Examples: auto, cpu, cuda, dml, webgpu
    */
   device?: string
+  /**
+   * Timeout for model initialization/download in milliseconds.
+   * Default: 600000 (10 minutes). Configure via EMBEDDER_INIT_TIMEOUT_MS env var.
+   */
+  initTimeoutMs?: number
 }
 
 const SUPPORTED_EMBEDDING_DEVICES = [
@@ -45,6 +50,44 @@ const SUPPORTED_EMBEDDING_DEVICES = [
 
 type EmbeddingDevice = (typeof SUPPORTED_EMBEDDING_DEVICES)[number]
 const SUPPORTED_EMBEDDING_DEVICE_SET = new Set<string>(SUPPORTED_EMBEDDING_DEVICES)
+
+/** Default init timeout: 10 minutes (model download can be ~90MB) */
+const DEFAULT_INIT_TIMEOUT_MS = 10 * 60 * 1000
+
+/**
+ * Get init timeout from config or environment variable
+ */
+function getInitTimeoutMs(configValue?: number): number {
+  if (configValue !== undefined && configValue > 0) return configValue
+  const envValue = process.env['EMBEDDER_INIT_TIMEOUT_MS']
+  if (envValue) {
+    const parsed = Number.parseInt(envValue, 10)
+    if (!Number.isNaN(parsed) && parsed > 0) return parsed
+  }
+  return DEFAULT_INIT_TIMEOUT_MS
+}
+
+/**
+ * Wrap a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new EmbeddingError(`${label} timed out after ${Math.round(ms / 1000)}s`)),
+      ms
+    )
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
 
 // ============================================
 // Embedder Class
@@ -91,9 +134,16 @@ export class Embedder {
 
       console.error(`Embedder: Setting cache directory to "${this.config.cacheDir}"`)
       console.error(`Embedder: Using device preference "${device}"`)
-      console.error(`Embedder: Loading model "${this.config.modelPath}"...`)
+      const timeoutMs = getInitTimeoutMs(this.config.initTimeoutMs)
+      console.error(
+        `Embedder: Loading model "${this.config.modelPath}" (timeout: ${Math.round(timeoutMs / 1000)}s)...`
+      )
       // Use type assertion to avoid TS2590 (union type too complex with @types/jsdom)
-      this.model = await pipeline('feature-extraction', this.config.modelPath, { device })
+      this.model = await withTimeout(
+        pipeline('feature-extraction', this.config.modelPath, { device }),
+        timeoutMs,
+        'Embedder model initialization'
+      )
       console.error('Embedder: Model loaded successfully')
     } catch (error) {
       // Some ONNX caches fail with "Protobuf parsing failed". Retry once with isolated cache path.
@@ -107,7 +157,11 @@ export class Embedder {
           await mkdir(recoveryCacheDir, { recursive: true })
           env.cacheDir = recoveryCacheDir
           const device = this.resolveDevice()
-          this.model = await pipeline('feature-extraction', this.config.modelPath, { device })
+          this.model = await withTimeout(
+            pipeline('feature-extraction', this.config.modelPath, { device }),
+            getInitTimeoutMs(this.config.initTimeoutMs),
+            'Embedder model initialization (recovery)'
+          )
           console.error('Embedder: Model loaded successfully via recovery cache')
           return
         } catch (recoveryError) {
@@ -141,12 +195,13 @@ export class Embedder {
       return
     }
 
-    // Start initialization
+    // Synchronous guard: assign promise in the same tick as the check
+    // to prevent concurrent callers from both starting initialization
     console.error(
       'Embedder: First use detected. Initializing model (downloading ~90MB, may take 1-2 minutes)...'
     )
 
-    this.initPromise = this.initialize().catch((error) => {
+    const initWork = this.initialize().catch((error) => {
       // Clear initPromise on failure to allow retry
       this.initPromise = null
 
@@ -156,6 +211,8 @@ export class Embedder {
         error as Error
       )
     })
+    // Assign synchronously before any await to prevent double-init race
+    this.initPromise = initWork
 
     await this.initPromise
   }

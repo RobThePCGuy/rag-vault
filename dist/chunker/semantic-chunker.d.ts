@@ -34,7 +34,6 @@ export interface EmbedderInterface {
  * @returns true if chunk is garbage and should be removed
  */
 export declare function isGarbageChunk(text: string): boolean;
-export declare const DEFAULT_SEMANTIC_CHUNKER_CONFIG: SemanticChunkerConfig;
 /**
  * Semantic chunker using Max-Min algorithm
  *

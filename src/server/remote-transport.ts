@@ -9,18 +9,44 @@
  *   npx github:RobThePCGuy/rag-vault --remote --port 8080
  */
 
-import express, { type Request, type Response } from 'express'
 import { randomUUID } from 'node:crypto'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import express, { type Request, type Response } from 'express'
+
+/** Timeout for MCP transport connect (default: 10 seconds) */
+const MCP_CONNECT_TIMEOUT_MS = Number.parseInt(process.env['MCP_CONNECT_TIMEOUT_MS'] || '10000', 10)
+
+/**
+ * Wrap a promise with a timeout
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
+      ms
+    )
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-export interface RemoteTransportOptions {
+interface RemoteTransportOptions {
   /** Port to listen on (default: 3001, or WEB_PORT env) */
   port?: number
   /** Factory that returns a fresh McpServer per session */
@@ -119,12 +145,17 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
       res.on('close', () => {
         const sid = (transport as unknown as { sessionId?: string }).sessionId
         if (sid) sessions.delete(sid)
-        transport.close()
-        server.close()
+        Promise.all([transport.close(), server.close()]).catch((err) => {
+          console.error('Error closing session resources:', err)
+        })
       })
 
-      // biome-ignore lint/suspicious/noExplicitAny: McpServer.connect accepts Transport but TS exact-optional mismatch
-      await server.connect(transport as any)
+      await withTimeout(
+        // biome-ignore lint/suspicious/noExplicitAny: McpServer.connect accepts Transport but TS exact-optional mismatch
+        server.connect(transport as any),
+        MCP_CONNECT_TIMEOUT_MS,
+        'MCP Streamable HTTP connect'
+      )
       await transport.handleRequest(req, res, req.body)
     } else {
       res.status(400).json({
@@ -174,8 +205,12 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
       server.close()
     })
 
-    // biome-ignore lint/suspicious/noExplicitAny: McpServer.connect accepts Transport but TS exact-optional mismatch
-    await server.connect(transport as any)
+    await withTimeout(
+      // biome-ignore lint/suspicious/noExplicitAny: McpServer.connect accepts Transport but TS exact-optional mismatch
+      server.connect(transport as any),
+      MCP_CONNECT_TIMEOUT_MS,
+      'MCP SSE connect'
+    )
   })
 
   app.post('/messages', authMiddleware, async (req: Request, res: Response) => {

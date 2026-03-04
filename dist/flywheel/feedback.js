@@ -23,7 +23,7 @@ function chunkKey(ref) {
  * FeedbackStore: In-memory store for feedback events
  * Can be persisted to disk for long-term learning
  */
-export class FeedbackStore {
+class FeedbackStore {
     events = [];
     config;
     // Index structures for fast lookup

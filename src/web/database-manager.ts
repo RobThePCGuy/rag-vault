@@ -45,16 +45,18 @@ function getEnvAllowedScanRoots(): string[] {
  * Note: This is async to avoid blocking the event loop
  */
 async function readUserAllowedRoots(): Promise<string[]> {
-  if (!existsSync(ALLOWED_ROOTS_FILE)) {
-    return []
-  }
   try {
     const content = JSON.parse(await readFile(ALLOWED_ROOTS_FILE, 'utf-8'))
     if (Array.isArray(content.roots)) {
       return content.roots.map((p: string) => path.resolve(p))
     }
     return []
-  } catch {
+  } catch (error) {
+    // ENOENT is normal (no custom roots configured yet)
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return []
+    }
+    console.warn('Failed to read allowed roots file:', error)
     return []
   }
 }
@@ -337,11 +339,10 @@ export class DatabaseManager {
     const serverConfig = this.currentServer.getConfig()
     const statusResult = await this.currentServer.handleStatus()
 
-    // Safely extract text from response
-    // The return type is { content: [{ type: 'text'; text: string }] }
-    const firstContent = statusResult.content[0]
-    if (typeof firstContent.text !== 'string') {
-      throw new Error('Malformed server response: missing text in content')
+    // Safely extract text from response with bounds checking
+    const firstContent = statusResult.content?.[0]
+    if (!firstContent || typeof firstContent.text !== 'string') {
+      throw new Error('Malformed server response: missing or empty content array')
     }
 
     // Parse and validate status response with Zod
@@ -377,12 +378,16 @@ export class DatabaseManager {
     await this.assertPathAllowedForMutation('Switch path', resolvedPath)
 
     // Validate the new path exists and is a valid database
-    if (!existsSync(resolvedPath)) {
+    // Use stat() instead of existsSync() to avoid TOCTOU race conditions
+    try {
+      await stat(resolvedPath)
+    } catch {
       throw new Error(`Database path does not exist: ${resolvedPath}`)
     }
 
-    const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME)
-    if (!existsSync(lanceDbPath)) {
+    try {
+      await stat(path.join(resolvedPath, LANCEDB_DIR_NAME))
+    } catch {
       throw new Error(`Invalid database: ${resolvedPath} (missing LanceDB data)`)
     }
 
@@ -455,11 +460,17 @@ export class DatabaseManager {
 
     await this.assertPathAllowedForMutation('Create path', resolvedPath)
 
-    // Check if path already exists
-    if (existsSync(resolvedPath)) {
-      const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME)
-      if (existsSync(lanceDbPath)) {
-        throw new Error(`Database already exists at: ${resolvedPath}`)
+    // Check if database already exists (use stat to avoid TOCTOU)
+    try {
+      await stat(path.join(resolvedPath, LANCEDB_DIR_NAME))
+      throw new Error(`Database already exists at: ${resolvedPath}`)
+    } catch (error) {
+      // ENOENT means no existing database — good, proceed
+      if (
+        (error as NodeJS.ErrnoException).code !== 'ENOENT' &&
+        (error as Error).message.includes('already exists')
+      ) {
+        throw error
       }
     }
 
@@ -544,10 +555,6 @@ export class DatabaseManager {
   async getRecentDatabases(): Promise<DatabaseEntry[]> {
     await this.ensureConfigDir()
 
-    if (!existsSync(RECENT_DBS_FILE)) {
-      return []
-    }
-
     try {
       const content = await readFile(RECENT_DBS_FILE, 'utf-8')
       const jsonData = JSON.parse(content)
@@ -565,10 +572,9 @@ export class DatabaseManager {
 
       return validDatabases
     } catch (error) {
-      // Differentiate between file-not-found and other errors
+      // ENOENT is normal (no recent databases file yet)
       const nodeError = error as NodeJS.ErrnoException
       if (nodeError.code === 'ENOENT') {
-        // File was deleted between check and read - OK
         return []
       }
 
@@ -929,9 +935,8 @@ export class DatabaseManager {
    * Ensure config directory exists
    */
   private async ensureConfigDir(): Promise<void> {
-    if (!existsSync(CONFIG_DIR)) {
-      await mkdir(CONFIG_DIR, { recursive: true })
-    }
+    // Use mkdir with recursive: true (idempotent, no TOCTOU race)
+    await mkdir(CONFIG_DIR, { recursive: true })
   }
 
   /**

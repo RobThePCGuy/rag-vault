@@ -45,7 +45,7 @@ interface FlywheelConfig {
  * FeedbackStore: In-memory store for feedback events
  * Can be persisted to disk for long-term learning
  */
-export declare class FeedbackStore {
+declare class FeedbackStore {
     private events;
     private config;
     private pinnedPairs;

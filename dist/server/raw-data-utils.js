@@ -1,7 +1,8 @@
 // Raw Data Utilities for ingest_data tool
 // Handles: base64url encoding, source normalization, file saving, source extraction
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { atomicWriteFile } from '../utils/file-utils.js';
 // ============================================
 // Base64URL Encoding/Decoding
 // ============================================
@@ -137,8 +138,8 @@ export async function saveRawData(dbPath, source, content, format) {
     const filePath = generateRawDataPath(dbPath, source, format);
     // Ensure directory exists
     await mkdir(dirname(filePath), { recursive: true });
-    // Write content to file
-    await writeFile(filePath, content, 'utf-8');
+    // Write content atomically (temp file + rename pattern)
+    await atomicWriteFile(filePath, content);
     return filePath;
 }
 // ============================================

@@ -1,7 +1,7 @@
 /**
  * Parsed query structure
  */
-export interface ParsedQuery {
+interface ParsedQuery {
     /** Terms for semantic search */
     semanticTerms: string[];
     /** Exact phrases for FTS matching (quoted strings) */
@@ -54,4 +54,5 @@ export declare function matchesFilters(metadata: Record<string, string> | undefi
     field: string;
     value: string;
 }[]): boolean;
+export {};
 //# sourceMappingURL=parser.d.ts.map

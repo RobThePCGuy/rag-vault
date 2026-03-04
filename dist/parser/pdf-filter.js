@@ -171,7 +171,7 @@ function medianPairwiseSimilarity(embeddings) {
     return similarities[mid] ?? 0;
 }
 /** Default configuration for sentence-level pattern detection */
-export const DEFAULT_SENTENCE_PATTERN_CONFIG = {
+const DEFAULT_SENTENCE_PATTERN_CONFIG = {
     similarityThreshold: 0.85,
     minPages: 3,
     samplePages: 5,

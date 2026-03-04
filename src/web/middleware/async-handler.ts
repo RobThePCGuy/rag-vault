@@ -6,7 +6,7 @@ import type { NextFunction, Request, Response } from 'express'
 /**
  * Async request handler type
  */
-export type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>
+type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>
 
 /**
  * Wraps an async route handler to automatically catch errors

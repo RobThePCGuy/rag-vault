@@ -6,11 +6,15 @@ import { useUpload } from '../hooks'
 type TabType = 'file' | 'content'
 
 interface FileUploadStatus {
+  /** Stable unique ID for state updates (avoids index-based tracking) */
+  id: string
   file: File
   status: 'pending' | 'uploading' | 'success' | 'error'
   error?: string
   chunkCount?: number
 }
+
+let uploadIdCounter = 0
 
 export function UploadPage() {
   const [activeTab, setActiveTab] = useState<TabType>('file')
@@ -21,34 +25,36 @@ export function UploadPage() {
   const processQueue = useCallback(
     async (files: File[]) => {
       const queue: FileUploadStatus[] = files.map((file) => ({
+        id: `upload-${++uploadIdCounter}`,
         file,
         status: 'pending' as const,
       }))
       setUploadQueue(queue)
       setIsProcessingQueue(true)
 
-      for (let i = 0; i < queue.length; i++) {
-        const currentFile = queue[i]
-        if (!currentFile) continue
+      for (const entry of queue) {
+        const entryId = entry.id
 
         setUploadQueue((prev) =>
-          prev.map((item, idx) => (idx === i ? { ...item, status: 'uploading' } : item))
+          prev.map((item) => (item.id === entryId ? { ...item, status: 'uploading' } : item))
         )
 
         await new Promise<void>((resolve) => {
-          uploadFile(currentFile.file, {
+          uploadFile(entry.file, {
             onSuccess: (result) => {
               setUploadQueue((prev) =>
-                prev.map((item, idx) =>
-                  idx === i ? { ...item, status: 'success', chunkCount: result.chunkCount } : item
+                prev.map((item) =>
+                  item.id === entryId
+                    ? { ...item, status: 'success', chunkCount: result.chunkCount }
+                    : item
                 )
               )
               resolve()
             },
             onError: (error) => {
               setUploadQueue((prev) =>
-                prev.map((item, idx) =>
-                  idx === i ? { ...item, status: 'error', error: error.message } : item
+                prev.map((item) =>
+                  item.id === entryId ? { ...item, status: 'error', error: error.message } : item
                 )
               )
               resolve() // Continue with next file even on error
@@ -150,9 +156,9 @@ export function UploadPage() {
             )}
           </div>
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {uploadQueue.map((item, idx) => (
+            {uploadQueue.map((item) => (
               <div
-                key={`${item.file.name}-${idx}`}
+                key={item.id}
                 className="flex items-center gap-3 p-2 rounded-lg"
                 style={{ background: 'var(--ws-surface-1)' }}
               >

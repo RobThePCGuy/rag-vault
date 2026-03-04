@@ -62,6 +62,7 @@ export function useViewportChunks(rootMargin = '100px'): UseViewportChunksResult
     return () => {
       observer.disconnect()
       observerRef.current = null // Mark as unavailable
+      elementsRef.current.clear() // Release DOM references to prevent leaks
     }
   }, [rootMargin])
 

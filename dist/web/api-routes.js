@@ -24,6 +24,19 @@ function extractResultText(result) {
     return firstContent.text;
 }
 /**
+ * Safely parse JSON from a server response with descriptive error
+ * @throws RAGError if JSON parsing fails
+ */
+function safeJsonParse(text, context) {
+    try {
+        return JSON.parse(text);
+    }
+    catch (error) {
+        const preview = text.length > 200 ? `${text.slice(0, 200)}...` : text;
+        throw new RAGError(`Failed to parse server response as JSON (${context}): ${error.message}. Response preview: ${preview}`, { statusCode: 500 });
+    }
+}
+/**
  * Create API router with all endpoints
  * @param serverOrAccessor - RAGServer instance or accessor function
  */
@@ -48,7 +61,7 @@ export function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleQueryDocuments(queryInput);
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'search');
         res.json({ results: data });
     }));
     // POST /api/v1/files/upload - Upload files (multipart)
@@ -62,7 +75,7 @@ export function createApiRouter(serverOrAccessor) {
         const server = getServer();
         const absolutePath = path.resolve(file.path);
         const result = await server.handleIngestFile({ filePath: absolutePath });
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'upload');
         res.json(data);
     }));
     // POST /api/v1/data - Ingest content strings
@@ -76,14 +89,14 @@ export function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleIngestData({ content, metadata });
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'ingest-data');
         res.json(data);
     }));
     // GET /api/v1/files - List ingested files
     router.get('/files', asyncHandler(async (_req, res) => {
         const server = getServer();
         const result = await server.handleListFiles();
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'list-files');
         res.json({ files: data });
     }));
     // DELETE /api/v1/files - Delete file/source
@@ -101,14 +114,14 @@ export function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleDeleteFile(deleteInput);
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'delete-file');
         res.json(data);
     }));
     // GET /api/v1/status - System status
     router.get('/status', asyncHandler(async (_req, res) => {
         const server = getServer();
         const result = await server.handleStatus();
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'status');
         res.json(data);
     }));
     // GET /api/v1/health - Lightweight health check for load balancers
@@ -129,7 +142,7 @@ export function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleGetDocumentChunks(filePath);
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'document-chunks');
         res.json({ chunks: data });
     }));
     // GET /api/v1/chunks/related - Get related chunks for a specific chunk
@@ -157,12 +170,12 @@ export function createApiRouter(serverOrAccessor) {
         const includeExplanation = includeExplanationStr === 'true';
         const server = getServer();
         const result = await server.handleFindRelatedChunks(filePath, chunkIndex, limit, excludeSameDocument);
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'related-chunks');
         // Add explanations if requested (Explainability feature)
         if (includeExplanation) {
             // Get source chunk text for comparison
             const sourceChunkResult = await server.handleGetDocumentChunks(filePath);
-            const sourceChunks = JSON.parse(extractResultText(sourceChunkResult));
+            const sourceChunks = safeJsonParse(extractResultText(sourceChunkResult), 'source-chunks');
             const sourceChunk = sourceChunks.find((c) => c.chunkIndex === chunkIndex);
             const sourceText = sourceChunk?.text || '';
             const dataWithExplanation = data.map((chunk) => ({
@@ -195,7 +208,7 @@ export function createApiRouter(serverOrAccessor) {
         }
         const server = getServer();
         const result = await server.handleBatchFindRelatedChunks(chunks, limit);
-        const data = JSON.parse(extractResultText(result));
+        const data = safeJsonParse(extractResultText(result), 'batch-related');
         res.json({ results: data });
     }));
     // POST /api/v1/feedback - Record a feedback event

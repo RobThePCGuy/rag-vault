@@ -5,7 +5,7 @@ import type { Request, Response, Router } from 'express'
 import { Router as createRouter } from 'express'
 import { RAGError, ValidationError } from '../errors/index.js'
 import { explainChunkSimilarity } from '../explainability/index.js'
-import { getFeedbackStore, type FeedbackEventType, type ChunkRef } from '../flywheel/index.js'
+import { type ChunkRef, type FeedbackEventType, getFeedbackStore } from '../flywheel/index.js'
 import type { RAGServer } from '../server/index.js'
 import { asyncHandler } from './middleware/index.js'
 import type { ServerAccessor } from './types.js'
@@ -27,6 +27,22 @@ function extractResultText(result: { content?: Array<{ text?: string }> }): stri
     })
   }
   return firstContent.text
+}
+
+/**
+ * Safely parse JSON from a server response with descriptive error
+ * @throws RAGError if JSON parsing fails
+ */
+function safeJsonParse<T = unknown>(text: string, context: string): T {
+  try {
+    return JSON.parse(text) as T
+  } catch (error) {
+    const preview = text.length > 200 ? `${text.slice(0, 200)}...` : text
+    throw new RAGError(
+      `Failed to parse server response as JSON (${context}): ${(error as Error).message}. Response preview: ${preview}`,
+      { statusCode: 500 }
+    )
+  }
 }
 
 /**
@@ -87,7 +103,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       }
       const server = getServer()
       const result = await server.handleQueryDocuments(queryInput)
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'search')
       res.json({ results: data })
     })
   )
@@ -106,7 +122,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       const server = getServer()
       const absolutePath = path.resolve(file.path)
       const result = await server.handleIngestFile({ filePath: absolutePath })
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'upload')
       res.json(data)
     })
   )
@@ -127,7 +143,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
 
       const server = getServer()
       const result = await server.handleIngestData({ content, metadata })
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'ingest-data')
       res.json(data)
     })
   )
@@ -138,7 +154,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
     asyncHandler(async (_req: Request, res: Response) => {
       const server = getServer()
       const result = await server.handleListFiles()
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'list-files')
       res.json({ files: data })
     })
   )
@@ -162,7 +178,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
       }
       const server = getServer()
       const result = await server.handleDeleteFile(deleteInput)
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'delete-file')
       res.json(data)
     })
   )
@@ -173,7 +189,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
     asyncHandler(async (_req: Request, res: Response) => {
       const server = getServer()
       const result = await server.handleStatus()
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'status')
       res.json(data)
     })
   )
@@ -202,7 +218,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
 
       const server = getServer()
       const result = await server.handleGetDocumentChunks(filePath)
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'document-chunks')
       res.json({ chunks: data })
     })
   )
@@ -245,22 +261,26 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
         limit,
         excludeSameDocument
       )
-      const data = JSON.parse(extractResultText(result)) as Array<{
-        filePath: string
-        chunkIndex: number
-        text: string
-        score: number
-        fingerprint?: string
-      }>
+      const data = safeJsonParse<
+        Array<{
+          filePath: string
+          chunkIndex: number
+          text: string
+          score: number
+          fingerprint?: string
+        }>
+      >(extractResultText(result), 'related-chunks')
 
       // Add explanations if requested (Explainability feature)
       if (includeExplanation) {
         // Get source chunk text for comparison
         const sourceChunkResult = await server.handleGetDocumentChunks(filePath)
-        const sourceChunks = JSON.parse(extractResultText(sourceChunkResult)) as Array<{
-          chunkIndex: number
-          text: string
-        }>
+        const sourceChunks = safeJsonParse<
+          Array<{
+            chunkIndex: number
+            text: string
+          }>
+        >(extractResultText(sourceChunkResult), 'source-chunks')
         const sourceChunk = sourceChunks.find((c) => c.chunkIndex === chunkIndex)
         const sourceText = sourceChunk?.text || ''
 
@@ -309,7 +329,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
 
       const server = getServer()
       const result = await server.handleBatchFindRelatedChunks(chunks, limit)
-      const data = JSON.parse(extractResultText(result))
+      const data = safeJsonParse(extractResultText(result), 'batch-related')
       res.json({ results: data })
     })
   )

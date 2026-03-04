@@ -20,10 +20,21 @@ function tokenize(query) {
                 i++;
             }
             const phrase = query.slice(start, i);
-            if (phrase.length > 0) {
-                tokens.push({ type: 'PHRASE', value: phrase });
+            if (i < query.length) {
+                // Properly closed quote — treat as exact phrase
+                if (phrase.length > 0) {
+                    tokens.push({ type: 'PHRASE', value: phrase });
+                }
+                i++; // Skip closing quote
             }
-            i++; // Skip closing quote
+            else {
+                // Unclosed quote — treat each word as individual terms
+                for (const word of phrase.split(/\s+/)) {
+                    if (word.length > 0) {
+                        tokens.push({ type: 'TERM', value: word });
+                    }
+                }
+            }
             continue;
         }
         // Handle parentheses

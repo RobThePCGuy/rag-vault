@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 interface ResizeHandleProps {
   onResize: (delta: number) => void
@@ -7,6 +7,15 @@ interface ResizeHandleProps {
 
 export function ResizeHandle({ onResize, direction }: ResizeHandleProps) {
   const startXRef = useRef(0)
+  // Track active listeners for cleanup on unmount
+  const cleanupRef = useRef<(() => void) | null>(null)
+
+  // Cleanup listeners on unmount to prevent leaks
+  useEffect(() => {
+    return () => {
+      cleanupRef.current?.()
+    }
+  }, [])
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -24,12 +33,21 @@ export function ResizeHandle({ onResize, direction }: ResizeHandleProps) {
         document.removeEventListener('mouseup', handleMouseUp)
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
+        cleanupRef.current = null
       }
 
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
       document.body.style.cursor = 'col-resize'
       document.body.style.userSelect = 'none'
+
+      // Store cleanup function for unmount safety
+      cleanupRef.current = () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+      }
     },
     [onResize, direction]
   )

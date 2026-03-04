@@ -19,6 +19,37 @@ const SUPPORTED_EMBEDDING_DEVICES = [
     'webnn-cpu',
 ];
 const SUPPORTED_EMBEDDING_DEVICE_SET = new Set(SUPPORTED_EMBEDDING_DEVICES);
+/** Default init timeout: 10 minutes (model download can be ~90MB) */
+const DEFAULT_INIT_TIMEOUT_MS = 10 * 60 * 1000;
+/**
+ * Get init timeout from config or environment variable
+ */
+function getInitTimeoutMs(configValue) {
+    if (configValue !== undefined && configValue > 0)
+        return configValue;
+    const envValue = process.env['EMBEDDER_INIT_TIMEOUT_MS'];
+    if (envValue) {
+        const parsed = Number.parseInt(envValue, 10);
+        if (!Number.isNaN(parsed) && parsed > 0)
+            return parsed;
+    }
+    return DEFAULT_INIT_TIMEOUT_MS;
+}
+/**
+ * Wrap a promise with a timeout
+ */
+function withTimeout(promise, ms, label) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new EmbeddingError(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+        promise.then((value) => {
+            clearTimeout(timer);
+            resolve(value);
+        }, (error) => {
+            clearTimeout(timer);
+            reject(error);
+        });
+    });
+}
 // ============================================
 // Embedder Class
 // ============================================
@@ -58,9 +89,10 @@ export class Embedder {
             const device = this.resolveDevice();
             console.error(`Embedder: Setting cache directory to "${this.config.cacheDir}"`);
             console.error(`Embedder: Using device preference "${device}"`);
-            console.error(`Embedder: Loading model "${this.config.modelPath}"...`);
+            const timeoutMs = getInitTimeoutMs(this.config.initTimeoutMs);
+            console.error(`Embedder: Loading model "${this.config.modelPath}" (timeout: ${Math.round(timeoutMs / 1000)}s)...`);
             // Use type assertion to avoid TS2590 (union type too complex with @types/jsdom)
-            this.model = await pipeline('feature-extraction', this.config.modelPath, { device });
+            this.model = await withTimeout(pipeline('feature-extraction', this.config.modelPath, { device }), timeoutMs, 'Embedder model initialization');
             console.error('Embedder: Model loaded successfully');
         }
         catch (error) {
@@ -72,7 +104,7 @@ export class Embedder {
                     await mkdir(recoveryCacheDir, { recursive: true });
                     env.cacheDir = recoveryCacheDir;
                     const device = this.resolveDevice();
-                    this.model = await pipeline('feature-extraction', this.config.modelPath, { device });
+                    this.model = await withTimeout(pipeline('feature-extraction', this.config.modelPath, { device }), getInitTimeoutMs(this.config.initTimeoutMs), 'Embedder model initialization (recovery)');
                     console.error('Embedder: Model loaded successfully via recovery cache');
                     return;
                 }
@@ -97,14 +129,17 @@ export class Embedder {
             await this.initPromise;
             return;
         }
-        // Start initialization
+        // Synchronous guard: assign promise in the same tick as the check
+        // to prevent concurrent callers from both starting initialization
         console.error('Embedder: First use detected. Initializing model (downloading ~90MB, may take 1-2 minutes)...');
-        this.initPromise = this.initialize().catch((error) => {
+        const initWork = this.initialize().catch((error) => {
             // Clear initPromise on failure to allow retry
             this.initPromise = null;
             // Enhance error message with detailed guidance
             throw new EmbeddingError(`Failed to initialize embedder on first use: ${error.message}\n\nPossible causes:\n  • Network connectivity issues during model download\n  • Insufficient disk space (need ~90MB)\n  • Corrupted model cache\n\nRecommended actions:\n  1. Check your internet connection and try again\n  2. Ensure sufficient disk space is available\n  3. If problem persists, delete cache: ${this.config.cacheDir}\n  4. Then retry your query\n`, error);
         });
+        // Assign synchronously before any await to prevent double-init race
+        this.initPromise = initWork;
         await this.initPromise;
     }
     /**

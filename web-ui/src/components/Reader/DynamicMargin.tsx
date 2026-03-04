@@ -1,25 +1,11 @@
+import { useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import type { RelatedChunk, SearchResult } from '../../api/client'
 import type { Annotation, Highlight, HighlightColor } from '../../contexts/AnnotationsContext'
 import type { PinnedLink } from '../../contexts/LinksContext'
 import { Spinner } from '../ui'
 import { AnnotationNote } from './AnnotationNote'
-import type { SelectionAction } from './SelectionPopover'
 import { ZettelSlip, ZettelEmptyState, ZettelSectionHeader, ZettelLoadingSlip } from './ZettelSlip'
-
-/**
- * X-Ray Vision: Selection search result with context
- */
-export interface SelectionSearchResultDisplay {
-  action: SelectionAction
-  query: string
-  results: SearchResult[]
-  selectionContext: {
-    text: string
-    filePath: string
-    chunkIndex: number
-  }
-}
 
 interface DynamicMarginProps {
   relatedChunks: RelatedChunk[]
@@ -27,7 +13,6 @@ interface DynamicMarginProps {
   activeChunkIndex: number | null
   currentFilePath?: string
   onNavigateToChunk: (filePath: string, chunkIndex: number) => void
-  onOpenSplit?: (filePath: string, chunkIndex: number) => void
   pinnedChunkKeys?: Set<string>
   onTogglePin?: (filePath: string, chunkIndex: number) => void
   // Annotations props (optional - for Phase 5)
@@ -40,14 +25,30 @@ interface DynamicMarginProps {
   // Links props (Phase 6)
   backlinks?: PinnedLink[]
   outgoingLinks?: PinnedLink[]
-  // X-Ray Vision: Selection search results (legacy)
-  selectionSearchResults?: SelectionSearchResultDisplay | null
-  isSelectionSearchLoading?: boolean
-  onClearSelectionSearch?: () => void
-  // Auto-selection search (new Zettelkasten style)
+  // Auto-selection search (Zettelkasten style)
   autoSelectionResults?: SearchResult[]
   isAutoSearching?: boolean
   selectionText?: string | null
+}
+
+/**
+ * Sort links by relevance: same document first, labeled before unlabeled,
+ * most recent as tie-breaker.
+ */
+function sortLinksByRelevance(
+  links: PinnedLink[],
+  getFilePath: (link: PinnedLink) => string,
+  currentFilePath: string | undefined
+): PinnedLink[] {
+  return [...links].sort((a, b) => {
+    const aIsSameDoc = getFilePath(a) === currentFilePath
+    const bIsSameDoc = getFilePath(b) === currentFilePath
+    if (aIsSameDoc !== bIsSameDoc) return aIsSameDoc ? -1 : 1
+    const aHasLabel = !!a.label
+    const bHasLabel = !!b.label
+    if (aHasLabel !== bHasLabel) return aHasLabel ? -1 : 1
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
 }
 
 /**
@@ -70,9 +71,6 @@ export function DynamicMargin({
   onChangeHighlightColor,
   backlinks = [],
   outgoingLinks = [],
-  selectionSearchResults,
-  isSelectionSearchLoading = false,
-  onClearSelectionSearch,
   autoSelectionResults = [],
   isAutoSearching = false,
   selectionText = null,
@@ -84,28 +82,17 @@ export function DynamicMargin({
   const hasBacklinks = backlinks.length > 0
   const hasForwardLinks = outgoingLinks.length > 0
   const hasAutoResults = autoSelectionResults.length > 0 || isAutoSearching
-  const hasLegacyResults = selectionSearchResults || isSelectionSearchLoading
 
-  // Sort links: same document first, labeled before unlabeled, most recent as tie-breaker
-  const sortedBacklinks = [...backlinks].sort((a, b) => {
-    const aIsSameDoc = a.sourceKey.filePath === currentFilePath
-    const bIsSameDoc = b.sourceKey.filePath === currentFilePath
-    if (aIsSameDoc !== bIsSameDoc) return aIsSameDoc ? -1 : 1
-    const aHasLabel = !!a.label
-    const bHasLabel = !!b.label
-    if (aHasLabel !== bHasLabel) return aHasLabel ? -1 : 1
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  })
+  // Memoize sorted links to avoid recalculating on every render
+  const sortedBacklinks = useMemo(
+    () => sortLinksByRelevance(backlinks, (l) => l.sourceKey.filePath, currentFilePath),
+    [backlinks, currentFilePath]
+  )
 
-  const sortedOutgoing = [...outgoingLinks].sort((a, b) => {
-    const aIsSameDoc = a.targetKey.filePath === currentFilePath
-    const bIsSameDoc = b.targetKey.filePath === currentFilePath
-    if (aIsSameDoc !== bIsSameDoc) return aIsSameDoc ? -1 : 1
-    const aHasLabel = !!a.label
-    const bHasLabel = !!b.label
-    if (aHasLabel !== bHasLabel) return aHasLabel ? -1 : 1
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  })
+  const sortedOutgoing = useMemo(
+    () => sortLinksByRelevance(outgoingLinks, (l) => l.targetKey.filePath, currentFilePath),
+    [outgoingLinks, currentFilePath]
+  )
 
   return (
     <div className="h-full flex flex-col zettel-margin">
@@ -190,64 +177,6 @@ export function DynamicMargin({
               ) : (
                 <AnimatePresence mode="popLayout">
                   {autoSelectionResults.map((result, idx) => (
-                    <ZettelSlip
-                      key={`${result.filePath}:${result.chunkIndex}`}
-                      filePath={result.filePath}
-                      chunkIndex={result.chunkIndex}
-                      previewText={result.text}
-                      type="semantic"
-                      score={result.score}
-                      onNavigate={() => onNavigateToChunk(result.filePath, result.chunkIndex)}
-                      onPin={
-                        onTogglePin
-                          ? () => onTogglePin(result.filePath, result.chunkIndex)
-                          : undefined
-                      }
-                      isPinned={
-                        pinnedChunkKeys?.has(`${result.filePath}:${result.chunkIndex}`) ?? false
-                      }
-                      animationIndex={idx}
-                    />
-                  ))}
-                </AnimatePresence>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Legacy X-Ray Vision Results (keep for backwards compatibility) */}
-        {hasLegacyResults && !hasAutoResults && (
-          <div className="border-b border-stone-200/50 dark:border-stone-700/50 pb-4">
-            <div className="flex items-center justify-between mb-2">
-              <ZettelSectionHeader
-                title={
-                  selectionSearchResults
-                    ? getActionLabel(selectionSearchResults.action)
-                    : 'Searching...'
-                }
-                count={selectionSearchResults?.results.length}
-                icon={<SearchIcon className="w-3.5 h-3.5" />}
-              />
-              {onClearSelectionSearch && (
-                <button
-                  type="button"
-                  onClick={onClearSelectionSearch}
-                  className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
-                  title="Close"
-                >
-                  <CloseIcon className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-2 mt-2">
-              {isSelectionSearchLoading ? (
-                <ZettelLoadingSlip />
-              ) : selectionSearchResults?.results.length === 0 ? (
-                <ZettelEmptyState message="No results found" />
-              ) : (
-                <AnimatePresence mode="popLayout">
-                  {selectionSearchResults?.results.map((result, idx) => (
                     <ZettelSlip
                       key={`${result.filePath}:${result.chunkIndex}`}
                       filePath={result.filePath}
@@ -443,19 +372,6 @@ function OutgoingIcon({ className }: { className?: string }) {
   )
 }
 
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-      />
-    </svg>
-  )
-}
-
 function SelectionIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -467,29 +383,4 @@ function SelectionIcon({ className }: { className?: string }) {
       />
     </svg>
   )
-}
-
-function CloseIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    </svg>
-  )
-}
-
-function getActionLabel(action: SelectionAction): string {
-  switch (action) {
-    case 'related':
-      return 'Related'
-    case 'support':
-      return 'Supporting'
-    case 'contradict':
-      return 'Contradicting'
-    case 'compare':
-      return 'Compare'
-    case 'pin':
-      return 'Pinned'
-    default:
-      return 'Results'
-  }
 }

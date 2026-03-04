@@ -11,12 +11,6 @@ export { DatabaseError } from '../errors/index.js';
  */
 export declare function isValidFilePath(filePath: string): boolean;
 /**
- * Generate a content-based fingerprint for a chunk.
- * Uses SHA-256 hash of normalized text (first 16 hex chars for compactness).
- * This enables stable chunk identification across re-indexing.
- */
-export declare function generateChunkFingerprint(text: string): string;
-/**
  * Grouping mode for quality filtering
  * - 'similar': Only return the most similar group (stops at first distance jump)
  * - 'related': Include related groups (stops at second distance jump)
@@ -25,7 +19,7 @@ export type GroupingMode = 'similar' | 'related';
 /**
  * VectorStore configuration
  */
-export interface VectorStoreConfig {
+interface VectorStoreConfig {
     /** LanceDB database path */
     dbPath: string;
     /** Table name */
@@ -44,7 +38,7 @@ export interface VectorStoreConfig {
 /**
  * Document metadata
  */
-export interface DocumentMetadata {
+interface DocumentMetadata {
     /** File name */
     fileName: string;
     /** File size in bytes */
@@ -78,7 +72,7 @@ export interface VectorChunk {
 /**
  * Search result
  */
-export interface SearchResult {
+interface SearchResult {
     /** File path */
     filePath: string;
     /** Chunk index */
@@ -183,6 +177,15 @@ export declare class VectorStore {
      * @param filePath - File path (absolute)
      */
     deleteChunks(filePath: string): Promise<void>;
+    /**
+     * Delete chunks for a file, excluding a set of IDs.
+     * Used by insert-then-delete re-ingestion to remove old vectors
+     * while keeping newly inserted ones.
+     *
+     * @param filePath - File path whose old chunks should be removed
+     * @param excludeIds - Set of chunk IDs to keep (the new batch)
+     */
+    deleteChunksExcluding(filePath: string, excludeIds: Set<string>): Promise<void>;
     /**
      * Batch insert vector chunks
      *

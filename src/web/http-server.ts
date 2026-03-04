@@ -10,7 +10,6 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { fileTypeFromBuffer } from 'file-type'
 import helmet from 'helmet'
 import multer from 'multer'
-import type { RAGServer } from '../server/index.js'
 import { createApiRouter } from './api-routes.js'
 import { createConfigRouter } from './config-routes.js'
 import type { DatabaseManager } from './database-manager.js'
@@ -116,16 +115,6 @@ export async function createHttpServerWithManager(
   const app = await createHttpServerInternal(serverAccessor, config, configRouter)
 
   return app
-}
-
-/**
- * Create and configure Express app (legacy - direct RAGServer)
- */
-export async function createHttpServer(
-  ragServer: RAGServer,
-  config: HttpServerConfig
-): Promise<Express> {
-  return createHttpServerInternal(() => ragServer, config)
 }
 
 /**

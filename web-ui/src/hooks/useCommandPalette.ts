@@ -12,7 +12,7 @@ export interface CommandAction {
   onSelect: () => void
 }
 
-export interface UseCommandPaletteReturn {
+interface UseCommandPaletteReturn {
   isOpen: boolean
   open: () => void
   close: () => void

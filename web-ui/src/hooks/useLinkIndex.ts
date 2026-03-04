@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getDocumentChunks, listFiles } from '../api/client'
 import type { LinkIndex, ScanDocument } from '../utils/link-index-builder'
 
-export interface UseLinkIndexResult {
+interface UseLinkIndexResult {
   index: LinkIndex | null
   isScanning: boolean
   error: Error | null

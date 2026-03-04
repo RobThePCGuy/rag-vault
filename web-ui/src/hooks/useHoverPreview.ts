@@ -11,7 +11,7 @@ interface HoverPreviewState {
   targetRef: string | null
 }
 
-export interface UseHoverPreviewReturn {
+interface UseHoverPreviewReturn {
   state: HoverPreviewState
   onHoverStart: (targetRef: string, rect: DOMRect) => void
   onHoverEnd: () => void

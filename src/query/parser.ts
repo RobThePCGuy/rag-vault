@@ -4,7 +4,7 @@
 /**
  * Parsed query structure
  */
-export interface ParsedQuery {
+interface ParsedQuery {
   /** Terms for semantic search */
   semanticTerms: string[]
   /** Exact phrases for FTS matching (quoted strings) */
@@ -52,10 +52,20 @@ function tokenize(query: string): Token[] {
         i++
       }
       const phrase = query.slice(start, i)
-      if (phrase.length > 0) {
-        tokens.push({ type: 'PHRASE', value: phrase })
+      if (i < query.length) {
+        // Properly closed quote — treat as exact phrase
+        if (phrase.length > 0) {
+          tokens.push({ type: 'PHRASE', value: phrase })
+        }
+        i++ // Skip closing quote
+      } else {
+        // Unclosed quote — treat each word as individual terms
+        for (const word of phrase.split(/\s+/)) {
+          if (word.length > 0) {
+            tokens.push({ type: 'TERM', value: word })
+          }
+        }
       }
-      i++ // Skip closing quote
       continue
     }
 
@@ -216,29 +226,6 @@ export function toSemanticQuery(parsed: ParsedQuery): string {
   })
 
   return filtered.join(' ')
-}
-
-/**
- * Convert parsed query to a full-text search query string
- * Uses FTS-compatible syntax for phrase matching
- */
-export function toFtsQuery(parsed: ParsedQuery): string {
-  const parts: string[] = []
-
-  // Add phrases with quotes for exact match
-  for (const phrase of parsed.phrases) {
-    parts.push(`"${phrase}"`)
-  }
-
-  // Add regular terms
-  for (const term of parsed.semanticTerms) {
-    // Skip if term is already in a phrase
-    if (!parsed.phrases.some((p) => p.includes(term))) {
-      parts.push(term)
-    }
-  }
-
-  return parts.join(' ')
 }
 
 /**

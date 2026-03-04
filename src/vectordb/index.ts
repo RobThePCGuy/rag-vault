@@ -1,7 +1,7 @@
 // VectorStore implementation with LanceDB integration
 
 import { createHash } from 'node:crypto'
-import { type Connection, Index, type Table, connect } from '@lancedb/lancedb'
+import { type Connection, connect, Index, type Table } from '@lancedb/lancedb'
 import { DatabaseError } from '../errors/index.js'
 
 // Re-export error class for backwards compatibility
@@ -18,7 +18,8 @@ function parseEnvNumber(envVar: string, defaultValue: number): number {
   const value = process.env[envVar]
   if (!value) return defaultValue
   const parsed = Number.parseFloat(value)
-  return Number.isNaN(parsed) ? defaultValue : parsed
+  if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return defaultValue
+  return parsed
 }
 
 /**
@@ -28,7 +29,8 @@ function parseEnvInt(envVar: string, defaultValue: number): number {
   const value = process.env[envVar]
   if (!value) return defaultValue
   const parsed = Number.parseInt(value, 10)
-  return Number.isNaN(parsed) ? defaultValue : parsed
+  if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return defaultValue
+  return parsed
 }
 
 /**
@@ -98,6 +100,34 @@ const CUSTOM_METADATA_ALL_FIELDS = '__all__'
 const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/
 
 /**
+ * Retry a read-only async operation with exponential backoff.
+ * Used for transient disk/IO errors on VectorStore reads.
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  label: string,
+  maxAttempts = 3,
+  baseDelayMs = 100
+): Promise<T> {
+  let lastError: Error | undefined
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error as Error
+      if (attempt < maxAttempts) {
+        const delayMs = baseDelayMs * 2 ** (attempt - 1)
+        console.warn(
+          `${label}: attempt ${attempt}/${maxAttempts} failed (${lastError.message}), retrying in ${delayMs}ms...`
+        )
+        await new Promise<void>((resolve) => setTimeout(resolve, delayMs))
+      }
+    }
+  }
+  throw lastError
+}
+
+/**
  * Validate file path to prevent SQL injection and path traversal attacks.
  * @param filePath - The file path to validate
  * @returns true if path is safe for use in queries
@@ -135,7 +165,7 @@ function normalizeTextForFingerprint(text: string): string {
  * Uses SHA-256 hash of normalized text (first 16 hex chars for compactness).
  * This enables stable chunk identification across re-indexing.
  */
-export function generateChunkFingerprint(text: string): string {
+function generateChunkFingerprint(text: string): string {
   const normalized = normalizeTextForFingerprint(text)
   const hash = createHash('sha256').update(normalized, 'utf8').digest('hex')
   // Use first 16 characters (64 bits) - sufficient for practical uniqueness
@@ -156,7 +186,7 @@ export type GroupingMode = 'similar' | 'related'
 /**
  * VectorStore configuration
  */
-export interface VectorStoreConfig {
+interface VectorStoreConfig {
   /** LanceDB database path */
   dbPath: string
   /** Table name */
@@ -176,7 +206,7 @@ export interface VectorStoreConfig {
 /**
  * Document metadata
  */
-export interface DocumentMetadata {
+interface DocumentMetadata {
   /** File name */
   fileName: string
   /** File size in bytes */
@@ -212,7 +242,7 @@ export interface VectorChunk {
 /**
  * Search result
  */
-export interface SearchResult {
+interface SearchResult {
   /** File path */
   filePath: string
   /** Chunk index */
@@ -688,6 +718,60 @@ export class VectorStore {
   }
 
   /**
+   * Delete chunks for a file, excluding a set of IDs.
+   * Used by insert-then-delete re-ingestion to remove old vectors
+   * while keeping newly inserted ones.
+   *
+   * @param filePath - File path whose old chunks should be removed
+   * @param excludeIds - Set of chunk IDs to keep (the new batch)
+   */
+  async deleteChunksExcluding(filePath: string, excludeIds: Set<string>): Promise<void> {
+    if (!this.table || excludeIds.size === 0) {
+      return
+    }
+
+    if (!isValidFilePath(filePath)) {
+      throw new DatabaseError('Invalid file path: contains disallowed characters or patterns')
+    }
+
+    const escapedFilePath = filePath.replace(/'/g, "''")
+
+    try {
+      // Query existing chunks for this file to find old IDs
+      const existing = await this.table
+        .query()
+        .where(`\`filePath\` = '${escapedFilePath}'`)
+        .select(['id'])
+        .toArray()
+
+      const oldIds = existing.map((row) => row.id as string).filter((id) => !excludeIds.has(id))
+
+      if (oldIds.length === 0) {
+        return
+      }
+
+      // Delete old chunks by ID
+      const idList = oldIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(', ')
+      await this.table.delete(`\`id\` IN (${idList})`)
+      console.error(`VectorStore: Removed ${oldIds.length} old chunks for "${filePath}"`)
+
+      await this.rebuildFtsIndex()
+    } catch (error) {
+      // Non-fatal: temporary duplicates are acceptable
+      const errorMessage = (error as Error).message.toLowerCase()
+      const isIgnorable = DELETE_IGNORABLE_PATTERNS.some((pattern) =>
+        errorMessage.includes(pattern)
+      )
+      if (!isIgnorable) {
+        throw new DatabaseError(
+          `Failed to clean up old chunks for file: ${filePath}`,
+          error as Error
+        )
+      }
+    }
+  }
+
+  /**
    * Batch insert vector chunks
    *
    * @param chunks - Array of vector chunks
@@ -892,63 +976,71 @@ export class VectorStore {
       throw new DatabaseError(`Invalid limit: expected 1-20, got ${limit}`)
     }
 
-    try {
-      // Step 1: Semantic (vector) search - always the primary search
-      const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER
-      // Assumes normalized embeddings so dot behaves like cosine distance (lower is better, [0,2]).
-      let query = this.table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit)
+    const table = this.table
+    return withRetry(async () => {
+      try {
+        // Step 1: Semantic (vector) search - always the primary search
+        const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER
+        // Assumes normalized embeddings so dot behaves like cosine distance (lower is better, [0,2]).
+        let query = table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit)
 
-      // Apply distance threshold at query level
-      if (this.config.maxDistance !== undefined) {
-        query = query.distanceRange(undefined, this.config.maxDistance)
-      }
-
-      const vectorResults = await query.toArray()
-
-      // Convert to SearchResult format with type validation
-      let results: SearchResult[] = vectorResults.map((result) => toSearchResult(result))
-
-      // Step 2: Apply grouping filter on vector distances (before keyword boost)
-      // Grouping is meaningful only on semantic distances, not after keyword boost
-      if (this.config.grouping && results.length > 1) {
-        results = this.applyGrouping(results, this.config.grouping)
-      }
-
-      // Step 3: Apply keyword boost if enabled (with circuit breaker)
-      const hybridWeight = this.getHybridWeight()
-      if (this.shouldAttemptFts() && queryText && queryText.trim().length > 0 && hybridWeight > 0) {
-        try {
-          // Get unique filePaths from vector results to filter FTS search
-          const uniqueFilePaths = [...new Set(results.map((r) => r.filePath))]
-
-          // Build WHERE clause with IN for targeted FTS search
-          // Use backticks for column name (required for camelCase in LanceDB)
-          const escapedPaths = uniqueFilePaths.map((p) => `'${p.replace(/'/g, "''")}'`)
-          const whereClause = `\`filePath\` IN (${escapedPaths.join(', ')})`
-
-          const ftsResults = await this.table
-            .search(queryText, 'fts', 'text')
-            .where(whereClause)
-            .select(['filePath', 'chunkIndex', 'text', 'metadata', '_score'])
-            .limit(results.length * 2) // Enough to cover all vector results
-            .toArray()
-
-          results = this.applyKeywordBoost(results, ftsResults, hybridWeight)
-
-          // FTS succeeded - reset circuit breaker
-          this.recordFtsSuccess()
-        } catch (ftsError) {
-          // Record failure for circuit breaker (will auto-recover after cooldown)
-          this.recordFtsFailure(ftsError as Error)
-          // Continue with vector-only results
+        // Apply distance threshold at query level
+        if (this.config.maxDistance !== undefined) {
+          query = query.distanceRange(undefined, this.config.maxDistance)
         }
-      }
 
-      // Return top results after all filtering and boosting
-      return results.slice(0, limit)
-    } catch (error) {
-      throw new DatabaseError('Failed to search vectors', error as Error)
-    }
+        const vectorResults = await query.toArray()
+
+        // Convert to SearchResult format with type validation
+        let results: SearchResult[] = vectorResults.map((result) => toSearchResult(result))
+
+        // Step 2: Apply grouping filter on vector distances (before keyword boost)
+        // Grouping is meaningful only on semantic distances, not after keyword boost
+        if (this.config.grouping && results.length > 1) {
+          results = this.applyGrouping(results, this.config.grouping)
+        }
+
+        // Step 3: Apply keyword boost if enabled (with circuit breaker)
+        const hybridWeight = this.getHybridWeight()
+        if (
+          this.shouldAttemptFts() &&
+          queryText &&
+          queryText.trim().length > 0 &&
+          hybridWeight > 0
+        ) {
+          try {
+            // Get unique filePaths from vector results to filter FTS search
+            const uniqueFilePaths = [...new Set(results.map((r) => r.filePath))]
+
+            // Build WHERE clause with IN for targeted FTS search
+            // Use backticks for column name (required for camelCase in LanceDB)
+            const escapedPaths = uniqueFilePaths.map((p) => `'${p.replace(/'/g, "''")}'`)
+            const whereClause = `\`filePath\` IN (${escapedPaths.join(', ')})`
+
+            const ftsResults = await table
+              .search(queryText, 'fts', 'text')
+              .where(whereClause)
+              .select(['filePath', 'chunkIndex', 'text', 'metadata', '_score'])
+              .limit(results.length * 2) // Enough to cover all vector results
+              .toArray()
+
+            results = this.applyKeywordBoost(results, ftsResults, hybridWeight)
+
+            // FTS succeeded - reset circuit breaker
+            this.recordFtsSuccess()
+          } catch (ftsError) {
+            // Record failure for circuit breaker (will auto-recover after cooldown)
+            this.recordFtsFailure(ftsError as Error)
+            // Continue with vector-only results
+          }
+        }
+
+        // Return top results after all filtering and boosting
+        return results.slice(0, limit)
+      } catch (error) {
+        throw new DatabaseError('Failed to search vectors', error as Error)
+      }
+    }, 'VectorStore.search')
   }
 
   /**
@@ -1022,58 +1114,61 @@ export class VectorStore {
       return [] // Return empty array if table doesn't exist
     }
 
-    try {
-      // Retrieve all records - LanceDB doesn't support GROUP BY aggregation,
-      // so we must fetch records and group in memory
-      // TODO(perf): Consider caching file list or using incremental updates for very large datasets
-      const allRecords = await this.table.query().toArray()
+    const table = this.table
+    return withRetry(async () => {
+      try {
+        // Retrieve all records - LanceDB doesn't support GROUP BY aggregation,
+        // so we must fetch records and group in memory
+        // TODO(perf): Consider caching file list or using incremental updates for very large datasets
+        const allRecords = await table.query().toArray()
 
-      // Group by file path
-      const fileMap = new Map<string, { chunkCount: number; timestamp: string }>()
+        // Group by file path
+        const fileMap = new Map<string, { chunkCount: number; timestamp: string }>()
 
-      for (const record of allRecords) {
-        const filePath = record.filePath as string
-        const timestamp = record.timestamp as string
+        for (const record of allRecords) {
+          const filePath = record.filePath as string
+          const timestamp = record.timestamp as string
 
-        if (fileMap.has(filePath)) {
-          const fileInfo = fileMap.get(filePath)
-          if (fileInfo) {
-            fileInfo.chunkCount += 1
-            // Keep most recent timestamp
-            if (timestamp > fileInfo.timestamp) {
-              fileInfo.timestamp = timestamp
+          if (fileMap.has(filePath)) {
+            const fileInfo = fileMap.get(filePath)
+            if (fileInfo) {
+              fileInfo.chunkCount += 1
+              // Keep most recent timestamp
+              if (timestamp > fileInfo.timestamp) {
+                fileInfo.timestamp = timestamp
+              }
             }
+          } else {
+            fileMap.set(filePath, { chunkCount: 1, timestamp })
           }
-        } else {
-          fileMap.set(filePath, { chunkCount: 1, timestamp })
         }
+
+        // Convert Map to array of objects
+        let results = Array.from(fileMap.entries()).map(([filePath, info]) => ({
+          filePath,
+          chunkCount: info.chunkCount,
+          timestamp: info.timestamp,
+        }))
+
+        // Sort by timestamp descending (most recent first)
+        results.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+
+        // Apply pagination if provided
+        const offset = options?.offset ?? 0
+        const limit = options?.limit
+
+        if (offset > 0) {
+          results = results.slice(offset)
+        }
+        if (limit !== undefined && limit > 0) {
+          results = results.slice(0, limit)
+        }
+
+        return results
+      } catch (error) {
+        throw new DatabaseError('Failed to list files', error as Error)
       }
-
-      // Convert Map to array of objects
-      let results = Array.from(fileMap.entries()).map(([filePath, info]) => ({
-        filePath,
-        chunkCount: info.chunkCount,
-        timestamp: info.timestamp,
-      }))
-
-      // Sort by timestamp descending (most recent first)
-      results.sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-
-      // Apply pagination if provided
-      const offset = options?.offset ?? 0
-      const limit = options?.limit
-
-      if (offset > 0) {
-        results = results.slice(offset)
-      }
-      if (limit !== undefined && limit > 0) {
-        results = results.slice(0, limit)
-      }
-
-      return results
-    } catch (error) {
-      throw new DatabaseError('Failed to list files', error as Error)
-    }
+    }, 'VectorStore.listFiles')
   }
 
   /**
@@ -1141,31 +1236,32 @@ export class VectorStore {
       throw new DatabaseError(`Invalid file path: contains disallowed characters or patterns`)
     }
 
-    try {
-      const escapedFilePath = filePath.replace(/'/g, "''")
-      const results = await this.table
-        .query()
-        .where(`\`filePath\` = '${escapedFilePath}'`)
-        .toArray()
+    const table = this.table
+    return withRetry(async () => {
+      try {
+        const escapedFilePath = filePath.replace(/'/g, "''")
+        const results = await table.query().where(`\`filePath\` = '${escapedFilePath}'`).toArray()
 
-      // Convert to SearchResult format and sort by chunkIndex
-      const chunks: SearchResult[] = results.map((record) => {
-        const text = record.text as string
-        return {
-          filePath: record.filePath as string,
-          chunkIndex: record.chunkIndex as number,
-          text,
-          score: 0, // No distance score for direct retrieval
-          metadata: record.metadata as DocumentMetadata,
-          // Include fingerprint - generate if not stored (backwards compatibility)
-          fingerprint: (record.fingerprint as string | undefined) || generateChunkFingerprint(text),
-        }
-      })
+        // Convert to SearchResult format and sort by chunkIndex
+        const chunks: SearchResult[] = results.map((record) => {
+          const text = record.text as string
+          return {
+            filePath: record.filePath as string,
+            chunkIndex: record.chunkIndex as number,
+            text,
+            score: 0, // No distance score for direct retrieval
+            metadata: record.metadata as DocumentMetadata,
+            // Include fingerprint - generate if not stored (backwards compatibility)
+            fingerprint:
+              (record.fingerprint as string | undefined) || generateChunkFingerprint(text),
+          }
+        })
 
-      return chunks.sort((a, b) => a.chunkIndex - b.chunkIndex)
-    } catch (error) {
-      throw new DatabaseError(`Failed to get document chunks for: ${filePath}`, error as Error)
-    }
+        return chunks.sort((a, b) => a.chunkIndex - b.chunkIndex)
+      } catch (error) {
+        throw new DatabaseError(`Failed to get document chunks for: ${filePath}`, error as Error)
+      }
+    }, 'VectorStore.getDocumentChunks')
   }
 
   /**
@@ -1192,71 +1288,74 @@ export class VectorStore {
       throw new DatabaseError(`Invalid file path: contains disallowed characters or patterns`)
     }
 
-    try {
-      // First, fetch the source chunk to get its vector
-      const escapedFilePath = filePath.replace(/'/g, "''")
-      const sourceResults = await this.table
-        .query()
-        .where(`\`filePath\` = '${escapedFilePath}' AND \`chunkIndex\` = ${chunkIndex}`)
-        .toArray()
+    const table = this.table
+    return withRetry(async () => {
+      try {
+        // First, fetch the source chunk to get its vector
+        const escapedFilePath = filePath.replace(/'/g, "''")
+        const sourceResults = await table
+          .query()
+          .where(`\`filePath\` = '${escapedFilePath}' AND \`chunkIndex\` = ${chunkIndex}`)
+          .toArray()
 
-      if (sourceResults.length === 0) {
-        return []
-      }
-
-      const sourceChunk = sourceResults[0]
-      const rawVector = sourceChunk?.vector
-
-      // LanceDB may return vectors as Arrow Vector or Float32Array, not plain Array
-      // Convert to number[] for compatibility
-      let sourceVector: number[] | undefined
-      if (rawVector) {
-        if (Array.isArray(rawVector)) {
-          sourceVector = rawVector
-        } else if (typeof rawVector === 'object' && 'length' in rawVector) {
-          // Handle Arrow Vector, Float32Array, or other array-like objects
-          sourceVector = Array.from(rawVector as ArrayLike<number>)
+        if (sourceResults.length === 0) {
+          return []
         }
+
+        const sourceChunk = sourceResults[0]
+        const rawVector = sourceChunk?.vector
+
+        // LanceDB may return vectors as Arrow Vector or Float32Array, not plain Array
+        // Convert to number[] for compatibility
+        let sourceVector: number[] | undefined
+        if (rawVector) {
+          if (Array.isArray(rawVector)) {
+            sourceVector = rawVector
+          } else if (typeof rawVector === 'object' && 'length' in rawVector) {
+            // Handle Arrow Vector, Float32Array, or other array-like objects
+            sourceVector = Array.from(rawVector as ArrayLike<number>)
+          }
+        }
+
+        if (!sourceVector || sourceVector.length === 0) {
+          // Chunk exists but has no embedding (e.g., upload timed out mid-process)
+          // Return empty results instead of throwing - allows batch operations to continue
+          console.warn(`Chunk ${filePath}:${chunkIndex} has no valid vector (possibly corrupted)`)
+          return []
+        }
+
+        // Search for similar chunks using the source vector
+        // Request more candidates to allow for filtering
+        const candidateLimit = excludeSameDocument ? limit * 3 : limit + 1
+        let query = table.vectorSearch(sourceVector).distanceType('dot').limit(candidateLimit)
+
+        // Apply distance threshold if configured
+        if (this.config.maxDistance !== undefined) {
+          query = query.distanceRange(undefined, this.config.maxDistance)
+        }
+
+        const vectorResults = await query.toArray()
+
+        // Convert to SearchResult format with type validation
+        let results: SearchResult[] = vectorResults.map((result) => toSearchResult(result))
+
+        // Filter out the source chunk itself
+        results = results.filter((r) => !(r.filePath === filePath && r.chunkIndex === chunkIndex))
+
+        // Optionally filter out same-document chunks
+        if (excludeSameDocument) {
+          results = results.filter((r) => r.filePath !== filePath)
+        }
+
+        return results.slice(0, limit)
+      } catch (error) {
+        const cause = error instanceof Error ? error.message : String(error)
+        throw new DatabaseError(
+          `Failed to find related chunks for: ${filePath}:${chunkIndex}: ${cause}`,
+          error as Error
+        )
       }
-
-      if (!sourceVector || sourceVector.length === 0) {
-        // Chunk exists but has no embedding (e.g., upload timed out mid-process)
-        // Return empty results instead of throwing - allows batch operations to continue
-        console.warn(`Chunk ${filePath}:${chunkIndex} has no valid vector (possibly corrupted)`)
-        return []
-      }
-
-      // Search for similar chunks using the source vector
-      // Request more candidates to allow for filtering
-      const candidateLimit = excludeSameDocument ? limit * 3 : limit + 1
-      let query = this.table.vectorSearch(sourceVector).distanceType('dot').limit(candidateLimit)
-
-      // Apply distance threshold if configured
-      if (this.config.maxDistance !== undefined) {
-        query = query.distanceRange(undefined, this.config.maxDistance)
-      }
-
-      const vectorResults = await query.toArray()
-
-      // Convert to SearchResult format with type validation
-      let results: SearchResult[] = vectorResults.map((result) => toSearchResult(result))
-
-      // Filter out the source chunk itself
-      results = results.filter((r) => !(r.filePath === filePath && r.chunkIndex === chunkIndex))
-
-      // Optionally filter out same-document chunks
-      if (excludeSameDocument) {
-        results = results.filter((r) => r.filePath !== filePath)
-      }
-
-      return results.slice(0, limit)
-    } catch (error) {
-      const cause = error instanceof Error ? error.message : String(error)
-      throw new DatabaseError(
-        `Failed to find related chunks for: ${filePath}:${chunkIndex}: ${cause}`,
-        error as Error
-      )
-    }
+    }, 'VectorStore.findRelatedChunks')
   }
 
   /**

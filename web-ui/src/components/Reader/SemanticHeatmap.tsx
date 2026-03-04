@@ -96,18 +96,16 @@ export function SemanticHeatmap({ text, connections, onConnectionClick }: Semant
 
   return (
     <span className="whitespace-pre-wrap">
-      {segments.map((segment, idx) => {
+      {segments.map((segment) => {
         if (!segment.connection) {
-          return (
-            <Fragment key={`text-${idx}-${segment.text.slice(0, 10)}`}>{segment.text}</Fragment>
-          )
+          return <Fragment key={`text-${segment.start}`}>{segment.text}</Fragment>
         }
 
         const intensity = getUnderlineIntensity(segment.connection.documentCount)
 
         return (
           <span
-            key={`conn-${segment.connection.phrase}-${idx}`}
+            key={`conn-${segment.start}`}
             className={`underline underline-offset-2 ${intensity} cursor-help transition-all hover:decoration-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20`}
             title={`Connected to ${segment.connection.documentCount} document${segment.connection.documentCount > 1 ? 's' : ''}`}
             onClick={() => onConnectionClick?.(segment.connection!.phrase)}

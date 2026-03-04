@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  matchesFilters,
-  parseQuery,
-  shouldExclude,
-  toFtsQuery,
-  toSemanticQuery,
-} from '../parser.js'
+import { matchesFilters, parseQuery, shouldExclude, toSemanticQuery } from '../parser.js'
 
 describe('Query Parser', () => {
   describe('parseQuery', () => {
@@ -107,18 +101,6 @@ describe('Query Parser', () => {
       const semantic = toSemanticQuery(parsed)
       expect(semantic).toContain('exact phrase')
       expect(semantic).toContain('other')
-    })
-  })
-
-  describe('toFtsQuery', () => {
-    it('quotes phrases', () => {
-      const parsed = parseQuery('"exact phrase"')
-      expect(toFtsQuery(parsed)).toBe('"exact phrase"')
-    })
-
-    it('includes terms not in phrases', () => {
-      const parsed = parseQuery('term1 term2')
-      expect(toFtsQuery(parsed)).toBe('term1 term2')
     })
   })
 

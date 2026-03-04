@@ -243,6 +243,7 @@ export function UnifiedTextRenderer({
           const highlight = highlightMap.get(annotationType.highlightId)
           return (
             <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: stable positional text segments
               key={`highlight-${annotationType.highlightId}-${index}`}
               className={classNames.join(' ')}
               onClick={(e) => {
@@ -272,6 +273,7 @@ export function UnifiedTextRenderer({
         if (searchCurrentType || searchMatchType) {
           return (
             <span
+              // biome-ignore lint/suspicious/noArrayIndexKey: stable positional text segments
               key={`search-${index}-${segment.text.length}`}
               className={classNames.join(' ')}
               data-search-match="true"
@@ -282,6 +284,7 @@ export function UnifiedTextRenderer({
         }
 
         // Plain text segment
+        // biome-ignore lint/suspicious/noArrayIndexKey: stable positional text segments
         return <span key={`text-${index}-${segment.text.length}`}>{segment.text}</span>
       })}
     </span>

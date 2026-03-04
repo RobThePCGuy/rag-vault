@@ -1,8 +1,9 @@
 // Raw Data Utilities for ingest_data tool
 // Handles: base64url encoding, source normalization, file saving, source extraction
 
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { atomicWriteFile } from '../utils/file-utils.js'
 
 // ============================================
 // Base64URL Encoding/Decoding
@@ -17,7 +18,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
  * @param str - String to encode
  * @returns URL-safe base64 encoded string
  */
-export function encodeBase64Url(str: string): string {
+function encodeBase64Url(str: string): string {
   return Buffer.from(str, 'utf-8')
     .toString('base64')
     .replace(/\+/g, '-')
@@ -31,7 +32,7 @@ export function encodeBase64Url(str: string): string {
  * @param base64url - URL-safe base64 encoded string
  * @returns Decoded string
  */
-export function decodeBase64Url(base64url: string): string {
+function decodeBase64Url(base64url: string): string {
   // Convert base64url to standard base64
   let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/')
 
@@ -61,7 +62,7 @@ const BLOCKED_PROTOCOLS = ['javascript:', 'vbscript:', 'data:'] as const
  * @param source - Source identifier to validate
  * @throws Error if the protocol is blocked
  */
-export function validateSourceProtocol(source: string): void {
+function validateSourceProtocol(source: string): void {
   try {
     const parsed = new URL(source)
     if (BLOCKED_PROTOCOLS.includes(parsed.protocol as (typeof BLOCKED_PROTOCOLS)[number])) {
@@ -86,7 +87,7 @@ export function validateSourceProtocol(source: string): void {
  * @returns Normalized source
  * @throws Error if the source uses a disallowed protocol
  */
-export function normalizeSource(source: string): string {
+function normalizeSource(source: string): string {
   // Validate protocol before processing
   validateSourceProtocol(source)
 
@@ -123,7 +124,7 @@ export type ContentFormat = 'text' | 'html' | 'markdown'
  * @param dbPath - LanceDB database path
  * @returns Raw-data directory path
  */
-export function getRawDataDir(dbPath: string): string {
+function getRawDataDir(dbPath: string): string {
   return join(dbPath, 'raw-data')
 }
 
@@ -173,8 +174,8 @@ export async function saveRawData(
   // Ensure directory exists
   await mkdir(dirname(filePath), { recursive: true })
 
-  // Write content to file
-  await writeFile(filePath, content, 'utf-8')
+  // Write content atomically (temp file + rename pattern)
+  await atomicWriteFile(filePath, content)
 
   return filePath
 }

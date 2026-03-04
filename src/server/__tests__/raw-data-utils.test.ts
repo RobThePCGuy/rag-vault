@@ -5,16 +5,11 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
-  encodeBase64Url,
-  decodeBase64Url,
-  normalizeSource,
-  validateSourceProtocol,
   generateRawDataPath,
   saveRawData,
   isRawDataPath,
   isManagedRawDataPath,
   extractSourceFromPath,
-  getRawDataDir,
 } from '../raw-data-utils.js'
 
 const TEST_DIR = './tmp/test-raw-data-utils'
@@ -29,150 +24,6 @@ describe('Raw Data Utils', () => {
     if (existsSync(TEST_DIR)) {
       await rm(TEST_DIR, { recursive: true })
     }
-  })
-
-  describe('encodeBase64Url', () => {
-    it('should encode string to URL-safe base64', () => {
-      const input = 'https://example.com/path'
-      const encoded = encodeBase64Url(input)
-
-      // Should not contain +, /, or =
-      expect(encoded).not.toMatch(/[+/=]/)
-    })
-
-    it('should handle special characters', () => {
-      const input = 'https://example.com/path?query=value&foo=bar'
-      const encoded = encodeBase64Url(input)
-
-      expect(encoded).not.toMatch(/[+/=]/)
-    })
-
-    it('should handle unicode characters', () => {
-      const input = 'https://example.com/日本語'
-      const encoded = encodeBase64Url(input)
-
-      expect(encoded).not.toMatch(/[+/=]/)
-    })
-
-    it('should handle empty string', () => {
-      const encoded = encodeBase64Url('')
-      expect(encoded).toBe('')
-    })
-  })
-
-  describe('decodeBase64Url', () => {
-    it('should decode URL-safe base64 back to original', () => {
-      const original = 'https://example.com/path'
-      const encoded = encodeBase64Url(original)
-      const decoded = decodeBase64Url(encoded)
-
-      expect(decoded).toBe(original)
-    })
-
-    it('should handle special characters roundtrip', () => {
-      const original = 'https://example.com/path?query=value&foo=bar'
-      const encoded = encodeBase64Url(original)
-      const decoded = decodeBase64Url(encoded)
-
-      expect(decoded).toBe(original)
-    })
-
-    it('should handle unicode roundtrip', () => {
-      const original = 'https://example.com/日本語'
-      const encoded = encodeBase64Url(original)
-      const decoded = decodeBase64Url(encoded)
-
-      expect(decoded).toBe(original)
-    })
-  })
-
-  describe('validateSourceProtocol', () => {
-    it('should allow http protocol', () => {
-      expect(() => validateSourceProtocol('http://example.com')).not.toThrow()
-    })
-
-    it('should allow https protocol', () => {
-      expect(() => validateSourceProtocol('https://example.com')).not.toThrow()
-    })
-
-    it('should allow clipboard protocol', () => {
-      expect(() => validateSourceProtocol('clipboard://12345')).not.toThrow()
-    })
-
-    it('should allow chat protocol', () => {
-      expect(() => validateSourceProtocol('chat://session-123')).not.toThrow()
-    })
-
-    it('should allow file protocol', () => {
-      expect(() => validateSourceProtocol('file:///path/to/file')).not.toThrow()
-    })
-
-    it('should block javascript protocol', () => {
-      expect(() => validateSourceProtocol('javascript:alert(1)')).toThrow(
-        'Blocked protocol: javascript:'
-      )
-    })
-
-    it('should block vbscript protocol', () => {
-      expect(() => validateSourceProtocol('vbscript:msgbox(1)')).toThrow(
-        'Blocked protocol: vbscript:'
-      )
-    })
-
-    it('should block data protocol', () => {
-      expect(() => validateSourceProtocol('data:text/html,<script>alert(1)</script>')).toThrow(
-        'Blocked protocol: data:'
-      )
-    })
-
-    it('should allow non-URL identifiers', () => {
-      expect(() => validateSourceProtocol('simple-identifier')).not.toThrow()
-    })
-
-    it('should allow custom protocols not in blocked list', () => {
-      expect(() => validateSourceProtocol('custom://something')).not.toThrow()
-    })
-  })
-
-  describe('normalizeSource', () => {
-    it('should normalize HTTP URLs by removing query and fragment', () => {
-      const source = 'https://example.com/path?query=value#section'
-      const normalized = normalizeSource(source)
-
-      expect(normalized).toBe('https://example.com/path')
-    })
-
-    it('should preserve origin and pathname for HTTP URLs', () => {
-      const source = 'https://api.example.com:8080/v1/resource'
-      const normalized = normalizeSource(source)
-
-      expect(normalized).toBe('https://api.example.com:8080/v1/resource')
-    })
-
-    it('should return non-HTTP URLs as-is', () => {
-      const source = 'clipboard://abc123'
-      const normalized = normalizeSource(source)
-
-      expect(normalized).toBe(source)
-    })
-
-    it('should return non-URL identifiers as-is', () => {
-      const source = 'simple-identifier'
-      const normalized = normalizeSource(source)
-
-      expect(normalized).toBe(source)
-    })
-
-    it('should throw for blocked protocols', () => {
-      expect(() => normalizeSource('javascript:alert(1)')).toThrow()
-    })
-  })
-
-  describe('getRawDataDir', () => {
-    it('should return raw-data subdirectory of dbPath', () => {
-      const result = getRawDataDir('/path/to/db')
-      expect(result).toBe('/path/to/db/raw-data')
-    })
   })
 
   describe('generateRawDataPath', () => {
@@ -195,6 +46,15 @@ describe('Raw Data Utils', () => {
       const path2 = generateRawDataPath(TEST_DB_PATH, 'https://example2.com', 'text')
 
       expect(path1).not.toBe(path2)
+    })
+
+    it('should reject blocked protocols', () => {
+      expect(() => generateRawDataPath(TEST_DB_PATH, 'javascript:alert(1)', 'text')).toThrow(
+        'Blocked protocol'
+      )
+      expect(() => generateRawDataPath(TEST_DB_PATH, 'data:text/html,<script>', 'text')).toThrow(
+        'Blocked protocol'
+      )
     })
   })
 

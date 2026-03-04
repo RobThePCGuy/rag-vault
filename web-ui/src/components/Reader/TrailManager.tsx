@@ -161,6 +161,7 @@ export function TrailManager({
                       ) : (
                         currentTrail.steps.map((step, index) => (
                           <TrailStepItem
+                            // biome-ignore lint/suspicious/noArrayIndexKey: trail steps can revisit same chunk, index needed for disambiguation
                             key={`${step.chunkKey.filePath}-${step.chunkKey.chunkIndex}-${index}`}
                             step={step}
                             index={index}

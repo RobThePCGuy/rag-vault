@@ -5,9 +5,9 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 // Types
 // ============================================
 
-export type TabKind = 'doc' | 'search' | 'files' | 'settings' | 'collections' | 'status' | 'upload'
+type TabKind = 'doc' | 'search' | 'files' | 'settings' | 'collections' | 'status' | 'upload'
 
-export interface PaneTab {
+interface PaneTab {
   tabId: string
   kind: TabKind
   docId?: string

@@ -16,6 +16,28 @@ import { VectorStore } from '../vectordb/index.js';
 import { extractSourceFromPath, generateRawDataPath, isManagedRawDataPath, saveRawData, } from './raw-data-utils.js';
 import { DeleteFileSchema, } from './schemas.js';
 // ============================================
+// Constants
+// ============================================
+/** Timeout for VectorStore.initialize() (default: 10 seconds) */
+const VECTORSTORE_INIT_TIMEOUT_MS = Number.parseInt(process.env['VECTORSTORE_INIT_TIMEOUT_MS'] || '10000', 10);
+/** Timeout for MCP transport connect (default: 10 seconds) */
+const MCP_CONNECT_TIMEOUT_MS = Number.parseInt(process.env['MCP_CONNECT_TIMEOUT_MS'] || '10000', 10);
+/**
+ * Wrap a promise with a timeout
+ */
+function withTimeout(promise, ms, label) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+        promise.then((value) => {
+            clearTimeout(timer);
+            resolve(value);
+        }, (error) => {
+            clearTimeout(timer);
+            reject(error);
+        });
+    });
+}
+// ============================================
 // RAGServer Class
 // ============================================
 /**
@@ -233,7 +255,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
      * Initialization
      */
     async initialize() {
-        await this.vectorStore.initialize();
+        await withTimeout(this.vectorStore.initialize(), VECTORSTORE_INIT_TIMEOUT_MS, 'VectorStore initialization');
         console.error('RAGServer initialized');
     }
     /**
@@ -384,25 +406,6 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
         const chunks = await this.chunker.chunkText(text, this.embedder);
         // Generate embeddings for final chunks
         const embeddings = await this.embedder.embedBatch(chunks.map((chunk) => chunk.text));
-        // Note: Full backup with vectors is not implemented because search results don't include vectors.
-        // If rollback is needed, re-ingestion from the original file is required.
-        // Track if this is a re-ingestion for logging purposes.
-        let isReingestion = false;
-        try {
-            const existingFiles = await this.vectorStore.listFiles();
-            const existingFile = existingFiles.find((file) => file.filePath === args.filePath);
-            if (existingFile && existingFile.chunkCount > 0) {
-                isReingestion = true;
-                console.error(`Re-ingesting existing file: ${args.filePath} (${existingFile.chunkCount} existing chunks)`);
-            }
-        }
-        catch (error) {
-            // File check failure is warning only (for new files)
-            console.warn('Failed to check existing file (new file?):', error);
-        }
-        // Delete existing data
-        await this.vectorStore.deleteChunks(args.filePath);
-        console.error(`Deleted existing chunks for: ${args.filePath}`);
         // Validate embeddings and chunks match
         if (embeddings.length !== chunks.length) {
             throw new Error(`Embedding count (${embeddings.length}) doesn't match chunk count (${chunks.length})`);
@@ -429,20 +432,20 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
                 timestamp,
             };
         });
-        // Insert vectors (transaction processing)
+        // Insert-then-delete strategy: avoids data-loss window during re-ingestion.
+        // Insert new vectors first, then delete old ones. On crash between the two,
+        // the worst case is temporary duplicates rather than permanent data loss.
+        await this.vectorStore.insertChunks(vectorChunks);
+        console.error(`Inserted ${vectorChunks.length} chunks for: ${args.filePath}`);
+        // Delete old chunks that don't belong to this ingestion batch
         try {
-            await this.vectorStore.insertChunks(vectorChunks);
-            console.error(`Inserted ${vectorChunks.length} chunks for: ${args.filePath}`);
+            const newIds = new Set(vectorChunks.map((c) => c.id));
+            await this.vectorStore.deleteChunksExcluding(args.filePath, newIds);
+            console.error(`Cleaned up old chunks for: ${args.filePath}`);
         }
-        catch (insertError) {
-            // Note: Full rollback is not possible without stored vectors.
-            // If this was a re-ingestion and it failed, the old data has been deleted.
-            // User should re-ingest from the original file.
-            if (isReingestion) {
-                console.error('Ingestion failed during re-ingestion. Previous data was deleted. ' +
-                    'Please re-ingest from the original file to restore.', insertError);
-            }
-            throw insertError;
+        catch (deleteError) {
+            // Non-fatal: duplicates are better than data loss
+            console.warn(`Failed to clean up old chunks for ${args.filePath}. Duplicates may exist until next re-ingestion.`, deleteError);
         }
         return {
             filePath: args.filePath,
@@ -822,7 +825,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
      */
     async run() {
         const transport = new StdioServerTransport();
-        await this.server.connect(transport);
+        await withTimeout(this.server.connect(transport), MCP_CONNECT_TIMEOUT_MS, 'MCP transport connect');
         console.error('RAGServer running on stdio transport');
     }
 }

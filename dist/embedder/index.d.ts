@@ -14,6 +14,11 @@ export interface EmbedderConfig {
      * Examples: auto, cpu, cuda, dml, webgpu
      */
     device?: string;
+    /**
+     * Timeout for model initialization/download in milliseconds.
+     * Default: 600000 (10 minutes). Configure via EMBEDDER_INIT_TIMEOUT_MS env var.
+     */
+    initTimeoutMs?: number;
 }
 /**
  * Embedding generation class using Transformers.js

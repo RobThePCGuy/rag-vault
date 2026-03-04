@@ -125,7 +125,6 @@
       "diff": ">=4.0.4"
     },
     "onlyBuiltDependencies": [
-      "@robthepcguy/rag-vault",
       "esbuild",
       "onnxruntime-node",
       "protobufjs",

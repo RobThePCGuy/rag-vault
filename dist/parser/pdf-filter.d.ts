@@ -3,7 +3,7 @@ export type { EmbedderInterface };
 /**
  * Text item with position information from PDF
  */
-export interface TextItemWithPosition {
+interface TextItemWithPosition {
     text: string;
     x: number;
     y: number;
@@ -27,7 +27,7 @@ export declare function joinFilteredPages(pages: PageData[]): string;
 /**
  * Configuration for sentence-level pattern detection
  */
-export interface SentencePatternConfig {
+interface SentencePatternConfig {
     /** Similarity threshold for pattern detection (default: 0.85) */
     similarityThreshold: number;
     /** Minimum pages required for pattern detection (default: 3) */
@@ -35,12 +35,10 @@ export interface SentencePatternConfig {
     /** Number of pages to sample from center for pattern detection (default: 5) */
     samplePages: number;
 }
-/** Default configuration for sentence-level pattern detection */
-export declare const DEFAULT_SENTENCE_PATTERN_CONFIG: SentencePatternConfig;
 /**
  * Result of sentence-level pattern detection
  */
-export interface SentencePatternResult {
+interface SentencePatternResult {
     /** Whether first sentences should be removed (detected as header) */
     removeFirstSentence: boolean;
     /** Whether last sentences should be removed (detected as footer) */

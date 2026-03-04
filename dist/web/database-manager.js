@@ -35,9 +35,6 @@ function getEnvAllowedScanRoots() {
  * Note: This is async to avoid blocking the event loop
  */
 async function readUserAllowedRoots() {
-    if (!existsSync(ALLOWED_ROOTS_FILE)) {
-        return [];
-    }
     try {
         const content = JSON.parse(await readFile(ALLOWED_ROOTS_FILE, 'utf-8'));
         if (Array.isArray(content.roots)) {
@@ -45,7 +42,12 @@ async function readUserAllowedRoots() {
         }
         return [];
     }
-    catch {
+    catch (error) {
+        // ENOENT is normal (no custom roots configured yet)
+        if (error.code === 'ENOENT') {
+            return [];
+        }
+        console.warn('Failed to read allowed roots file:', error);
         return [];
     }
 }
@@ -190,11 +192,10 @@ export class DatabaseManager {
         }
         const serverConfig = this.currentServer.getConfig();
         const statusResult = await this.currentServer.handleStatus();
-        // Safely extract text from response
-        // The return type is { content: [{ type: 'text'; text: string }] }
-        const firstContent = statusResult.content[0];
-        if (typeof firstContent.text !== 'string') {
-            throw new Error('Malformed server response: missing text in content');
+        // Safely extract text from response with bounds checking
+        const firstContent = statusResult.content?.[0];
+        if (!firstContent || typeof firstContent.text !== 'string') {
+            throw new Error('Malformed server response: missing or empty content array');
         }
         // Parse and validate status response with Zod
         const parsed = StatusResponseSchema.safeParse(JSON.parse(firstContent.text));
@@ -224,11 +225,17 @@ export class DatabaseManager {
         const resolvedPath = expandTilde(newDbPath);
         await this.assertPathAllowedForMutation('Switch path', resolvedPath);
         // Validate the new path exists and is a valid database
-        if (!existsSync(resolvedPath)) {
+        // Use stat() instead of existsSync() to avoid TOCTOU race conditions
+        try {
+            await stat(resolvedPath);
+        }
+        catch {
             throw new Error(`Database path does not exist: ${resolvedPath}`);
         }
-        const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME);
-        if (!existsSync(lanceDbPath)) {
+        try {
+            await stat(path.join(resolvedPath, LANCEDB_DIR_NAME));
+        }
+        catch {
             throw new Error(`Invalid database: ${resolvedPath} (missing LanceDB data)`);
         }
         // Look up stored model name from recent databases
@@ -288,11 +295,16 @@ export class DatabaseManager {
         // Expand tilde to home directory
         const resolvedPath = expandTilde(options.dbPath);
         await this.assertPathAllowedForMutation('Create path', resolvedPath);
-        // Check if path already exists
-        if (existsSync(resolvedPath)) {
-            const lanceDbPath = path.join(resolvedPath, LANCEDB_DIR_NAME);
-            if (existsSync(lanceDbPath)) {
-                throw new Error(`Database already exists at: ${resolvedPath}`);
+        // Check if database already exists (use stat to avoid TOCTOU)
+        try {
+            await stat(path.join(resolvedPath, LANCEDB_DIR_NAME));
+            throw new Error(`Database already exists at: ${resolvedPath}`);
+        }
+        catch (error) {
+            // ENOENT means no existing database — good, proceed
+            if (error.code !== 'ENOENT' &&
+                error.message.includes('already exists')) {
+                throw error;
             }
         }
         // Create the directory if needed
@@ -363,9 +375,6 @@ export class DatabaseManager {
      */
     async getRecentDatabases() {
         await this.ensureConfigDir();
-        if (!existsSync(RECENT_DBS_FILE)) {
-            return [];
-        }
         try {
             const content = await readFile(RECENT_DBS_FILE, 'utf-8');
             const jsonData = JSON.parse(content);
@@ -381,10 +390,9 @@ export class DatabaseManager {
             return validDatabases;
         }
         catch (error) {
-            // Differentiate between file-not-found and other errors
+            // ENOENT is normal (no recent databases file yet)
             const nodeError = error;
             if (nodeError.code === 'ENOENT') {
-                // File was deleted between check and read - OK
                 return [];
             }
             // JSON parse error or other issues - log but allow recovery
@@ -694,9 +702,8 @@ export class DatabaseManager {
      * Ensure config directory exists
      */
     async ensureConfigDir() {
-        if (!existsSync(CONFIG_DIR)) {
-            await mkdir(CONFIG_DIR, { recursive: true });
-        }
+        // Use mkdir with recursive: true (idempotent, no TOCTOU race)
+        await mkdir(CONFIG_DIR, { recursive: true });
     }
     /**
      * Enforce allowed-roots policy for database mutation operations.

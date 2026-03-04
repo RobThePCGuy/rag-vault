@@ -1,7 +1,7 @@
 {
   "name": "rag-vault-ui",
   "private": true,
-  "version": "1.5.3",
+  "version": "1.7.2",
   "type": "module",
   "scripts": {
     "dev": "vite",

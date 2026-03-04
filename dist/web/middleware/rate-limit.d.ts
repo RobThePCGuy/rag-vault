@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from 'express';
 /**
  * Rate limit configuration
  */
-export interface RateLimitConfig {
+interface RateLimitConfig {
     /** Time window in milliseconds */
     windowMs: number;
     /** Maximum requests per window */
@@ -35,4 +35,5 @@ export declare function getRateLimitConfigFromEnv(): RateLimitConfig;
  * Safe to call multiple times or when no interval is active.
  */
 export declare function stopRateLimiterCleanup(): void;
+export {};
 //# sourceMappingURL=rate-limit.d.ts.map

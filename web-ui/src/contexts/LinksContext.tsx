@@ -215,7 +215,12 @@ export function LinksProvider({ children, vaultId = 'default' }: LinksProviderPr
           })
         })
         .catch((error) => {
-          console.warn('Failed to hash text for pin fingerprints:', error)
+          console.warn('Failed to hash text for pin fingerprints, removing incomplete pin:', error)
+          // Remove the pin if fingerprint hashing fails to avoid inconsistent state
+          setStore((prev) => ({
+            ...prev,
+            pins: prev.pins.filter((p) => p.id !== pin.id),
+          }))
         })
 
       setStore((prev) => ({

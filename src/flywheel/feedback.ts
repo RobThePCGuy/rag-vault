@@ -75,7 +75,7 @@ function chunkKey(ref: ChunkRef): string {
  * FeedbackStore: In-memory store for feedback events
  * Can be persisted to disk for long-term learning
  */
-export class FeedbackStore {
+class FeedbackStore {
   private events: FeedbackEvent[] = []
   private config: FlywheelConfig
 

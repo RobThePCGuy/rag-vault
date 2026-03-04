@@ -31,7 +31,7 @@ const ErrorCodes = {
   AUTH_INVALID: 'AUTH_INVALID',
 } as const
 
-export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
+type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes]
 
 // ============================================
 // Base Error Class

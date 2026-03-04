@@ -19,7 +19,7 @@ type LoggerFn = (entry: RequestLogEntry) => void;
 /**
  * Request logging configuration
  */
-export interface RequestLoggerConfig {
+interface RequestLoggerConfig {
     /** Custom logger function */
     logger?: LoggerFn;
     /** Skip logging for certain paths (e.g., health checks) */

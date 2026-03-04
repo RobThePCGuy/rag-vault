@@ -1,12 +1,8 @@
 import { z } from 'zod';
 /**
- * Content format enum for ingest_data
- */
-export declare const ContentFormatSchema: z.ZodEnum<["text", "html", "markdown"]>;
-/**
  * query_documents tool input schema
  */
-export declare const QueryDocumentsSchema: z.ZodObject<{
+declare const QueryDocumentsSchema: z.ZodObject<{
     query: z.ZodString;
     limit: z.ZodOptional<z.ZodNumber>;
     explain: z.ZodOptional<z.ZodBoolean>;
@@ -20,14 +16,9 @@ export declare const QueryDocumentsSchema: z.ZodObject<{
     explain?: boolean | undefined;
 }>;
 /**
- * Custom metadata schema for ingestion
- * Enforces reasonable limits on key/value sizes to prevent abuse
- */
-export declare const CustomMetadataSchema: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-/**
  * ingest_file tool input schema
  */
-export declare const IngestFileSchema: z.ZodObject<{
+declare const IngestFileSchema: z.ZodObject<{
     filePath: z.ZodString;
     metadata: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
@@ -38,25 +29,9 @@ export declare const IngestFileSchema: z.ZodObject<{
     metadata?: Record<string, string> | undefined;
 }>;
 /**
- * ingest_data metadata schema
- */
-export declare const IngestDataMetadataSchema: z.ZodObject<{
-    source: z.ZodString;
-    format: z.ZodEnum<["text", "html", "markdown"]>;
-    custom: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-}, "strip", z.ZodTypeAny, {
-    source: string;
-    format: "text" | "html" | "markdown";
-    custom?: Record<string, string> | undefined;
-}, {
-    source: string;
-    format: "text" | "html" | "markdown";
-    custom?: Record<string, string> | undefined;
-}>;
-/**
  * ingest_data tool input schema
  */
-export declare const IngestDataSchema: z.ZodObject<{
+declare const IngestDataSchema: z.ZodObject<{
     content: z.ZodString;
     metadata: z.ZodObject<{
         source: z.ZodString;
@@ -112,7 +87,7 @@ export type DeleteFileInput = z.infer<typeof DeleteFileSchema>;
 /**
  * Explanation of why a result matched the query
  */
-export interface QueryResultExplanation {
+interface QueryResultExplanation {
     /** Keywords shared between query and result */
     sharedKeywords: string[];
     /** Phrases (bigrams/trigrams) shared between query and result */
@@ -217,4 +192,5 @@ export declare const RecentDatabasesFileSchema: z.ZodObject<{
         modelName?: string | undefined;
     }[];
 }>;
+export {};
 //# sourceMappingURL=schemas.d.ts.map

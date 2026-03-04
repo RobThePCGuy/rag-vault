@@ -15,7 +15,7 @@ declare const ErrorCodes: {
     readonly AUTH_REQUIRED: "AUTH_REQUIRED";
     readonly AUTH_INVALID: "AUTH_INVALID";
 };
-export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
+type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
 /**
  * Base error class for RAG operations
  */

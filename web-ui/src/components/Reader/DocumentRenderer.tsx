@@ -8,7 +8,6 @@ interface DocumentRendererProps {
   chunks: DocumentChunk[]
   activeChunkIndex: number | null
   onRegisterChunk: (index: number, element: HTMLElement | null) => void
-  onChunkClick?: (chunk: DocumentChunk) => void
   scrollToChunk?: number | null
   showChunkNumbers?: boolean
   // Annotation support
@@ -37,7 +36,6 @@ export function DocumentRenderer({
   chunks,
   activeChunkIndex,
   onRegisterChunk,
-  onChunkClick,
   scrollToChunk,
   showChunkNumbers = true,
   getHighlightsForChunk,
@@ -84,7 +82,6 @@ export function DocumentRenderer({
             chunk={chunk}
             isActive={activeChunkIndex === chunk.chunkIndex}
             onRegister={onRegisterChunk}
-            onClick={onChunkClick ? () => onChunkClick(chunk) : undefined}
             showChunkNumbers={showChunkNumbers}
             highlights={highlights}
             onCreateHighlight={

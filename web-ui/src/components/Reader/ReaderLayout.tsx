@@ -506,7 +506,6 @@ export function ReaderLayout({
                 activeChunkIndex={activeChunkIndex}
                 currentFilePath={filePath}
                 onNavigateToChunk={handleNavigateToChunk}
-                onOpenSplit={handleOpenSplit}
                 pinnedChunkKeys={pinnedChunkKeys}
                 onTogglePin={onTogglePin}
                 // Annotations

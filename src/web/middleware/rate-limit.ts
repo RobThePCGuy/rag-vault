@@ -11,7 +11,7 @@ let rateLimiterCreated = false
 /**
  * Rate limit configuration
  */
-export interface RateLimitConfig {
+interface RateLimitConfig {
   /** Time window in milliseconds */
   windowMs: number
   /** Maximum requests per window */

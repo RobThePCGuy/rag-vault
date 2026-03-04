@@ -54,7 +54,7 @@ export function isGarbageChunk(text) {
 // ============================================
 // Default Configuration
 // ============================================
-export const DEFAULT_SEMANTIC_CHUNKER_CONFIG = {
+const DEFAULT_SEMANTIC_CHUNKER_CONFIG = {
     hardThreshold: 0.6,
     initConst: 1.5,
     c: 0.9,

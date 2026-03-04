@@ -39,6 +39,8 @@ interface AutoSelectionSearchResult {
   isSearching: boolean
   /** The text that was searched (for display) */
   searchedText: string | null
+  /** Error message if last search failed */
+  searchError: string | null
   /** Clear the current results */
   clearResults: () => void
 }
@@ -101,6 +103,7 @@ export function useAutoSelectionSearch({
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [searchedText, setSearchedText] = useState<string | null>(null)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -109,6 +112,7 @@ export function useAutoSelectionSearch({
   const clearResults = useCallback(() => {
     setResults([])
     setSearchedText(null)
+    setSearchError(null)
     setIsSearching(false)
     lastSearchTextRef.current = null
 
@@ -176,6 +180,7 @@ export function useAutoSelectionSearch({
       abortControllerRef.current = new AbortController()
 
       try {
+        setSearchError(null)
         const searchResults = await searchDocuments(selectionText, MAX_RESULTS)
 
         // Filter out the current chunk
@@ -193,6 +198,8 @@ export function useAutoSelectionSearch({
         // Ignore abort errors
         if (err instanceof Error && err.name !== 'AbortError') {
           console.error('Auto-selection search failed:', err)
+          setResults([])
+          setSearchError(err.message || 'Search failed')
         }
       } finally {
         setIsSearching(false)
@@ -222,6 +229,7 @@ export function useAutoSelectionSearch({
     results,
     isSearching,
     searchedText,
+    searchError,
     clearResults,
   }
 }

@@ -6,12 +6,12 @@ import { z } from 'zod'
 /**
  * Content format enum for ingest_data
  */
-export const ContentFormatSchema = z.enum(['text', 'html', 'markdown'])
+const ContentFormatSchema = z.enum(['text', 'html', 'markdown'])
 
 /**
  * query_documents tool input schema
  */
-export const QueryDocumentsSchema = z.object({
+const QueryDocumentsSchema = z.object({
   query: z
     .string()
     .min(1, 'Query cannot be empty')
@@ -37,7 +37,7 @@ export const QueryDocumentsSchema = z.object({
  * Custom metadata schema for ingestion
  * Enforces reasonable limits on key/value sizes to prevent abuse
  */
-export const CustomMetadataSchema = z
+const CustomMetadataSchema = z
   .record(
     z.string().max(100, 'Metadata key must be at most 100 characters'),
     z.string().max(1000, 'Metadata value must be at most 1000 characters')
@@ -50,7 +50,7 @@ export const CustomMetadataSchema = z
 /**
  * ingest_file tool input schema
  */
-export const IngestFileSchema = z.object({
+const IngestFileSchema = z.object({
   filePath: z
     .string()
     .min(1, 'File path cannot be empty')
@@ -61,7 +61,7 @@ export const IngestFileSchema = z.object({
 /**
  * ingest_data metadata schema
  */
-export const IngestDataMetadataSchema = z.object({
+const IngestDataMetadataSchema = z.object({
   source: z
     .string()
     .min(1, 'Source cannot be empty')
@@ -75,7 +75,7 @@ export const IngestDataMetadataSchema = z.object({
 /**
  * ingest_data tool input schema
  */
-export const IngestDataSchema = z.object({
+const IngestDataSchema = z.object({
   content: z
     .string()
     .min(1, 'Content cannot be empty')
@@ -121,7 +121,7 @@ export type DeleteFileInput = z.infer<typeof DeleteFileSchema>
 /**
  * Explanation of why a result matched the query
  */
-export interface QueryResultExplanation {
+interface QueryResultExplanation {
   /** Keywords shared between query and result */
   sharedKeywords: string[]
   /** Phrases (bigrams/trigrams) shared between query and result */

@@ -9,7 +9,7 @@
  *   npx github:RobThePCGuy/rag-vault --remote --port 8080
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-export interface RemoteTransportOptions {
+interface RemoteTransportOptions {
     /** Port to listen on (default: 3001, or WEB_PORT env) */
     port?: number;
     /** Factory that returns a fresh McpServer per session */
@@ -28,4 +28,5 @@ export interface RemoteTransportOptions {
  *   GET  /health          -> Health check
  */
 export declare function startRemoteTransport(options: RemoteTransportOptions): Promise<void>;
+export {};
 //# sourceMappingURL=remote-transport.d.ts.map

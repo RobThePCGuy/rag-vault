@@ -190,4 +190,16 @@ fi
 pnpm publish "${PUBLISH_ARGS[@]}"
 
 ROLLBACK_REQUIRED=false
+
+log "Committing version bump"
+git add package.json server.json
+git commit -m "chore: release v${NEXT_VERSION}"
+
+log "Tagging v${NEXT_VERSION}"
+git tag "v${NEXT_VERSION}"
+
+log "Pushing to remote"
+git push
+git push --tags
+
 log "Publish successful."

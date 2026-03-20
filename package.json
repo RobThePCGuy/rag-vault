@@ -89,7 +89,7 @@
     "express": "^5.2.1",
     "file-type": "^21.3.0",
     "helmet": "^8.1.0",
-    "jsdom": "^27.4.0",
+    "jsdom": "^29.0.1",
     "mammoth": "^1.11.0",
     "multer": "^2.0.2",
     "pdfjs-dist": "^5.4.624",

@@ -101,7 +101,7 @@
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
-    "@types/jsdom": "^27.0.0",
+    "@types/jsdom": "^28.0.1",
     "@types/multer": "^2.0.0",
     "@types/node": "^25.5.0",
     "@types/turndown": "5.0.6",

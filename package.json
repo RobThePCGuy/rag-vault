@@ -81,7 +81,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^3.8.1",
-    "@lancedb/lancedb": "^0.26.0",
+    "@lancedb/lancedb": "^0.27.1",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@mozilla/readability": "^0.6.0",
     "compression": "^1.8.1",

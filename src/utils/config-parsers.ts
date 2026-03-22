@@ -45,3 +45,40 @@ export function parseHybridWeight(value: string | undefined): number | undefined
   }
   return parsed
 }
+
+/**
+ * Search mode: how vector and BM25 results are combined
+ * - 'rrf': Reciprocal Rank Fusion (recommended, treats channels as independent voters)
+ * - 'boost': Legacy mode (BM25 multiplicatively boosts vector distances)
+ */
+export type SearchMode = 'rrf' | 'boost'
+
+/**
+ * Parse search mode from environment variable
+ */
+export function parseSearchMode(value: string | undefined): SearchMode | undefined {
+  if (!value) return undefined
+  const normalized = value.toLowerCase().trim()
+  if (normalized === 'rrf' || normalized === 'boost') {
+    return normalized
+  }
+  console.error(
+    `Invalid RAG_SEARCH_MODE value: "${value}". Expected "rrf" or "boost". Using default ("rrf").`
+  )
+  return undefined
+}
+
+/**
+ * Parse RRF K constant from environment variable
+ */
+export function parseRrfK(value: string | undefined): number | undefined {
+  if (!value) return undefined
+  const parsed = Number.parseInt(value, 10)
+  if (Number.isNaN(parsed) || parsed < 1) {
+    console.error(
+      `Invalid RAG_RRF_K value: "${value}". Expected positive integer. Using default (60).`
+    )
+    return undefined
+  }
+  return parsed
+}

@@ -198,10 +198,23 @@ Query: ${query}`
       throw new Error(`API request failed: ${response.status} ${response.statusText}`)
     }
 
-    const data = (await response.json()) as {
-      content: Array<{ type: string; text: string }>
+    const data: unknown = await response.json()
+
+    // Runtime validation of API response shape
+    const dataObj = data as Record<string, unknown> | null
+    if (
+      !dataObj ||
+      typeof dataObj !== 'object' ||
+      !Array.isArray(dataObj['content'])
+    ) {
+      throw new Error('API returned unexpected response format')
     }
-    const text = data.content?.[0]?.text || ''
+    const content = dataObj['content'] as unknown[]
+    const firstBlock = content[0] as Record<string, unknown> | undefined
+    const text =
+      firstBlock && typeof firstBlock['text'] === 'string'
+        ? firstBlock['text']
+        : ''
     const expansions = text
       .split('\n')
       .map((line: string) => line.trim())

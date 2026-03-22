@@ -15,7 +15,7 @@ One command to run, minimal setup, privacy by default.
 | Pain Point | RAG Vault Solution |
 |------------|-------------------|
 | "I don't want my docs on someone else's server" | Everything stays local by default. No background cloud calls for indexing or search. |
-| "Semantic search misses exact code terms" | Hybrid search: meaning + exact matches like `useEffect` |
+| "Semantic search misses exact code terms" | Hybrid search with RRF fusion, optional cross-encoder reranking |
 | "Setup requires Docker, Python, databases..." | One `npx` command plus a small MCP config block. |
 | "Cloud APIs charge per query" | Free forever. No subscriptions. |
 
@@ -124,7 +124,7 @@ npx github:RobThePCGuy/rag-vault skills install --path /your/custom/path
 
 Skills teach Claude best practices for:
 - Query formulation and expansion strategies
-- Score interpretation (< 0.3 = good match, > 0.5 = skip)
+- Score interpretation (boost mode: < 0.3 = good match, > 0.5 = skip; RRF mode uses rank-based scoring)
 - When to use `ingest_file` vs `ingest_data`
 - HTML ingestion and URL handling
 
@@ -312,12 +312,18 @@ Pure semantic search would miss this. RAG Vault finds it.
 ```
 Document → Parse → Chunk by meaning → Embed locally → Store in LanceDB
                          ↓
-Query → Embed → Vector search → Keyword boost → Quality filter → Results
+Query → Embed → Vector search + BM25 → Fusion → Optional reranking → Results
 ```
 
 **Smart chunking**: Splits by meaning, not character count. Keeps code blocks intact.
 
-**Hybrid search**: Vector similarity finds related content. Keyword boost ranks exact matches higher.
+**Hybrid search**: Two fusion modes for combining vector similarity with BM25 keyword matching:
+- **Boost mode** (default): BM25 multiplicatively boosts vector search distances. Simple, predictable scoring.
+- **RRF mode** (opt-in via `RAG_SEARCH_MODE=rrf`): [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) treats vector and BM25 as independent voters. Can surface documents that vector search alone would miss.
+
+**Cross-encoder reranking** (opt-in): After initial retrieval, a cross-encoder model (`Xenova/ms-marco-MiniLM-L-6-v2`, ~23MB) jointly scores each (query, passage) pair for more precise relevance ranking. Enable with `RAG_RERANKER_ENABLED=true`.
+
+**Query expansion** (opt-in): Generates reformulated queries to improve recall for paraphrased or conceptual searches. Two backends: local template-based expansion (default, offline) or LLM-based [HyDE](https://arxiv.org/abs/2212.10496) via an external API. Enable with `RAG_HYDE_ENABLED=true`.
 
 **Quality filtering**: Groups results by relevance gaps instead of arbitrary top-K cutoffs.
 
@@ -371,13 +377,38 @@ npx github:RobThePCGuy/rag-vault --gpu-auto
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `RAG_HYBRID_WEIGHT` | `0.6` | Keyword boost strength. `0` = semantic-only, `1.0` = BM25-only, higher = stronger boost for exact keyword matches |
+| `RAG_SEARCH_MODE` | `boost` | Fusion mode: `boost` (legacy multiplicative keyword boost) or `rrf` (Reciprocal Rank Fusion) |
+| `RAG_HYBRID_WEIGHT` | `0.6` | Balance between vector and BM25. `0` = vector-only, `1.0` = BM25-only |
+| `RAG_RRF_K` | `60` | RRF smoothing constant (only applies in `rrf` mode). Industry standard is 60. |
 | `RAG_GROUPING` | unset | Quality filter grouping mode: `similar` = top group only, `related` = top 2 groups |
-| `RAG_MAX_DISTANCE` | unset | Filter out results below this relevance threshold |
+| `RAG_MAX_DISTANCE` | unset | Filter out results below this relevance threshold (use with `boost` mode; in `rrf` mode, scores are rank-based) |
 | `RAG_GROUPING_STD_MULTIPLIER` | `1.5` | Standard-deviation multiplier for detecting relevance gaps between result groups |
 | `RAG_HYBRID_CANDIDATE_MULTIPLIER` | `2` | Multiplier for number of vector candidates to fetch before keyword reranking |
 | `RAG_FTS_MAX_FAILURES` | `3` | Number of full-text search failures before temporarily disabling FTS |
 | `RAG_FTS_COOLDOWN_MS` | `300000` (5 min) | Cooldown period before retrying FTS after max failures reached |
+
+### Cross-Encoder Reranking (opt-in)
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `RAG_RERANKER_ENABLED` | `false` | Enable cross-encoder reranking for more precise relevance scoring |
+| `RAG_RERANKER_MODEL` | `Xenova/ms-marco-MiniLM-L-6-v2` | HuggingFace cross-encoder model (~23MB ONNX, downloads on first use) |
+| `RAG_RERANKER_CANDIDATE_MULTIPLIER` | `2` | Fetch this many extra candidates for the reranker to score |
+| `RAG_RERANKER_DEVICE` | `auto` | Inference device for the reranker (same options as `RAG_EMBEDDING_DEVICE`) |
+| `RERANKER_INIT_TIMEOUT_MS` | `600000` (10 min) | Timeout for model download and initialization |
+
+### Query Expansion / HyDE (opt-in)
+
+| Variable | Default | What it does |
+|----------|---------|--------------|
+| `RAG_HYDE_ENABLED` | `false` | Enable query expansion for improved recall |
+| `RAG_HYDE_BACKEND` | `rule-based` | `rule-based` for local template expansion, `api` for LLM-based HyDE |
+| `RAG_HYDE_EXPANSIONS` | `2` | Number of expanded queries to generate |
+| `RAG_HYDE_API_KEY` | unset | API key for LLM backend (required when `RAG_HYDE_BACKEND=api`) |
+| `RAG_HYDE_API_BASE_URL` | `https://api.anthropic.com` | API endpoint for LLM backend |
+| `RAG_HYDE_API_MODEL` | `claude-haiku-4-5-20251001` | Model for LLM-based expansion |
+
+> **Privacy note:** The `api` backend sends query text to an external LLM endpoint, which breaks the "zero cloud" guarantee. The default `rule-based` backend is fully local.
 
 ### Security (optional)
 
@@ -550,11 +581,13 @@ src/
 ├── errors/          # Error handling utilities
 ├── explainability/  # Keyword-based result explanations
 ├── flywheel/        # Feedback loop (pin/dismiss reranking)
+├── hyde/            # Query expansion + HyDE (LLM-based)
 ├── parser/          # PDF, DOCX, HTML parsing
 ├── query/           # Advanced query syntax parser
+├── reranker/        # Cross-encoder reranking (Transformers.js)
 ├── server/          # MCP tool handlers + remote transport
 ├── utils/           # Config, file helpers, process handlers
-├── vectordb/        # LanceDB + hybrid search
+├── vectordb/        # LanceDB + hybrid search (boost + RRF)
 └── web/             # Express server + REST API
 
 web-ui/              # React frontend (Vite + Tailwind)

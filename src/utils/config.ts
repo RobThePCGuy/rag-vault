@@ -154,9 +154,12 @@ export function buildRAGConfig(overrides?: Partial<RAGConfig>): RAGConfig {
     !Number.isNaN(hydeExp) && hydeExp > 0 ? hydeExp : overrides?.hydeExpansions ?? 2
 
   // HyDE API settings (only relevant when hydeBackend='api')
-  config.hydeApiKey = process.env['RAG_HYDE_API_KEY'] || overrides?.hydeApiKey
-  config.hydeApiBaseUrl = process.env['RAG_HYDE_API_BASE_URL'] || overrides?.hydeApiBaseUrl
-  config.hydeApiModel = process.env['RAG_HYDE_API_MODEL'] || overrides?.hydeApiModel
+  const hydeApiKey = process.env['RAG_HYDE_API_KEY'] || overrides?.hydeApiKey
+  const hydeApiBaseUrl = process.env['RAG_HYDE_API_BASE_URL'] || overrides?.hydeApiBaseUrl
+  const hydeApiModel = process.env['RAG_HYDE_API_MODEL'] || overrides?.hydeApiModel
+  if (hydeApiKey) config.hydeApiKey = hydeApiKey
+  if (hydeApiBaseUrl) config.hydeApiBaseUrl = hydeApiBaseUrl
+  if (hydeApiModel) config.hydeApiModel = hydeApiModel
 
   return config
 }

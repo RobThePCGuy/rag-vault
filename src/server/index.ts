@@ -190,14 +190,15 @@ export class RAGServer {
 
     // HyDE query expansion (opt-in)
     if (config.hydeEnabled) {
-      this.hydeExpander = new HyDEExpander({
+      const hydeConfig: ConstructorParameters<typeof HyDEExpander>[0] = {
         enabled: true,
         backend: (config.hydeBackend === 'api' ? 'api' : 'rule-based') as 'rule-based' | 'api',
         numExpansions: config.hydeExpansions ?? 2,
-        apiKey: config.hydeApiKey,
-        apiBaseUrl: config.hydeApiBaseUrl,
-        apiModel: config.hydeApiModel,
-      })
+      }
+      if (config.hydeApiKey) hydeConfig.apiKey = config.hydeApiKey
+      if (config.hydeApiBaseUrl) hydeConfig.apiBaseUrl = config.hydeApiBaseUrl
+      if (config.hydeApiModel) hydeConfig.apiModel = config.hydeApiModel
+      this.hydeExpander = new HyDEExpander(hydeConfig)
       if (config.hydeBackend === 'api' && config.hydeApiKey) {
         console.error(
           'WARNING: HyDE API backend is enabled. Queries will be sent to an external LLM endpoint ' +
@@ -267,7 +268,7 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
       'Add a document (PDF, DOCX, TXT, MD, JSON, JSONL) to your knowledge base so you can search it. Use the full file path. If you ingest the same file again, it replaces the old version. You can tag it with metadata like author, domain, or tags.',
       {
         filePath: z.string(),
-        metadata: z.record(z.string()).optional(),
+        metadata: z.record(z.string(), z.string()).optional(),
       } as ToolSchema,
       async (args: ToolSchema) => {
         const result = await this.executeIngestFile(args as IngestFileInput)
@@ -286,7 +287,7 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
         metadata: z.object({
           source: z.string(),
           format: z.enum(['text', 'html', 'markdown']),
-          custom: z.record(z.string()).optional(),
+          custom: z.record(z.string(), z.string()).optional(),
         }),
       } as ToolSchema,
       async (args: ToolSchema) => {

@@ -8,8 +8,6 @@
 const { spawnSync } = require("child_process");
 
 function runTsPrune() {
-  const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
-
   // Note: --ignore is a regex. Consider anchoring it if you see over-matching.
   const ignorePattern = "src/index.ts|__tests__|test|vitest";
 
@@ -21,7 +19,7 @@ function runTsPrune() {
     ignorePattern,
   ];
 
-  const res = spawnSync(npxCmd, args, { encoding: "utf8" });
+  const res = spawnSync("npx", args, { encoding: "utf8", shell: true });
 
   if (res.error) {
     throw res.error;

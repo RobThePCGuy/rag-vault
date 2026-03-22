@@ -5,7 +5,8 @@
 // Note: Reduced from 43 to 10 tests based on YAGNI principle and avoiding redundancy
 
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import os from 'node:os'
+import { join, resolve } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getIntegrationCacheDir } from '../utils/integration-cache.js'
 import { DocumentParser, ParserValidationError } from '../../parser/index.js'
@@ -185,18 +186,27 @@ describe('RAG MCP Server Security Test', () => {
         maxFileSize: 100 * 1024 * 1024,
       })
 
-      // Create symbolic link (/etc/passwd → tmp/test-security-fixtures/link_to_etc_passwd)
+      // Create a real file outside baseDir to symlink to (cross-platform)
+      const outsideDir = join(os.tmpdir(), `rag-test-security-${Date.now()}`)
+      await mkdir(outsideDir, { recursive: true })
+      const outsideFile = join(outsideDir, 'passwd.txt')
+      await writeFile(outsideFile, 'sensitive data')
+
       const linkPath = resolve(fixturesDir, 'link_to_etc_passwd')
       try {
-        await symlink('/etc/passwd', linkPath)
-      } catch (_error) {
-        // Ignore symlink creation failure (if already exists)
+        await symlink(outsideFile, linkPath)
+      } catch {
+        // Symlink creation may require elevated privileges on some Windows configs
+        await rm(outsideDir, { recursive: true, force: true })
+        return
       }
 
-      await expect(parser.parseFile(linkPath)).rejects.toThrow(ParserValidationError)
-
-      // Cleanup
-      await rm(linkPath, { force: true })
+      try {
+        await expect(parser.parseFile(linkPath)).rejects.toThrow(ParserValidationError)
+      } finally {
+        await rm(linkPath, { force: true })
+        await rm(outsideDir, { recursive: true, force: true })
+      }
     })
 
     it('Path containing /raw-data/ outside db scope does not bypass BASE_DIR validation', async () => {

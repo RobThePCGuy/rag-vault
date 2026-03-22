@@ -241,25 +241,35 @@ export class Reranker {
     await this.ensureInitialized()
 
     try {
+      // Runtime check: model must be a callable pipeline
+      if (typeof this.model !== 'function') {
+        throw new Error('Reranker model is not initialized or not callable')
+      }
+
       // Cross-encoder expects pairs of (text_a, text_b)
       // For ms-marco models, we use the text_pair approach
       const modelCall = this.model as (
         texts: string[],
         options: { text_pair: string[] }
-      ) => Promise<Array<{ label: string; score: number }>>
+      ) => Promise<unknown>
 
       // Prepare inputs: query repeated for each passage
       const queries = passages.map(() => query)
 
-      const outputs = await modelCall(queries, { text_pair: passages })
+      const rawOutputs = await modelCall(queries, { text_pair: passages })
+
+      // Validate output shape at runtime
+      if (!Array.isArray(rawOutputs)) {
+        throw new Error(`Reranker returned non-array output: ${typeof rawOutputs}`)
+      }
 
       // Map results back with original indices
-      const results: RerankedResult[] = outputs.map((output, index) => ({
-        index,
-        // For ms-marco models, the raw score is the relevance score
-        // Higher score = more relevant
-        score: output.score,
-      }))
+      const results: RerankedResult[] = rawOutputs.map((output: unknown, index: number) => {
+        const outputObj = output as Record<string, unknown> | null
+        const rawScore =
+          outputObj && typeof outputObj === 'object' ? Number(outputObj['score']) : 0
+        return { index, score: Number.isFinite(rawScore) ? rawScore : 0 }
+      })
 
       // Sort by score descending (most relevant first)
       results.sort((a, b) => b.score - a.score)

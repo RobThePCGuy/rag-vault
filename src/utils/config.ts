@@ -4,7 +4,14 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import type { GroupingMode } from '../vectordb/index.js'
-import { parseGroupingMode, parseHybridWeight, parseMaxDistance } from './config-parsers.js'
+import {
+  type SearchMode,
+  parseGroupingMode,
+  parseHybridWeight,
+  parseMaxDistance,
+  parseRrfK,
+  parseSearchMode,
+} from './config-parsers.js'
 
 /**
  * Configuration validation error (internal use only)
@@ -39,6 +46,22 @@ export interface RAGConfig {
   grouping?: GroupingMode
   /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only) */
   hybridWeight?: number
+  /** Search mode: 'rrf' (Reciprocal Rank Fusion) or 'boost' (legacy keyword boost) */
+  searchMode?: SearchMode
+  /** RRF K constant (smoothing factor, default: 60) */
+  rrfK?: number
+  /** Enable cross-encoder reranking */
+  rerankerEnabled?: boolean
+  /** Cross-encoder model name */
+  rerankerModel?: string
+  /** Reranker candidate multiplier (rerank limit * this many candidates) */
+  rerankerCandidateMultiplier?: number
+  /** Enable HyDE query expansion */
+  hydeEnabled?: boolean
+  /** HyDE backend: 'rule-based' or 'api' */
+  hydeBackend?: string
+  /** Number of HyDE expansions to generate */
+  hydeExpansions?: number
 }
 
 /**
@@ -91,6 +114,38 @@ export function buildRAGConfig(overrides?: Partial<RAGConfig>): RAGConfig {
   if (hybridWeight !== undefined) {
     config.hybridWeight = hybridWeight
   }
+
+  // Advanced RAG settings
+  const searchMode = parseSearchMode(process.env['RAG_SEARCH_MODE']) ?? overrides?.searchMode
+  const rrfK = parseRrfK(process.env['RAG_RRF_K']) ?? overrides?.rrfK
+
+  if (searchMode !== undefined) {
+    config.searchMode = searchMode
+  }
+  if (rrfK !== undefined) {
+    config.rrfK = rrfK
+  }
+
+  // Reranker settings
+  config.rerankerEnabled =
+    process.env['RAG_RERANKER_ENABLED']?.toLowerCase() === 'true' ||
+    overrides?.rerankerEnabled ||
+    false
+  config.rerankerModel =
+    process.env['RAG_RERANKER_MODEL'] || overrides?.rerankerModel || 'Xenova/ms-marco-MiniLM-L-6-v2'
+  const rerankerMult = Number.parseFloat(process.env['RAG_RERANKER_CANDIDATE_MULTIPLIER'] || '')
+  config.rerankerCandidateMultiplier =
+    !Number.isNaN(rerankerMult) && rerankerMult > 0
+      ? rerankerMult
+      : overrides?.rerankerCandidateMultiplier ?? 2
+
+  // HyDE settings
+  config.hydeEnabled =
+    process.env['RAG_HYDE_ENABLED']?.toLowerCase() === 'true' || overrides?.hydeEnabled || false
+  config.hydeBackend = process.env['RAG_HYDE_BACKEND'] || overrides?.hydeBackend || 'rule-based'
+  const hydeExp = Number.parseInt(process.env['RAG_HYDE_EXPANSIONS'] || '', 10)
+  config.hydeExpansions =
+    !Number.isNaN(hydeExp) && hydeExp > 0 ? hydeExp : overrides?.hydeExpansions ?? 2
 
   return config
 }

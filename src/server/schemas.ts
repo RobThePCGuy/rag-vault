@@ -166,7 +166,7 @@ export interface StatusOutput {
   memoryUsage: number
   uptime: number
   ftsIndexEnabled: boolean
-  searchMode: 'hybrid' | 'vector-only'
+  searchMode: 'hybrid' | 'vector-only' | 'hybrid-rrf' | 'vector-rrf'
 }
 
 // ============================================
@@ -182,7 +182,7 @@ export const StatusResponseSchema = z.object({
   memoryUsage: z.number(),
   uptime: z.number(),
   ftsIndexEnabled: z.boolean(),
-  searchMode: z.enum(['hybrid', 'vector-only']),
+  searchMode: z.enum(['hybrid', 'vector-only', 'hybrid-rrf', 'vector-rrf']),
 })
 
 /**

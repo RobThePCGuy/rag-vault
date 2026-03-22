@@ -193,7 +193,7 @@ describe('VectorStore', () => {
 
         const status = await store.getStatus()
         expect(status).toHaveProperty('searchMode')
-        expect(['hybrid', 'vector-only']).toContain(status.searchMode)
+        expect(['hybrid', 'vector-only', 'hybrid-rrf', 'vector-rrf']).toContain(status.searchMode)
       })
     })
 
@@ -443,6 +443,7 @@ describe('VectorStore', () => {
           dbPath: ftsOnlyDbPath,
           tableName: 'chunks',
           hybridWeight: 1, // Maximum keyword boost
+          searchMode: 'boost', // Test legacy boost behavior
         })
         await store.initialize()
 
@@ -633,6 +634,7 @@ describe('VectorStore', () => {
             dbPath: similarDbPath,
             tableName: 'chunks',
             grouping: 'similar',
+            searchMode: 'boost', // Test grouping on raw vector distances
           })
           await store.initialize()
 
@@ -943,6 +945,7 @@ describe('VectorStore', () => {
         const store = new VectorStore({
           dbPath: identicalDbPath,
           tableName: 'chunks',
+          searchMode: 'boost', // Test raw LanceDB distance semantics
         })
         await store.initialize()
 
@@ -981,6 +984,7 @@ describe('VectorStore', () => {
         const store = new VectorStore({
           dbPath: oppositeDbPath,
           tableName: 'chunks',
+          searchMode: 'boost', // Test raw LanceDB distance semantics
         })
         await store.initialize()
 

@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Lint both workspaces
 pnpm lint
-pnpm format:check
+pnpm --prefix web-ui lint
+
+# Auto-format and stage any fixes
+pnpm format
+pnpm --prefix web-ui format
+git add -u

@@ -118,7 +118,11 @@ if [[ -n "${NPM_TOKEN:-}" ]]; then
   printf "//registry.npmjs.org/:_authToken=%s\n" "${NPM_TOKEN}" > "${AUTH_NPMRC}"
   export NPM_CONFIG_USERCONFIG="${AUTH_NPMRC}"
 fi
-npm whoami --registry=https://registry.npmjs.org >/dev/null 2>&1 || fail "npm auth failed. Set NPM_TOKEN or run: npm login"
+if ! npm whoami --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+  log "Not logged in to npm. Starting interactive login..."
+  npm login --registry=https://registry.npmjs.org || fail "npm login failed"
+  npm whoami --registry=https://registry.npmjs.org >/dev/null 2>&1 || fail "npm auth still failing after login"
+fi
 
 pkg_backup="$(mktemp)"
 server_backup="$(mktemp)"

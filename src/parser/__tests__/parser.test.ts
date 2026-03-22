@@ -1,6 +1,7 @@
 // DocumentParser Unit Test
 
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises'
+import os from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { DocumentParser, ParserFileOperationError, ParserValidationError } from '../index.js'
@@ -74,15 +75,31 @@ describe('DocumentParser', () => {
     })
 
     it('should reject symlink path escaping baseDir', async () => {
-      const linkPath = join(testDir, 'escaped-link.txt')
-      await symlink('/etc/hosts', linkPath)
+      // Create a real file outside baseDir to symlink to (cross-platform)
+      const outsideDir = join(os.tmpdir(), `rag-test-outside-${Date.now()}`)
+      await mkdir(outsideDir, { recursive: true })
+      const outsideFile = join(outsideDir, 'secret.txt')
+      await writeFile(outsideFile, 'sensitive data')
 
-      expect(() => parser.validateFilePath(linkPath)).toThrow(
-        expect.objectContaining({
-          name: 'ParserValidationError',
-          message: expect.stringMatching(/outside BASE_DIR/),
-        })
-      )
+      const linkPath = join(testDir, 'escaped-link.txt')
+      try {
+        await symlink(outsideFile, linkPath)
+      } catch {
+        // Symlink creation may require elevated privileges on some Windows configs
+        await rm(outsideDir, { recursive: true, force: true })
+        return
+      }
+
+      try {
+        expect(() => parser.validateFilePath(linkPath)).toThrow(
+          expect.objectContaining({
+            name: 'ParserValidationError',
+            message: expect.stringMatching(/outside BASE_DIR/),
+          })
+        )
+      } finally {
+        await rm(outsideDir, { recursive: true, force: true })
+      }
     })
   })
 

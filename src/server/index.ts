@@ -7,6 +7,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import { SemanticChunker } from '../chunker/index.js'
 import { Embedder } from '../embedder/index.js'
+import { HyDEExpander } from '../hyde/index.js'
+import { Reranker } from '../reranker/index.js'
 import { getErrorMessage } from '../errors/index.js'
 import { explainChunkSimilarity } from '../explainability/keywords.js'
 import { type ChunkRef, getFeedbackStore } from '../flywheel/feedback.js'
@@ -93,6 +95,18 @@ export interface RAGServerConfig {
   grouping?: GroupingMode
   /** Hybrid search weight for BM25 (0.0 = vector only, 1.0 = BM25 only, default 0.6) */
   hybridWeight?: number
+  /** Enable cross-encoder reranking */
+  rerankerEnabled?: boolean
+  /** Cross-encoder model name (default: Xenova/ms-marco-MiniLM-L-6-v2) */
+  rerankerModel?: string
+  /** Reranker candidate multiplier (default: 2) */
+  rerankerCandidateMultiplier?: number
+  /** Enable HyDE query expansion */
+  hydeEnabled?: boolean
+  /** HyDE backend: 'rule-based' or 'api' */
+  hydeBackend?: string
+  /** Number of HyDE expansions (default: 2) */
+  hydeExpansions?: number
 }
 
 // ============================================
@@ -112,6 +126,9 @@ export class RAGServer {
   private readonly server: McpServer
   private readonly vectorStore: VectorStore
   private readonly embedder: Embedder
+  private readonly reranker: Reranker | null
+  private readonly rerankerCandidateMultiplier: number
+  private readonly hydeExpander: HyDEExpander | null
   private readonly chunker: SemanticChunker
   private readonly parser: DocumentParser
   private readonly dbPath: string
@@ -144,6 +161,28 @@ export class RAGServer {
       batchSize: 16,
       cacheDir: config.cacheDir,
     })
+    // Cross-encoder reranker (opt-in)
+    if (config.rerankerEnabled) {
+      this.reranker = new Reranker({
+        modelPath: config.rerankerModel || 'Xenova/ms-marco-MiniLM-L-6-v2',
+        cacheDir: config.cacheDir,
+      })
+    } else {
+      this.reranker = null
+    }
+    this.rerankerCandidateMultiplier = config.rerankerCandidateMultiplier ?? 2
+
+    // HyDE query expansion (opt-in)
+    if (config.hydeEnabled) {
+      this.hydeExpander = new HyDEExpander({
+        enabled: true,
+        backend: (config.hydeBackend === 'api' ? 'api' : 'rule-based') as 'rule-based' | 'api',
+        numExpansions: config.hydeExpansions ?? 2,
+      })
+    } else {
+      this.hydeExpander = null
+    }
+
     this.chunker = new SemanticChunker()
     this.parser = new DocumentParser({
       baseDir: config.baseDir,
@@ -434,13 +473,67 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // Generate query embedding from semantic terms
     const queryVector = await this.embedder.embed(semanticQuery || args.query)
 
+    // HyDE: expand query into hypothetical documents and embed them
+    let additionalVectors: { vector: number[]; weight: number }[] | undefined
+    if (this.hydeExpander) {
+      try {
+        const expandedQueries = await this.hydeExpander.expandQuery(args.query)
+        // Skip first item (original query, already embedded above)
+        const expansions = expandedQueries.slice(1)
+        if (expansions.length > 0) {
+          additionalVectors = []
+          for (const expansion of expansions) {
+            const expansionVector = await this.embedder.embed(expansion.text)
+            additionalVectors.push({ vector: expansionVector, weight: expansion.weight })
+          }
+        }
+      } catch (hydeError) {
+        console.error(`HyDE expansion failed, using original query only: ${(hydeError as Error).message}`)
+      }
+    }
+
     // Request extra results to account for post-filtering (capped at 20)
     const userLimit = args.limit || 10
     const hasFilters = parsed.excludeTerms.length > 0 || parsed.filters.length > 0
     const requestLimit = hasFilters ? Math.min(userLimit * 2, 20) : userLimit
 
-    // Hybrid search (vector + BM25 keyword matching)
-    let searchResults = await this.vectorStore.search(queryVector, args.query, requestLimit)
+    // Expand request limit for reranking if enabled
+    const rerankerActive = this.reranker !== null
+    const rerankerLimit = rerankerActive
+      ? Math.min(requestLimit * this.rerankerCandidateMultiplier, 20)
+      : requestLimit
+
+    // Hybrid search (vector + BM25 keyword matching, with RRF fusion if enabled)
+    let searchResults = await this.vectorStore.search(
+      queryVector,
+      args.query,
+      rerankerLimit,
+      additionalVectors
+    )
+
+    // Cross-encoder reranking: re-score top candidates for better relevance
+    if (rerankerActive && this.reranker && searchResults.length > 0) {
+      try {
+        const reranked = await this.reranker.rerank(
+          args.query,
+          searchResults.map((r) => r.text)
+        )
+
+        // Reorder results by cross-encoder score, convert to pseudo-distance
+        const reorderedResults = reranked.map(({ index, score }) => ({
+          ...searchResults[index]!,
+          // Convert cross-encoder score to distance-like metric (lower = better)
+          // Cross-encoder scores can be negative, so we use: 1 / (1 + exp(score))
+          // This produces values in (0, 1) where lower = more relevant
+          score: 1 / (1 + Math.exp(score)),
+        }))
+
+        searchResults = reorderedResults.slice(0, requestLimit)
+      } catch (rerankerError) {
+        console.error(`Reranker failed, using original ordering: ${(rerankerError as Error).message}`)
+        searchResults = searchResults.slice(0, requestLimit)
+      }
+    }
 
     // Apply flywheel reranking based on user feedback
     const feedbackStore = getFeedbackStore()

@@ -1,10 +1,15 @@
-// HyDE (Hypothetical Document Embeddings) query expansion
+// Query expansion module for improved retrieval recall
 //
-// Generates hypothetical answer documents from a query, then embeds them
-// alongside the original query. Each embedding becomes a separate voter
-// in RRF fusion, improving recall for paraphrased or conceptual queries.
+// Two backends are available:
+// - 'rule-based': Template-based query expansion (local, offline, no dependencies).
+//   Generates reformulated queries using pattern detection and templates.
+//   This is a classic IR query expansion technique, not HyDE.
+// - 'api': LLM-based HyDE (Hypothetical Document Embeddings). Generates hypothetical
+//   answer documents via an external LLM API, then embeds them for retrieval.
+//   Reference: Gao et al. "Precise Zero-Shot Dense Retrieval without Relevance Labels" (2022)
 //
-// Reference: Gao et al. "Precise Zero-Shot Dense Retrieval without Relevance Labels" (2022)
+// Each expansion is embedded alongside the original query and becomes a separate
+// voter in RRF fusion, improving recall for paraphrased or conceptual queries.
 
 // ============================================
 // Type Definitions
@@ -16,9 +21,9 @@
 export interface HyDEConfig {
   /** Whether HyDE is enabled */
   enabled: boolean
-  /** Backend for generating hypothetical documents */
+  /** Backend: 'rule-based' for local template-based query expansion, 'api' for LLM-based HyDE */
   backend: 'rule-based' | 'api'
-  /** Number of hypothetical documents to generate (default: 2) */
+  /** Number of query expansions to generate (default: 2) */
   numExpansions: number
   /** API key for LLM backend (optional) */
   apiKey?: string
@@ -172,7 +177,7 @@ async function apiBasedExpansion(
   }
 
   const baseUrl = config.apiBaseUrl || 'https://api.anthropic.com'
-  const model = config.apiModel || 'claude-3-haiku-20240307'
+  const model = config.apiModel || 'claude-haiku-4-5-20251001'
 
   try {
     const prompt = `Generate ${numExpansions} short hypothetical document excerpts (2-3 sentences each) that would be relevant to answering the following query. Each excerpt should sound like it comes from real documentation. Return only the excerpts, separated by newlines.

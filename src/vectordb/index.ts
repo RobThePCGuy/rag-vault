@@ -47,6 +47,23 @@ const GROUPING_BOUNDARY_STD_MULTIPLIER = parseEnvNumber('RAG_GROUPING_STD_MULTIP
  */
 const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = parseEnvInt('RAG_HYBRID_CANDIDATE_MULTIPLIER', 2)
 
+/**
+ * RRF smoothing constant (k). Higher values produce smoother rank fusion.
+ * Standard value is 60. Configure via RAG_RRF_K environment variable.
+ */
+const RRF_K = parseEnvInt('RAG_RRF_K', 60)
+
+/**
+ * Search mode: 'rrf' uses Reciprocal Rank Fusion, 'boost' uses legacy keyword boost.
+ * Configure via RAG_SEARCH_MODE environment variable.
+ */
+type SearchMode = 'rrf' | 'boost'
+const SEARCH_MODE: SearchMode = (() => {
+  const mode = process.env['RAG_SEARCH_MODE']?.toLowerCase().trim()
+  if (mode === 'boost') return 'boost'
+  return 'rrf' // default
+})()
+
 /** FTS index name (bump version when changing tokenizer settings) */
 const FTS_INDEX_NAME = 'fts_index_v2'
 
@@ -201,6 +218,13 @@ interface VectorStoreConfig {
    * Default: 0.6
    */
   hybridWeight?: number
+  /**
+   * Search mode: how vector and BM25 results are combined.
+   * - 'rrf': Reciprocal Rank Fusion (default, treats channels as independent voters)
+   * - 'boost': Legacy mode (BM25 multiplicatively boosts vector distances)
+   * Overrides RAG_SEARCH_MODE environment variable when set.
+   */
+  searchMode?: SearchMode
 }
 
 /**
@@ -955,18 +979,27 @@ export class VectorStore {
 
   /**
    * Execute vector search with quality filtering
-   * Architecture: Semantic search → Filter (maxDistance, grouping) → Keyword boost
    *
-   * This "prefetch then rerank" approach ensures:
-   * - maxDistance and grouping work on meaningful vector distances
-   * - Keyword matching acts as a boost, not a replacement for semantic similarity
+   * Supports two search modes (configured via RAG_SEARCH_MODE):
+   * - 'rrf': Reciprocal Rank Fusion — vector and BM25 are independent voters,
+   *   results are fused by rank position. Recommended for most use cases.
+   * - 'boost': Legacy mode — BM25 multiplicatively boosts vector distances.
+   *
+   * Architecture (RRF mode): Vector search + FTS search → RRF fusion → Grouping → Limit
+   * Architecture (Boost mode): Vector search → Grouping → Keyword boost → Limit
    *
    * @param queryVector - Query vector (dimension depends on model)
-   * @param queryText - Optional query text for keyword boost (BM25)
+   * @param queryText - Optional query text for keyword matching (BM25)
    * @param limit - Number of results to retrieve (default 10)
+   * @param additionalVectors - Optional additional query vectors with weights (for HyDE)
    * @returns Array of search results (sorted by distance ascending, filtered by quality settings)
    */
-  async search(queryVector: number[], queryText?: string, limit = 10): Promise<SearchResult[]> {
+  async search(
+    queryVector: number[],
+    queryText?: string,
+    limit = 10,
+    additionalVectors?: { vector: number[]; weight: number }[]
+  ): Promise<SearchResult[]> {
     if (!this.table) {
       console.error('VectorStore: Returning empty results as table does not exist')
       return []
@@ -979,63 +1012,149 @@ export class VectorStore {
     const table = this.table
     return withRetry(async () => {
       try {
-        // Step 1: Semantic (vector) search - always the primary search
         const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER
-        // Assumes normalized embeddings so dot behaves like cosine distance (lower is better, [0,2]).
-        let query = table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit)
-
-        // Apply distance threshold at query level
-        if (this.config.maxDistance !== undefined) {
-          query = query.distanceRange(undefined, this.config.maxDistance)
-        }
-
-        const vectorResults = await query.toArray()
-
-        // Convert to SearchResult format with type validation
-        let results: SearchResult[] = vectorResults.map((result) => toSearchResult(result))
-
-        // Step 2: Apply grouping filter on vector distances (before keyword boost)
-        // Grouping is meaningful only on semantic distances, not after keyword boost
-        if (this.config.grouping && results.length > 1) {
-          results = this.applyGrouping(results, this.config.grouping)
-        }
-
-        // Step 3: Apply keyword boost if enabled (with circuit breaker)
         const hybridWeight = this.getHybridWeight()
-        if (
-          this.shouldAttemptFts() &&
-          queryText &&
-          queryText.trim().length > 0 &&
-          hybridWeight > 0
-        ) {
-          try {
-            // Get unique filePaths from vector results to filter FTS search
-            const uniqueFilePaths = [...new Set(results.map((r) => r.filePath))]
+        const useRRF = (this.config.searchMode ?? SEARCH_MODE) === 'rrf'
 
-            // Build WHERE clause with IN for targeted FTS search
-            // Use backticks for column name (required for camelCase in LanceDB)
-            const escapedPaths = uniqueFilePaths.map((p) => `'${p.replace(/'/g, "''")}'`)
-            const whereClause = `\`filePath\` IN (${escapedPaths.join(', ')})`
+        // Step 1: Primary vector search
+        let vectorQuery = table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit)
+        if (!useRRF && this.config.maxDistance !== undefined) {
+          vectorQuery = vectorQuery.distanceRange(undefined, this.config.maxDistance)
+        }
+        const vectorRaw = await vectorQuery.toArray()
+        let results: SearchResult[] = vectorRaw.map((result) => toSearchResult(result))
 
-            const ftsResults = await table
-              .search(queryText, 'fts', 'text')
-              .where(whereClause)
-              .select(['filePath', 'chunkIndex', 'text', 'metadata', '_score'])
-              .limit(results.length * 2) // Enough to cover all vector results
-              .toArray()
+        if (useRRF) {
+          // ===== RRF MODE =====
+          // Collect all vector results into a single RRF candidate pool
+          // Primary query has weight 1.0; additional vectors (HyDE) have their own weights
+          const allVectorResults: { results: SearchResult[]; weight: number }[] = [
+            { results, weight: 1.0 },
+          ]
 
-            results = this.applyKeywordBoost(results, ftsResults, hybridWeight)
+          // Run additional vector searches (HyDE expansions) if provided
+          if (additionalVectors && additionalVectors.length > 0) {
+            for (const { vector, weight } of additionalVectors) {
+              const addlQuery = table.vectorSearch(vector).distanceType('dot').limit(candidateLimit)
+              const addlRaw = await addlQuery.toArray()
+              allVectorResults.push({
+                results: addlRaw.map((r) => toSearchResult(r)),
+                weight,
+              })
+            }
+          }
 
-            // FTS succeeded - reset circuit breaker
-            this.recordFtsSuccess()
-          } catch (ftsError) {
-            // Record failure for circuit breaker (will auto-recover after cooldown)
-            this.recordFtsFailure(ftsError as Error)
-            // Continue with vector-only results
+          // Build unified candidate map with RRF scoring across all vector queries
+          const candidates = new Map<string, { result: SearchResult; rrfScore: number }>()
+          const k = RRF_K
+
+          for (const { results: vecResults, weight: queryWeight } of allVectorResults) {
+            const vectorWeight = queryWeight * (1 - hybridWeight || 1)
+            for (let rank = 0; rank < vecResults.length; rank++) {
+              const r = vecResults[rank]
+              if (!r) continue
+              const key = `${r.filePath}:${r.chunkIndex}`
+              const contribution = vectorWeight / (k + rank + 1)
+              const existing = candidates.get(key)
+              if (existing) {
+                existing.rrfScore += contribution
+              } else {
+                candidates.set(key, { result: r, rrfScore: contribution })
+              }
+            }
+          }
+
+          // FTS channel (BM25) — run independently, no pre-filtering by vector results
+          if (
+            this.shouldAttemptFts() &&
+            queryText &&
+            queryText.trim().length > 0 &&
+            hybridWeight > 0
+          ) {
+            try {
+              const ftsResults = await table
+                .search(queryText, 'fts', 'text')
+                .select(['filePath', 'chunkIndex', 'text', 'metadata', '_score'])
+                .limit(candidateLimit)
+                .toArray()
+
+              // BM25 channel votes
+              const bm25Weight = hybridWeight
+              for (let rank = 0; rank < ftsResults.length; rank++) {
+                const ftsResult = ftsResults[rank]
+                if (!ftsResult) continue
+                const key = `${ftsResult['filePath']}:${ftsResult['chunkIndex']}`
+                const contribution = bm25Weight / (k + rank + 1)
+                const existing = candidates.get(key)
+                if (existing) {
+                  existing.rrfScore += contribution
+                } else {
+                  try {
+                    const searchResult = toSearchResult(ftsResult)
+                    candidates.set(key, { result: searchResult, rrfScore: contribution })
+                  } catch {
+                    continue
+                  }
+                }
+              }
+
+              this.recordFtsSuccess()
+            } catch (ftsError) {
+              this.recordFtsFailure(ftsError as Error)
+            }
+          }
+
+          // Sort by RRF score descending, convert to pseudo-distance
+          const sorted = Array.from(candidates.values()).sort((a, b) => b.rrfScore - a.rrfScore)
+          results = sorted.map(({ result, rrfScore }) => ({
+            ...result,
+            score: 1 / (1 + rrfScore),
+          }))
+
+          // Apply maxDistance filter on pseudo-distances
+          if (this.config.maxDistance !== undefined) {
+            results = results.filter((r) => r.score <= this.config.maxDistance!)
+          }
+
+          // Apply grouping on RRF pseudo-distances
+          if (this.config.grouping && results.length > 1) {
+            results = this.applyGrouping(results, this.config.grouping)
+          }
+        } else {
+          // ===== LEGACY BOOST MODE =====
+          // Step 2: Apply grouping on vector distances (before keyword boost)
+          if (this.config.grouping && results.length > 1) {
+            results = this.applyGrouping(results, this.config.grouping)
+          }
+
+          // Step 3: Apply keyword boost if enabled (with circuit breaker)
+          if (
+            this.shouldAttemptFts() &&
+            queryText &&
+            queryText.trim().length > 0 &&
+            hybridWeight > 0
+          ) {
+            try {
+              const uniqueFilePaths = [...new Set(results.map((r) => r.filePath))]
+              const escapedPaths = uniqueFilePaths.map((p) => `'${p.replace(/'/g, "''")}'`)
+              const whereClause = `\`filePath\` IN (${escapedPaths.join(', ')})`
+
+              const ftsResults = await table
+                .search(queryText, 'fts', 'text')
+                .where(whereClause)
+                .select(['filePath', 'chunkIndex', 'text', 'metadata', '_score'])
+                .limit(results.length * 2)
+                .toArray()
+
+              results = this.applyKeywordBoost(results, ftsResults, hybridWeight)
+              this.recordFtsSuccess()
+            } catch (ftsError) {
+              this.recordFtsFailure(ftsError as Error)
+            }
           }
         }
 
-        // Return top results after all filtering and boosting
+        // Return top results after all filtering and fusion
         return results.slice(0, limit)
       } catch (error) {
         throw new DatabaseError('Failed to search vectors', error as Error)
@@ -1369,7 +1488,7 @@ export class VectorStore {
     memoryUsage: number
     uptime: number
     ftsIndexEnabled: boolean
-    searchMode: 'hybrid' | 'vector-only'
+    searchMode: 'hybrid' | 'vector-only' | 'hybrid-rrf' | 'vector-rrf'
   }> {
     if (!this.table) {
       return {
@@ -1407,7 +1526,14 @@ export class VectorStore {
         memoryUsage,
         uptime,
         ftsIndexEnabled: this.ftsEnabled,
-        searchMode: ftsEffectivelyEnabled && this.getHybridWeight() > 0 ? 'hybrid' : 'vector-only',
+        searchMode:
+          (this.config.searchMode ?? SEARCH_MODE) === 'rrf'
+            ? ftsEffectivelyEnabled && this.getHybridWeight() > 0
+              ? 'hybrid-rrf'
+              : 'vector-rrf'
+            : ftsEffectivelyEnabled && this.getHybridWeight() > 0
+              ? 'hybrid'
+              : 'vector-only',
       }
     } catch (error) {
       throw new DatabaseError('Failed to get status', error as Error)

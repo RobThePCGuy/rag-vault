@@ -2,7 +2,7 @@
 
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
-import { env, pipeline } from '@huggingface/transformers'
+import { pipeline } from '@huggingface/transformers'
 
 // ============================================
 // Type Definitions
@@ -158,7 +158,6 @@ export class Reranker {
     if (this.model) return
 
     try {
-      env.cacheDir = this.config.cacheDir
       const device = this.resolveDevice()
       const timeoutMs = getInitTimeoutMs(this.config.initTimeoutMs)
 
@@ -168,7 +167,10 @@ export class Reranker {
       )
 
       this.model = await withTimeout(
-        pipeline('text-classification', this.config.modelPath, { device }),
+        pipeline('text-classification', this.config.modelPath, {
+          device,
+          cache_dir: this.config.cacheDir,
+        }),
         timeoutMs,
         'Reranker model initialization'
       )
@@ -182,10 +184,12 @@ export class Reranker {
 
         try {
           await mkdir(recoveryCacheDir, { recursive: true })
-          env.cacheDir = recoveryCacheDir
           const device = this.resolveDevice()
           this.model = await withTimeout(
-            pipeline('text-classification', this.config.modelPath, { device }),
+            pipeline('text-classification', this.config.modelPath, {
+              device,
+              cache_dir: recoveryCacheDir,
+            }),
             getInitTimeoutMs(this.config.initTimeoutMs),
             'Reranker model initialization (recovery)'
           )

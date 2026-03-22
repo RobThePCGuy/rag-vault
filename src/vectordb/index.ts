@@ -60,8 +60,8 @@ const RRF_K = parseEnvInt('RAG_RRF_K', 60)
 type SearchMode = 'rrf' | 'boost'
 const SEARCH_MODE: SearchMode = (() => {
   const mode = process.env['RAG_SEARCH_MODE']?.toLowerCase().trim()
-  if (mode === 'boost') return 'boost'
-  return 'rrf' // default
+  if (mode === 'rrf') return 'rrf'
+  return 'boost' // default: backward-compatible
 })()
 
 /** FTS index name (bump version when changing tokenizer settings) */
@@ -220,11 +220,17 @@ interface VectorStoreConfig {
   hybridWeight?: number
   /**
    * Search mode: how vector and BM25 results are combined.
-   * - 'rrf': Reciprocal Rank Fusion (default, treats channels as independent voters)
-   * - 'boost': Legacy mode (BM25 multiplicatively boosts vector distances)
+   * - 'rrf': Reciprocal Rank Fusion (opt-in, treats channels as independent voters)
+   * - 'boost': Legacy mode (default, BM25 multiplicatively boosts vector distances)
    * Overrides RAG_SEARCH_MODE environment variable when set.
    */
   searchMode?: SearchMode
+  /**
+   * RRF K constant (smoothing factor for Reciprocal Rank Fusion).
+   * Higher values reduce the impact of rank differences. Default: 60.
+   * Overrides RAG_RRF_K environment variable when set.
+   */
+  rrfK?: number
 }
 
 /**
@@ -403,6 +409,7 @@ export class VectorStore {
   private db: Connection | null = null
   private table: Table | null = null
   private readonly config: VectorStoreConfig
+  private rrfMaxDistanceWarned = false
   private ftsEnabled = false
   private ftsFailureCount = 0
   private ftsLastFailure: number | null = null
@@ -1016,6 +1023,16 @@ export class VectorStore {
         const hybridWeight = this.getHybridWeight()
         const useRRF = (this.config.searchMode ?? SEARCH_MODE) === 'rrf'
 
+        if (useRRF && this.config.maxDistance !== undefined && !this.rrfMaxDistanceWarned) {
+          this.rrfMaxDistanceWarned = true
+          console.error(
+            `Warning: maxDistance (${this.config.maxDistance}) is set with RRF search mode. ` +
+              'In RRF mode, scores are rank-based pseudo-distances, not vector distances. ' +
+              'Your threshold may not behave as expected. Consider using top-k limiting instead, ' +
+              'or set RAG_SEARCH_MODE=boost for distance-based filtering.'
+          )
+        }
+
         // Step 1: Primary vector search
         let vectorQuery = table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit)
         if (!useRRF && this.config.maxDistance !== undefined) {
@@ -1032,21 +1049,22 @@ export class VectorStore {
             { results, weight: 1.0 },
           ]
 
-          // Run additional vector searches (HyDE expansions) if provided
+          // Run additional vector searches (HyDE expansions) in parallel if provided
           if (additionalVectors && additionalVectors.length > 0) {
-            for (const { vector, weight } of additionalVectors) {
+            const additionalSearches = additionalVectors.map(async ({ vector, weight }) => {
               const addlQuery = table.vectorSearch(vector).distanceType('dot').limit(candidateLimit)
               const addlRaw = await addlQuery.toArray()
-              allVectorResults.push({
+              return {
                 results: addlRaw.map((r) => toSearchResult(r)),
                 weight,
-              })
-            }
+              }
+            })
+            allVectorResults.push(...(await Promise.all(additionalSearches)))
           }
 
           // Build unified candidate map with RRF scoring across all vector queries
           const candidates = new Map<string, { result: SearchResult; rrfScore: number }>()
-          const k = RRF_K
+          const k = this.config.rrfK ?? RRF_K
 
           for (const { results: vecResults, weight: queryWeight } of allVectorResults) {
             const vectorWeight = queryWeight * (1 - hybridWeight)

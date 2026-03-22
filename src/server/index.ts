@@ -107,6 +107,16 @@ export interface RAGServerConfig {
   hydeBackend?: string
   /** Number of HyDE expansions (default: 2) */
   hydeExpansions?: number
+  /** API key for HyDE API backend (only used when hydeBackend='api') */
+  hydeApiKey?: string
+  /** API base URL for HyDE API backend */
+  hydeApiBaseUrl?: string
+  /** API model for HyDE API backend */
+  hydeApiModel?: string
+  /** Search mode: 'rrf' or 'boost' */
+  searchMode?: string
+  /** RRF K constant (smoothing factor, default: 60) */
+  rrfK?: number
 }
 
 // ============================================
@@ -155,6 +165,12 @@ export class RAGServer {
     if (config.hybridWeight !== undefined) {
       vectorStoreConfig.hybridWeight = config.hybridWeight
     }
+    if (config.searchMode !== undefined) {
+      vectorStoreConfig.searchMode = config.searchMode as 'rrf' | 'boost'
+    }
+    if (config.rrfK !== undefined) {
+      vectorStoreConfig.rrfK = config.rrfK
+    }
     this.vectorStore = new VectorStore(vectorStoreConfig)
     this.embedder = new Embedder({
       modelPath: config.modelName,
@@ -178,7 +194,18 @@ export class RAGServer {
         enabled: true,
         backend: (config.hydeBackend === 'api' ? 'api' : 'rule-based') as 'rule-based' | 'api',
         numExpansions: config.hydeExpansions ?? 2,
+        apiKey: config.hydeApiKey,
+        apiBaseUrl: config.hydeApiBaseUrl,
+        apiModel: config.hydeApiModel,
       })
+      if (config.hydeBackend === 'api' && config.hydeApiKey) {
+        console.error(
+          'WARNING: HyDE API backend is enabled. Queries will be sent to an external LLM endpoint ' +
+            `(${config.hydeApiBaseUrl || 'https://api.anthropic.com'}). ` +
+            'This breaks the "Zero cloud" privacy guarantee. ' +
+            'Set RAG_HYDE_BACKEND=rule-based to use local-only query expansion.'
+        )
+      }
     } else {
       this.hydeExpander = null
     }

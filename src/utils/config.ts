@@ -62,6 +62,12 @@ export interface RAGConfig {
   hydeBackend?: string
   /** Number of HyDE expansions to generate */
   hydeExpansions?: number
+  /** API key for HyDE API backend (optional, only used when hydeBackend='api') */
+  hydeApiKey?: string
+  /** API base URL for HyDE API backend (optional, default: https://api.anthropic.com) */
+  hydeApiBaseUrl?: string
+  /** API model for HyDE API backend (optional) */
+  hydeApiModel?: string
 }
 
 /**
@@ -146,6 +152,11 @@ export function buildRAGConfig(overrides?: Partial<RAGConfig>): RAGConfig {
   const hydeExp = Number.parseInt(process.env['RAG_HYDE_EXPANSIONS'] || '', 10)
   config.hydeExpansions =
     !Number.isNaN(hydeExp) && hydeExp > 0 ? hydeExp : overrides?.hydeExpansions ?? 2
+
+  // HyDE API settings (only relevant when hydeBackend='api')
+  config.hydeApiKey = process.env['RAG_HYDE_API_KEY'] || overrides?.hydeApiKey
+  config.hydeApiBaseUrl = process.env['RAG_HYDE_API_BASE_URL'] || overrides?.hydeApiBaseUrl
+  config.hydeApiModel = process.env['RAG_HYDE_API_MODEL'] || overrides?.hydeApiModel
 
   return config
 }

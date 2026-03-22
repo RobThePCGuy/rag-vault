@@ -63,7 +63,7 @@ export function parseSearchMode(value: string | undefined): SearchMode | undefin
     return normalized
   }
   console.error(
-    `Invalid RAG_SEARCH_MODE value: "${value}". Expected "rrf" or "boost". Using default ("rrf").`
+    `Invalid RAG_SEARCH_MODE value: "${value}". Expected "rrf" or "boost". Using default ("boost").`
   )
   return undefined
 }

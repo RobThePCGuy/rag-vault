@@ -270,8 +270,7 @@ export class Reranker {
       // Map results back with original indices
       const results: RerankedResult[] = rawOutputs.map((output: unknown, index: number) => {
         const outputObj = output as Record<string, unknown> | null
-        const rawScore =
-          outputObj && typeof outputObj === 'object' ? Number(outputObj['score']) : 0
+        const rawScore = outputObj && typeof outputObj === 'object' ? Number(outputObj['score']) : 0
         return { index, score: Number.isFinite(rawScore) ? rawScore : 0 }
       })
 

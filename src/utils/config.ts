@@ -143,7 +143,7 @@ export function buildRAGConfig(overrides?: Partial<RAGConfig>): RAGConfig {
   config.rerankerCandidateMultiplier =
     !Number.isNaN(rerankerMult) && rerankerMult > 0
       ? rerankerMult
-      : overrides?.rerankerCandidateMultiplier ?? 2
+      : (overrides?.rerankerCandidateMultiplier ?? 2)
 
   // HyDE settings
   config.hydeEnabled =
@@ -151,7 +151,7 @@ export function buildRAGConfig(overrides?: Partial<RAGConfig>): RAGConfig {
   config.hydeBackend = process.env['RAG_HYDE_BACKEND'] || overrides?.hydeBackend || 'rule-based'
   const hydeExp = Number.parseInt(process.env['RAG_HYDE_EXPANSIONS'] || '', 10)
   config.hydeExpansions =
-    !Number.isNaN(hydeExp) && hydeExp > 0 ? hydeExp : overrides?.hydeExpansions ?? 2
+    !Number.isNaN(hydeExp) && hydeExp > 0 ? hydeExp : (overrides?.hydeExpansions ?? 2)
 
   // HyDE API settings (only relevant when hydeBackend='api')
   const hydeApiKey = process.env['RAG_HYDE_API_KEY'] || overrides?.hydeApiKey

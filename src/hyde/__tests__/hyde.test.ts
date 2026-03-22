@@ -97,20 +97,13 @@ describe('HyDEExpander', () => {
       // Should still produce results via rule-based fallback
       expect(results.length).toBeGreaterThanOrEqual(2)
       expect(results[0]!.weight).toBe(1.0)
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No API key configured')
-      )
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('No API key configured'))
     })
 
     it('falls back to rule-based when API call fails', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockRejectedValue(new Error('network error'))
-      )
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network error')))
 
-      const expander = new HyDEExpander(
-        makeConfig({ backend: 'api', apiKey: 'test-key' })
-      )
+      const expander = new HyDEExpander(makeConfig({ backend: 'api', apiKey: 'test-key' }))
       const results = await expander.expandQuery('how does vector search work?')
 
       // Should still produce results via rule-based fallback

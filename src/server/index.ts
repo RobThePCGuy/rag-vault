@@ -381,7 +381,7 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
     // feedback_dismiss tool
     target.tool(
       'feedback_dismiss',
-      'Mark a search result as irrelevant for a query. Dismissed results get pushed down in future searches. Use this when a result wasn\'t helpful.',
+      "Mark a search result as irrelevant for a query. Dismissed results get pushed down in future searches. Use this when a result wasn't helpful.",
       {
         sourceQuery: z.string().describe('The query that returned this result'),
         targetFilePath: z.string().describe('File path of the result to dismiss'),
@@ -414,7 +414,7 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
     // feedback_stats tool
     target.tool(
       'feedback_stats',
-      'See your feedback stats: total events, how many results you\'ve pinned, and how many you\'ve dismissed.',
+      "See your feedback stats: total events, how many results you've pinned, and how many you've dismissed.",
       {} as ToolSchema,
       async () => {
         try {
@@ -516,7 +516,9 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
           }
         }
       } catch (hydeError) {
-        console.error(`HyDE expansion failed, using original query only: ${(hydeError as Error).message}`)
+        console.error(
+          `HyDE expansion failed, using original query only: ${(hydeError as Error).message}`
+        )
       }
     }
 
@@ -558,7 +560,9 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
 
         searchResults = reorderedResults.slice(0, requestLimit)
       } catch (rerankerError) {
-        console.error(`Reranker failed, using original ordering: ${(rerankerError as Error).message}`)
+        console.error(
+          `Reranker failed, using original ordering: ${(rerankerError as Error).message}`
+        )
         searchResults = searchResults.slice(0, requestLimit)
       }
     }

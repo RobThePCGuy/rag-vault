@@ -194,9 +194,7 @@ describe('Reranker', () => {
     })
 
     it('initializes lazily on first rerank call', async () => {
-      const mockModel = vi.fn().mockResolvedValue([
-        { label: 'LABEL_0', score: 0.8 },
-      ])
+      const mockModel = vi.fn().mockResolvedValue([{ label: 'LABEL_0', score: 0.8 }])
       mockPipeline.mockResolvedValue(mockModel)
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
@@ -216,14 +214,18 @@ describe('Reranker', () => {
       const cacheDirs: string[] = []
 
       mockPipeline
-        .mockImplementationOnce(async (_task: string, _model: string, opts: Record<string, unknown>) => {
-          cacheDirs.push(opts['cache_dir'] as string)
-          throw new Error('Protobuf parsing failed: invalid wire type')
-        })
-        .mockImplementationOnce(async (_task: string, _model: string, opts: Record<string, unknown>) => {
-          cacheDirs.push(opts['cache_dir'] as string)
-          return vi.fn()
-        })
+        .mockImplementationOnce(
+          async (_task: string, _model: string, opts: Record<string, unknown>) => {
+            cacheDirs.push(opts['cache_dir'] as string)
+            throw new Error('Protobuf parsing failed: invalid wire type')
+          }
+        )
+        .mockImplementationOnce(
+          async (_task: string, _model: string, opts: Record<string, unknown>) => {
+            cacheDirs.push(opts['cache_dir'] as string)
+            return vi.fn()
+          }
+        )
 
       const reranker = new Reranker(defaultConfig)
       await reranker.initialize()

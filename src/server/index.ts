@@ -241,13 +241,13 @@ export class RAGServer {
     // query_documents tool
     target.tool(
       'query_documents',
-      `Search ingested documents using hybrid semantic + keyword search. Advanced syntax supported:
+      `Search your documents using both meaning and exact keyword matching. You can also use advanced syntax:
 - "exact phrase" → Match phrase exactly
 - field:value → Filter by custom metadata (e.g., domain:legal, author:john)
 - term1 AND term2 → Both terms required (default)
 - term1 OR term2 → Either term matches
 - -term → Exclude results containing term
-Results include score (0 = most relevant, higher = less relevant). Set explain=true to see why each result matched.`,
+Results include a score (0 = best match, higher = less relevant). Set explain=true to see why each result matched.`,
       {
         query: z.string(),
         limit: z.number().optional(),
@@ -264,7 +264,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // ingest_file tool
     target.tool(
       'ingest_file',
-      'Ingest a document file (PDF, DOCX, TXT, MD, JSON, JSONL) into the vector database for semantic search. File path must be an absolute path. Supports re-ingestion to update existing documents. Optional metadata can include author, domain, tags, etc.',
+      'Add a document (PDF, DOCX, TXT, MD, JSON, JSONL) to your knowledge base so you can search it. Use the full file path. If you ingest the same file again, it replaces the old version. You can tag it with metadata like author, domain, or tags.',
       {
         filePath: z.string(),
         metadata: z.record(z.string()).optional(),
@@ -280,7 +280,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // ingest_data tool
     target.tool(
       'ingest_data',
-      'Ingest content as a string, not from a file. Use for: fetched web pages (format: html), copied text (format: text), or markdown strings (format: markdown). The source identifier enables re-ingestion to update existing content. Optional custom metadata can include author, domain, tags, etc. For files on disk, use ingest_file instead.',
+      'Add text content directly instead of from a file. Good for: fetched web pages (format: html), copied text (format: text), or markdown strings (format: markdown). The source identifier lets you update the content later by re-ingesting with the same source. You can add custom metadata too. For files on disk, use ingest_file instead.',
       {
         content: z.string(),
         metadata: z.object({
@@ -300,7 +300,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // delete_file tool (uses .refine(), so handle validation in handler)
     target.tool(
       'delete_file',
-      'Delete a previously ingested file or data from the vector database. Use filePath for files ingested via ingest_file, or source for data ingested via ingest_data. Either filePath or source must be provided.',
+      'Remove a document from your knowledge base. Use filePath for files you added with ingest_file, or source for content you added with ingest_data. You need to provide one or the other.',
       {
         filePath: z.string().optional(),
         source: z.string().optional(),
@@ -321,7 +321,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // list_files tool
     target.tool(
       'list_files',
-      'List all ingested files in the vector database. Returns file paths and chunk counts for each document.',
+      'Show all documents in your knowledge base, with file paths and how many chunks each one has.',
       {} as ToolSchema,
       async () => {
         const files = await this.executeListFiles()
@@ -334,7 +334,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // status tool
     target.tool(
       'status',
-      'Get system status including total documents, total chunks, database size, and configuration information.',
+      'Check how many documents and chunks you have, the database size, and current settings.',
       {} as ToolSchema,
       async () => {
         const status = await this.executeStatus()
@@ -347,7 +347,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // feedback_pin tool
     target.tool(
       'feedback_pin',
-      'Pin a search result as relevant for a query. Pinned results will be boosted in future searches. Use when a result was particularly helpful.',
+      'Mark a search result as relevant for a query. Pinned results get boosted in future searches. Use this when a result was helpful.',
       {
         sourceQuery: z.string().describe('The query that returned this result'),
         targetFilePath: z.string().describe('File path of the result to pin'),
@@ -380,7 +380,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // feedback_dismiss tool
     target.tool(
       'feedback_dismiss',
-      'Dismiss a search result as irrelevant for a query. Dismissed results will be penalized in future searches. Use when a result was unhelpful.',
+      'Mark a search result as irrelevant for a query. Dismissed results get pushed down in future searches. Use this when a result wasn\'t helpful.',
       {
         sourceQuery: z.string().describe('The query that returned this result'),
         targetFilePath: z.string().describe('File path of the result to dismiss'),
@@ -413,7 +413,7 @@ Results include score (0 = most relevant, higher = less relevant). Set explain=t
     // feedback_stats tool
     target.tool(
       'feedback_stats',
-      'Get feedback statistics including total events, pinned pairs, and dismissed pairs.',
+      'See your feedback stats: total events, how many results you\'ve pinned, and how many you\'ve dismissed.',
       {} as ToolSchema,
       async () => {
         try {

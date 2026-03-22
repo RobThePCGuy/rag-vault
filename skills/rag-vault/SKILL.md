@@ -1,6 +1,6 @@
 ---
 name: rag-vault
-description: This skill should be used when the user asks to "search documents", "query RAG", "ingest file", "ingest PDF", "save web page", "add to knowledge base", or mentions document search, semantic search, vector search, or RAG operations. Provides score interpretation (< 0.3 good, > 0.5 skip), query optimization, and ingestion guidance for query_documents, ingest_file, ingest_data tools.
+description: Use this when someone asks to "search documents", "query RAG", "ingest file", "ingest PDF", "save web page", "add to knowledge base", or mentions document search, semantic search, vector search, or RAG operations. Covers score interpretation (< 0.3 good, > 0.5 skip), query tips, and ingestion guidance for query_documents, ingest_file, ingest_data tools.
 version: 1.0.0
 ---
 
@@ -59,7 +59,7 @@ Avoid over-expansion (causes topic drift).
 
 ### Result Selection
 
-When to include vs skip—based on answer quality, not just score.
+When to include vs skip, based on answer quality, not just score.
 
 **INCLUDE** if:
 - Directly answers the question
@@ -86,7 +86,7 @@ ingest_data({
 })
 ```
 
-**Format selection** — match the data you have:
+**Format selection**, just match the data you have:
 - HTML string → `format: "html"`
 - Markdown string → `format: "markdown"`
 - Other → `format: "text"`

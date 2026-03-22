@@ -6,7 +6,7 @@
 
 **Your documents. Your machine. Your control.**
 
-RAG Vault gives AI coding assistants fast access to your private documents such as API specs, research papers, and internal docs. Indexing and search run locally, and your data stays on your machine unless you explicitly ingest content from a remote URL.
+RAG Vault lets your AI coding assistant search your private documents, things like API specs, research papers, and internal docs. Everything runs locally and your data stays on your machine unless you choose to pull in content from a remote URL.
 
 One command to run, minimal setup, privacy by default.
 
@@ -21,9 +21,9 @@ One command to run, minimal setup, privacy by default.
 
 ## Security
 
-RAG Vault includes security features for production deployment:
+RAG Vault comes with security built in:
 - **API Authentication**: Optional API key via `RAG_API_KEY`
-- **Rate Limiting**: Configurable request throttling
+- **Rate Limiting**: You can throttle requests
 - **CORS Control**: Restrict allowed origins
 - **Security Headers**: Helmet.js protection
 
@@ -106,7 +106,7 @@ BASE_DIR = "/path/to/your/documents"
 
 ### Install Skills (Optional)
 
-For enhanced AI guidance on query formulation and result interpretation, install the RAG Vault skills:
+If you want your AI to write better queries and make more sense of results, install the RAG Vault skills:
 
 ```bash
 # Claude Code (project-level - recommended for team projects)
@@ -124,7 +124,7 @@ npx github:RobThePCGuy/rag-vault skills install --path /your/custom/path
 
 Skills teach Claude best practices for:
 - Query formulation and expansion strategies
-- Score interpretation (boost mode: < 0.3 = good match, > 0.5 = skip; RRF mode uses rank-based scoring)
+- Score interpretation. In boost mode, under 0.3 is a good match and over 0.5 is worth skipping. RRF mode scores by rank instead.
 - When to use `ingest_file` vs `ingest_data`
 - HTML ingestion and URL handling
 
@@ -142,7 +142,7 @@ That's it. No Docker. No Python. No server infrastructure to manage.
 
 ## Web Interface
 
-RAG Vault includes a full-featured web UI for managing your documents without the command line.
+RAG Vault has a web UI so you can manage your documents without touching the command line.
 
 ### Launch the Web UI
 
@@ -157,7 +157,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - **Upload documents**: Drag and drop PDF, DOCX, Markdown, TXT, JSON, JSONL, and NDJSON files
 - **Search instantly**: Type queries and see results with relevance scores
 - **Preview content**: Click any result to see the full chunk in context
-- **Manage files**: View all indexed documents and delete what you do not need
+- **Manage files**: View all indexed documents and delete what you don't need
 - **Switch databases**: Create and switch between multiple knowledge bases
 - **Monitor status**: See document counts, memory usage, and search mode
 - **Export/Import settings**: Back up and restore your vault configuration
@@ -166,7 +166,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### REST API
 
-The web server exposes a REST API for programmatic access. Set `RAG_API_KEY` to require authentication:
+The web server has a REST API you can hit directly. Set `RAG_API_KEY` to require authentication:
 
 ```bash
 # With authentication (when RAG_API_KEY is set)
@@ -175,7 +175,7 @@ curl -X POST "http://localhost:3000/api/v1/search" \
   -H "Content-Type: application/json" \
   -d '{"query": "authentication", "limit": 5}'
 
-# Search documents (no auth required if RAG_API_KEY is not set)
+# Search documents (no auth needed if RAG_API_KEY isn't set)
 curl -X POST "http://localhost:3000/api/v1/search" \
   -H "Content-Type: application/json" \
   -d '{"query": "authentication", "limit": 5}'
@@ -201,7 +201,7 @@ curl "http://localhost:3000/api/v1/health"
 
 ### Reader API Endpoints
 
-For programmatic document reading and cross-document discovery:
+These endpoints let you read documents and find connections across them:
 
 ```bash
 # Get all chunks for a document (ordered by index)
@@ -218,7 +218,7 @@ curl -X POST "http://localhost:3000/api/v1/chunks/batch-related" \
 
 ## Remote Mode
 
-RAG Vault can also run as an HTTP server for remote MCP clients like Claude.ai, Claude Desktop, or any client supporting Streamable HTTP or SSE transports.
+RAG Vault can also run as an HTTP server so remote MCP clients like Claude.ai, Claude Desktop, or anything that supports Streamable HTTP or SSE can connect to it.
 
 ```bash
 # Start remote server (default port 3001)
@@ -228,7 +228,7 @@ npx github:RobThePCGuy/rag-vault --remote
 npx github:RobThePCGuy/rag-vault --remote --port 8080
 ```
 
-Stdio mode is unchanged -- omit `--remote` and everything works as before with Cursor, Claude Code, and Codex.
+Stdio mode is unchanged. Just leave off `--remote` and everything works as before with Cursor, Claude Code, and Codex.
 
 ### Connecting from Claude Desktop
 
@@ -317,13 +317,13 @@ Query → Embed → Vector search + BM25 → Fusion → Optional reranking → R
 
 **Smart chunking**: Splits by meaning, not character count. Keeps code blocks intact.
 
-**Hybrid search**: Two fusion modes for combining vector similarity with BM25 keyword matching:
-- **Boost mode** (default): BM25 multiplicatively boosts vector search distances. Simple, predictable scoring.
-- **RRF mode** (opt-in via `RAG_SEARCH_MODE=rrf`): [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) treats vector and BM25 as independent voters. Can surface documents that vector search alone would miss.
+**Hybrid search**: Two fusion modes that combine vector similarity with BM25 keyword matching:
+- **Boost mode** (default): BM25 boosts vector search distances multiplicatively. Simple and predictable.
+- **RRF mode** (opt-in via `RAG_SEARCH_MODE=rrf`): [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf) treats vector and BM25 as independent voters. This can surface documents that vector search alone would miss.
 
-**Cross-encoder reranking** (opt-in): After initial retrieval, a cross-encoder model (`Xenova/ms-marco-MiniLM-L-6-v2`, ~23MB) jointly scores each (query, passage) pair for more precise relevance ranking. Enable with `RAG_RERANKER_ENABLED=true`.
+**Cross-encoder reranking** (opt-in): After the first pass, a cross-encoder model (`Xenova/ms-marco-MiniLM-L-6-v2`, ~23MB) scores each (query, passage) pair together for tighter relevance ranking. Turn it on with `RAG_RERANKER_ENABLED=true`.
 
-**Query expansion** (opt-in): Generates reformulated queries to improve recall for paraphrased or conceptual searches. Two backends: local template-based expansion (default, offline) or LLM-based [HyDE](https://arxiv.org/abs/2212.10496) via an external API. Enable with `RAG_HYDE_ENABLED=true`.
+**Query expansion** (opt-in): Generates reformulated queries to improve recall when searches are paraphrased or conceptual. Two backends: local template-based expansion (default, fully offline) or LLM-based [HyDE](https://arxiv.org/abs/2212.10496) through an external API. Turn it on with `RAG_HYDE_ENABLED=true`.
 
 **Quality filtering**: Groups results by relevance gaps instead of arbitrary top-K cutoffs.
 
@@ -353,12 +353,12 @@ Query → Embed → Vector search + BM25 → Fusion → Optional reranking → R
 | `DB_PATH` | `./lancedb/` | Where vectors are stored |
 | `CACHE_DIR` | `./models/` | Model cache directory |
 | `MODEL_NAME` | `Xenova/all-MiniLM-L6-v2` | HuggingFace embedding model |
-| `MAX_FILE_SIZE` | `104857600` (100 MB) | Maximum file size in bytes for ingestion |
-| `RAG_EMBEDDING_DEVICE` | `auto` | Inference device: `auto`, `cpu`, `cuda`, `dml`, `webgpu`, `wasm`, `gpu`, `webnn` |
+| `MAX_FILE_SIZE` | `104857600` (100 MB) | Biggest file you can ingest |
+| `RAG_EMBEDDING_DEVICE` | `auto` | Device for running embeddings: `auto`, `cpu`, `cuda`, `dml`, `webgpu`, `wasm`, `gpu`, `webnn` |
 | `WEB_PORT` | `3000` | Port for web interface |
 | `UPLOAD_DIR` | `./uploads/` | Temporary directory for web UI file uploads |
 
-> **Windows users:** `RAG_EMBEDDING_DEVICE=auto` attempts GPU providers (DirectML) which can fail if ONNX Runtime GPU binaries are not available. If you see embedding initialization errors, set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config for reliable operation. See the [GPU acceleration FAQ](#frequently-asked-questions) for details.
+> **Windows users:** `RAG_EMBEDDING_DEVICE=auto` tries GPU providers (DirectML), which can fail if ONNX Runtime GPU binaries aren't available. If you see embedding initialization errors, set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config for reliable operation. See the [GPU acceleration FAQ](#frequently-asked-questions) for details.
 
 One-command override (no `.env` edit):
 
@@ -377,31 +377,31 @@ npx github:RobThePCGuy/rag-vault --gpu-auto
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `RAG_SEARCH_MODE` | `boost` | Fusion mode: `boost` (legacy multiplicative keyword boost) or `rrf` (Reciprocal Rank Fusion) |
+| `RAG_SEARCH_MODE` | `boost` | Fusion mode: `boost` (multiplicative keyword boost) or `rrf` (Reciprocal Rank Fusion) |
 | `RAG_HYBRID_WEIGHT` | `0.6` | Balance between vector and BM25. `0` = vector-only, `1.0` = BM25-only |
 | `RAG_RRF_K` | `60` | RRF smoothing constant (only applies in `rrf` mode). Industry standard is 60. |
-| `RAG_GROUPING` | unset | Quality filter grouping mode: `similar` = top group only, `related` = top 2 groups |
-| `RAG_MAX_DISTANCE` | unset | Filter out results below this relevance threshold (use with `boost` mode; in `rrf` mode, scores are rank-based) |
-| `RAG_GROUPING_STD_MULTIPLIER` | `1.5` | Standard-deviation multiplier for detecting relevance gaps between result groups |
-| `RAG_HYBRID_CANDIDATE_MULTIPLIER` | `2` | Multiplier for number of vector candidates to fetch before keyword reranking |
-| `RAG_FTS_MAX_FAILURES` | `3` | Number of full-text search failures before temporarily disabling FTS |
-| `RAG_FTS_COOLDOWN_MS` | `300000` (5 min) | Cooldown period before retrying FTS after max failures reached |
+| `RAG_GROUPING` | unset | Quality filter: `similar` = top group only, `related` = top 2 groups |
+| `RAG_MAX_DISTANCE` | unset | Drops results below this relevance threshold (use with `boost` mode; `rrf` scores are rank-based) |
+| `RAG_GROUPING_STD_MULTIPLIER` | `1.5` | How many standard deviations between groups counts as a relevance gap |
+| `RAG_HYBRID_CANDIDATE_MULTIPLIER` | `2` | How many extra vector candidates to grab before keyword reranking |
+| `RAG_FTS_MAX_FAILURES` | `3` | Full-text search failures before FTS is temporarily disabled |
+| `RAG_FTS_COOLDOWN_MS` | `300000` (5 min) | How long to wait before retrying FTS after hitting the failure limit |
 
 ### Cross-Encoder Reranking (opt-in)
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `RAG_RERANKER_ENABLED` | `false` | Enable cross-encoder reranking for more precise relevance scoring |
+| `RAG_RERANKER_ENABLED` | `false` | Turn on cross-encoder reranking for better results |
 | `RAG_RERANKER_MODEL` | `Xenova/ms-marco-MiniLM-L-6-v2` | HuggingFace cross-encoder model (~23MB ONNX, downloads on first use) |
 | `RAG_RERANKER_CANDIDATE_MULTIPLIER` | `2` | Fetch this many extra candidates for the reranker to score |
-| `RAG_RERANKER_DEVICE` | `auto` | Inference device for the reranker (same options as `RAG_EMBEDDING_DEVICE`) |
+| `RAG_RERANKER_DEVICE` | `auto` | Device for the reranker (same options as `RAG_EMBEDDING_DEVICE`) |
 | `RERANKER_INIT_TIMEOUT_MS` | `600000` (10 min) | Timeout for model download and initialization |
 
 ### Query Expansion / HyDE (opt-in)
 
 | Variable | Default | What it does |
 |----------|---------|--------------|
-| `RAG_HYDE_ENABLED` | `false` | Enable query expansion for improved recall |
+| `RAG_HYDE_ENABLED` | `false` | Turn on query expansion for better recall |
 | `RAG_HYDE_BACKEND` | `rule-based` | `rule-based` for local template expansion, `api` for LLM-based HyDE |
 | `RAG_HYDE_EXPANSIONS` | `2` | Number of expanded queries to generate |
 | `RAG_HYDE_API_KEY` | unset | API key for LLM backend (required when `RAG_HYDE_BACKEND=api`) |
@@ -426,7 +426,7 @@ npx github:RobThePCGuy/rag-vault --gpu-auto
 | `ALLOWED_SCAN_ROOTS` | Home directory | Directories allowed for database scanning |
 | `JSON_BODY_LIMIT` | `5mb` | Max request body size |
 | `REQUEST_TIMEOUT_MS` | `30000` | API request timeout |
-| `REQUEST_LOGGING` | `false` | Enable request audit logging |
+| `REQUEST_LOGGING` | `false` | Turn on request audit logging |
 
 > Copy [`.env.example`](.env.example) for a complete configuration template.
 
@@ -444,7 +444,7 @@ npx github:RobThePCGuy/rag-vault --gpu-auto
 <details>
 <summary><strong>Is my data really private?</strong></summary>
 
-For local files, yes. Indexing and search run on your machine after the embedding model downloads (~90MB). RAG Vault only uses network if you choose remote URL ingestion or need to download a model.
+For local files, yes. Indexing and search run on your machine after the embedding model downloads (~90MB). RAG Vault only hits the network if you choose remote URL ingestion or need to download a model.
 
 </details>
 
@@ -458,11 +458,11 @@ Yes, after the first run. The model caches locally.
 <details>
 <summary><strong>What about GPU acceleration?</strong></summary>
 
-RAG Vault uses Transformers.js device auto-selection by default (`RAG_EMBEDDING_DEVICE=auto`). When GPU providers are properly configured, this can speed up embedding generation.
+RAG Vault picks a device automatically by default (`RAG_EMBEDDING_DEVICE=auto`). When GPU providers are set up correctly, this can speed up embedding generation.
 
-**Important:** On Windows, `auto` tries DirectML (`dml`) which requires ONNX Runtime GPU binaries. If those binaries are not installed or your GPU setup is incomplete, the server will fail to start entirely — it does not gracefully fall back to CPU. The same applies on Linux without CUDA binaries.
+**Important:** On Windows, `auto` tries DirectML (`dml`), which requires ONNX Runtime GPU binaries. If those binaries aren't installed or your GPU setup is incomplete, the server won't start at all. It doesn't fall back to CPU gracefully. The same goes for Linux without CUDA binaries.
 
-**Recommendation:** If you encounter embedding initialization errors, set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config. CPU mode is reliable on all platforms and fast enough for most workloads (the default model is only ~90MB).
+**Recommendation:** If you hit embedding initialization errors, set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config. CPU mode is reliable on all platforms and fast enough for most workloads (the default model is only ~90MB).
 
 ```json
 "env": {
@@ -477,7 +477,7 @@ Supported device values: `auto`, `cpu`, `cuda`, `dml`, `gpu`, `wasm`, `webgpu`, 
 <details>
 <summary><strong>Can I change the embedding model?</strong></summary>
 
-Yes. Set `MODEL_NAME` to any compatible HuggingFace model. You must delete `DB_PATH` and re-ingest because different models produce incompatible vectors.
+Yes. Set `MODEL_NAME` to any compatible HuggingFace model. You'll need to delete `DB_PATH` and re-ingest because different models produce incompatible vectors.
 
 **Recommended upgrade:** For better quality and multilingual support, use [EmbeddingGemma](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX):
 
@@ -485,7 +485,7 @@ Yes. Set `MODEL_NAME` to any compatible HuggingFace model. You must delete `DB_P
 "MODEL_NAME": "onnx-community/embeddinggemma-300m-ONNX"
 ```
 
-This model is a strong option for multilingual and higher-quality retrieval use cases.
+It's a solid pick if you need multilingual support or higher-quality retrieval.
 
 **Other specialized models:**
 - Scientific: `sentence-transformers/allenai-specter`
@@ -504,16 +504,16 @@ Copy the `DB_PATH` directory (default: `./lancedb/`).
 
 | Problem | Solution |
 |---------|----------|
-| No results found | Documents must be ingested first. Run "List all ingested files" to check. |
-| Model download failed | Check internet connection. Model is ~90MB from HuggingFace. |
+| No results found | Documents need to be ingested first. Run "List all ingested files" to check. |
+| Model download failed | Check your internet connection. The model is ~90MB from HuggingFace. |
 | Embedding initialization fails | Set `RAG_EMBEDDING_DEVICE=cpu` in your MCP config. The `auto` default can fail on Windows without GPU binaries. |
 | `Protobuf parsing failed` | Corrupted model cache. Delete `CACHE_DIR` (default: `./models/`) and restart. RAG Vault also auto-retries with an isolated recovery cache. |
 | File too large | Default limit is 100MB. Set `MAX_FILE_SIZE` higher or split the file. |
 | Path outside BASE_DIR | All file paths must be under `BASE_DIR`. Use absolute paths. |
-| MCP tools not showing | Verify config syntax, restart your AI tool completely (Cmd+Q on Mac). |
+| MCP tools not showing | Check your config syntax and restart your AI tool completely (Cmd+Q on Mac). |
 | `mcp-publisher login github` fails with `slow_down` | Use token login instead: `mcp-publisher login github --token "$(gh auth token)"` (or pass a PAT). |
-| 401 Unauthorized | API key required. Set `RAG_API_KEY` or use correct header format. |
-| 429 Too Many Requests | Rate limited. Wait for reset or increase `RATE_LIMIT_MAX_REQUESTS`. |
+| 401 Unauthorized | API key required. Set `RAG_API_KEY` or use the correct header format. |
+| 429 Too Many Requests | Rate limited. Wait for the reset or increase `RATE_LIMIT_MAX_REQUESTS`. |
 | CORS errors | Add your origin to `CORS_ORIGINS` environment variable. |
 
 ## Development
@@ -558,7 +558,7 @@ pnpm release:dry
 
 ### Test Tiers
 
-- `pnpm test:unit`: deterministic tests for local/CI quality checks, excluding model-download integration paths.
+- `pnpm test:unit`: deterministic tests for local/CI quality checks. Doesn't include model-download integration paths.
 - `pnpm test:integration`: full integration and E2E workflows, including embedding model initialization.
 
 Use `RUN_EMBEDDING_INTEGRATION=1` to explicitly opt into network/model-dependent suites.
@@ -568,8 +568,8 @@ Use `RUN_EMBEDDING_INTEGRATION=1` to explicitly opt into network/model-dependent
 - Releases are local and scripted via `scripts/release-npm.sh`.
 - Supported bumps: `patch`, `minor`, `major`.
 - The script runs dependency installs, `pnpm check:all`, and `pnpm ui:build` before touching version files.
-- `package.json` and `server.json` versions are updated only after checks pass, and auto-restored if any later step fails.
-- `pnpm release:dry` performs the full gate plus npm dry-run publish and always restores version files.
+- `package.json` and `server.json` versions only get updated after checks pass, and they're auto-restored if any later step fails.
+- `pnpm release:dry` runs the full gate plus npm dry-run publish and always restores version files.
 
 ### Project Structure
 
@@ -606,6 +606,6 @@ MIT: free for personal and commercial use.
 
 Built with [Model Context Protocol](https://modelcontextprotocol.io/), [LanceDB](https://lancedb.com/), and [Transformers.js](https://huggingface.co/docs/transformers.js).
 
-> Started as a fork of [mcp-local-rag](https://github.com/shinpr/mcp-local-rag) by [Shinsuke Kagawa](https://github.com/shinpr). Now it’s its own thing.
-> Huge credit to upstream contributors for the foundation, I’ve been iterating hard from there.
+> Started as a fork of [mcp-local-rag](https://github.com/shinpr/mcp-local-rag) by [Shinsuke Kagawa](https://github.com/shinpr). Now it's its own thing.
+> Huge credit to upstream contributors for the foundation, I've been iterating hard from there.
 > Local-first dev tools, all the way.

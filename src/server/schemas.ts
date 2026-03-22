@@ -29,7 +29,7 @@ const QueryDocumentsSchema = z.object({
     .boolean()
     .optional()
     .describe(
-      'Include explanation of why each result matched (shared keywords, phrases, match type).'
+      'Show why each result matched (shared keywords, phrases, match type).'
     ),
 })
 
@@ -54,7 +54,7 @@ const IngestFileSchema = z.object({
   filePath: z
     .string()
     .min(1, 'File path cannot be empty')
-    .describe('Absolute path to the file to ingest. Example: "/Users/user/documents/manual.pdf"'),
+    .describe('Full path to the file. Example: "/Users/user/documents/manual.pdf"'),
   metadata: CustomMetadataSchema,
 })
 

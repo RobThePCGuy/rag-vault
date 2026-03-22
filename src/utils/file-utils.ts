@@ -22,7 +22,22 @@ export async function atomicWriteFile(filePath: string, content: string): Promis
   const tempPath = `${filePath}.${randomUUID()}.tmp`
   try {
     await writeFile(tempPath, content, 'utf-8')
-    await rename(tempPath, filePath)
+    // Retry rename on Windows EPERM (file handle contention)
+    const maxRetries = process.platform === 'win32' ? 3 : 0
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await rename(tempPath, filePath)
+        break
+      } catch (err) {
+        const isRetryable =
+          attempt < maxRetries &&
+          err instanceof Error &&
+          'code' in err &&
+          (err as NodeJS.ErrnoException).code === 'EPERM'
+        if (!isRetryable) throw err
+        await new Promise((r) => setTimeout(r, 50 * (attempt + 1)))
+      }
+    }
   } catch (error) {
     // Clean up temp file on failure
     try {

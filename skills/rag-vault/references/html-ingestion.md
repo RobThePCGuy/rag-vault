@@ -4,7 +4,7 @@ Basic usage is in SKILL.md. This covers URL handling and edge cases.
 
 ## System Behavior
 
-The parser extracts main content only—navigation, ads, and boilerplate are stripped. What gets indexed is clean body text, not the full HTML.
+The parser pulls out the main content and strips navigation, ads, and boilerplate. What gets indexed is clean body text, not the full HTML.
 
 ## When to Use Each Source Method
 

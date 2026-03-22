@@ -48,7 +48,8 @@ export interface ExpandedQuery {
 // ============================================
 
 /** Common question word patterns */
-const QUESTION_PATTERN = /^(what|how|why|when|where|who|which|can|does|is|are|was|were|do|did|should|could|would)\s+/i
+const QUESTION_PATTERN =
+  /^(what|how|why|when|where|who|which|can|does|is|are|was|were|do|did|should|could|would)\s+/i
 
 /** Common technical/code patterns */
 const CODE_PATTERN = /`[^`]+`|[A-Z][a-z]+[A-Z]|[a-z]+_[a-z]+|\.[a-z]+\(|ERR_|ERROR_|[A-Z_]{3,}/
@@ -90,9 +91,7 @@ function ruleBasedExpansion(query: string, numExpansions: number): string[] {
   switch (queryType) {
     case 'question': {
       // Convert question to declarative statement
-      const declarative = cleanQuery
-        .replace(QUESTION_PATTERN, '')
-        .trim()
+      const declarative = cleanQuery.replace(QUESTION_PATTERN, '').trim()
       if (declarative.length > 3) {
         expansions.push(
           `${declarative.charAt(0).toUpperCase()}${declarative.slice(1)}. This is explained in detail in the documentation.`
@@ -139,7 +138,6 @@ function ruleBasedExpansion(query: string, numExpansions: number): string[] {
       break
     }
 
-    case 'concept':
     default: {
       // General conceptual expansion
       expansions.push(
@@ -207,19 +205,12 @@ Query: ${query}`
 
     // Runtime validation of API response shape
     const dataObj = data as Record<string, unknown> | null
-    if (
-      !dataObj ||
-      typeof dataObj !== 'object' ||
-      !Array.isArray(dataObj['content'])
-    ) {
+    if (!dataObj || typeof dataObj !== 'object' || !Array.isArray(dataObj['content'])) {
       throw new Error('API returned unexpected response format')
     }
     const content = dataObj['content'] as unknown[]
     const firstBlock = content[0] as Record<string, unknown> | undefined
-    const text =
-      firstBlock && typeof firstBlock['text'] === 'string'
-        ? firstBlock['text']
-        : ''
+    const text = firstBlock && typeof firstBlock['text'] === 'string' ? firstBlock['text'] : ''
     const expansions = text
       .split('\n')
       .map((line: string) => line.trim())
@@ -233,7 +224,9 @@ Query: ${query}`
 
     return expansions
   } catch (error) {
-    console.error(`HyDE: API expansion failed: ${(error as Error).message}, falling back to rule-based`)
+    console.error(
+      `HyDE: API expansion failed: ${(error as Error).message}, falling back to rule-based`
+    )
     return ruleBasedExpansion(query, numExpansions)
   }
 }

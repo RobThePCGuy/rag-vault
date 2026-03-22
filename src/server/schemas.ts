@@ -28,9 +28,7 @@ const QueryDocumentsSchema = z.object({
   explain: z
     .boolean()
     .optional()
-    .describe(
-      'Show why each result matched (shared keywords, phrases, match type).'
-    ),
+    .describe('Show why each result matched (shared keywords, phrases, match type).'),
 })
 
 /**

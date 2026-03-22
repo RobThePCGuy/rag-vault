@@ -1110,9 +1110,7 @@ export class VectorStore {
                   try {
                     const searchResult = toSearchResult(ftsResult)
                     candidates.set(key, { result: searchResult, rrfScore: contribution })
-                  } catch {
-                    continue
-                  }
+                  } catch {}
                 }
               }
 

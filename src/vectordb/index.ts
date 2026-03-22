@@ -1049,7 +1049,7 @@ export class VectorStore {
           const k = RRF_K
 
           for (const { results: vecResults, weight: queryWeight } of allVectorResults) {
-            const vectorWeight = queryWeight * (1 - hybridWeight || 1)
+            const vectorWeight = queryWeight * (1 - hybridWeight)
             for (let rank = 0; rank < vecResults.length; rank++) {
               const r = vecResults[rank]
               if (!r) continue

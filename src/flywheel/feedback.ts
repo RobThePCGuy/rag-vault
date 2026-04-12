@@ -89,6 +89,17 @@ class FeedbackStore {
   }
 
   /**
+   * Clear all events and indices.
+   * Called before loading a different database's feedback to prevent cross-contamination.
+   */
+  clear(): void {
+    this.events = []
+    this.pinnedPairs.clear()
+    this.dismissedPairs.clear()
+    this.coPinnedWith.clear()
+  }
+
+  /**
    * Record a feedback event
    */
   recordEvent(event: FeedbackEvent): void {
@@ -307,6 +318,10 @@ class FeedbackStore {
    * @param dbPath - Path to the database directory
    */
   async loadFromDisk(dbPath: string): Promise<void> {
+    // Clear existing events to prevent cross-database contamination
+    // (e.g., when switching databases in the web server)
+    this.clear()
+
     const filePath = join(dbPath, 'feedback.json')
     try {
       const content = await readFile(filePath, 'utf-8')

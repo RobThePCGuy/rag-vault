@@ -11,36 +11,14 @@
 
 import { randomUUID } from 'node:crypto'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import express, { type Request, type Response } from 'express'
-
-/** Timeout for MCP transport connect (default: 10 seconds) */
-const MCP_CONNECT_TIMEOUT_MS = Number.parseInt(process.env['MCP_CONNECT_TIMEOUT_MS'] || '10000', 10)
-
-/**
- * Wrap a promise with a timeout
- */
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
-      ms
-    )
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      }
-    )
-  })
-}
-
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
+import express, { type Request, type Response } from 'express'
+import { withTimeout } from '../utils/timeout.js'
+
+/** Timeout for MCP transport connect (default: 10 seconds) */
+const MCP_CONNECT_TIMEOUT_MS = Number.parseInt(process.env['MCP_CONNECT_TIMEOUT_MS'] || '10000', 10)
 
 // =============================================================================
 // TYPES

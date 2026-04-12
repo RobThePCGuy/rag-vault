@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto'
 import { type Connection, connect, Index, type Table } from '@lancedb/lancedb'
 import { DatabaseError } from '../errors/index.js'
+import { parseRrfK, parseSearchMode, type SearchMode } from '../utils/config-parsers.js'
 
 // Re-export error class for backwards compatibility
 export { DatabaseError } from '../errors/index.js'
@@ -50,19 +51,16 @@ const HYBRID_SEARCH_CANDIDATE_MULTIPLIER = parseEnvInt('RAG_HYBRID_CANDIDATE_MUL
 /**
  * RRF smoothing constant (k). Higher values produce smoother rank fusion.
  * Standard value is 60. Configure via RAG_RRF_K environment variable.
+ * Uses shared parser from config-parsers.ts (rejects values < 1).
  */
-const RRF_K = parseEnvInt('RAG_RRF_K', 60)
+const RRF_K = parseRrfK(process.env['RAG_RRF_K']) ?? 60
 
 /**
  * Search mode: 'rrf' uses Reciprocal Rank Fusion, 'boost' uses legacy keyword boost.
  * Configure via RAG_SEARCH_MODE environment variable.
+ * Uses shared parser from config-parsers.ts (validates against known modes).
  */
-type SearchMode = 'rrf' | 'boost'
-const SEARCH_MODE: SearchMode = (() => {
-  const mode = process.env['RAG_SEARCH_MODE']?.toLowerCase().trim()
-  if (mode === 'rrf') return 'rrf'
-  return 'boost' // default: backward-compatible
-})()
+const SEARCH_MODE: SearchMode = parseSearchMode(process.env['RAG_SEARCH_MODE']) ?? 'boost'
 
 /** FTS index name (bump version when changing tokenizer settings) */
 const FTS_INDEX_NAME = 'fts_index_v2'
@@ -82,6 +80,14 @@ const FTS_MAX_FAILURES = parseEnvInt('RAG_FTS_MAX_FAILURES', 3)
  * Configure via RAG_FTS_COOLDOWN_MS environment variable.
  */
 const FTS_COOLDOWN_MS = parseEnvInt('RAG_FTS_COOLDOWN_MS', 5 * 60 * 1000)
+
+/**
+ * Debounce delay for FTS index rebuild after writes (milliseconds).
+ * Collapses rapid insert/delete operations into a single optimize() call.
+ * Default: 0 (immediate, no debounce — backward-compatible).
+ * Set RAG_FTS_REBUILD_DEBOUNCE_MS=500 for bulk ingestion workloads.
+ */
+const FTS_REBUILD_DEBOUNCE_MS = parseEnvInt('RAG_FTS_REBUILD_DEBOUNCE_MS', 0)
 
 // ============================================
 // Error Codes (for robust error handling)
@@ -413,12 +419,18 @@ export class VectorStore {
   private ftsEnabled = false
   private ftsFailureCount = 0
   private ftsLastFailure: number | null = null
-  /** Promise-based mutex for atomic circuit breaker reset */
-  private ftsRecoveryPromise: Promise<boolean> | null = null
   /** Runtime override for hybrid weight (allows dynamic adjustment) */
   private hybridWeightOverride: number | null = null
   /** Promise-based mutex for table creation (prevents race on first insert) */
   private tableCreationPromise: Promise<void> | null = null
+  /** Debounce timer for FTS index rebuild (collapses rapid writes into one optimize) */
+  private ftsRebuildTimer: ReturnType<typeof setTimeout> | null = null
+  /** Shared promise for callers awaiting the debounced FTS rebuild */
+  private ftsRebuildPromise: Promise<void> | null = null
+  /** Resolve function for the current ftsRebuildPromise */
+  private ftsRebuildResolve: (() => void) | null = null
+  /** Reject function for the current ftsRebuildPromise */
+  private ftsRebuildReject: ((err: Error) => void) | null = null
 
   constructor(config: VectorStoreConfig) {
     this.config = config
@@ -446,7 +458,9 @@ export class VectorStore {
    * Check if FTS should be attempted (circuit breaker logic)
    * - Returns false if max failures reached and cooldown not elapsed
    * - Resets failure count after successful cooldown period
-   * - Uses promise-based mutex for atomic reset (prevents race conditions)
+   *
+   * State resets are synchronous — safe in Node.js single-threaded model
+   * since no await points exist between the check and the FTS call.
    */
   private shouldAttemptFts(): boolean {
     if (!this.ftsEnabled) return false
@@ -456,29 +470,10 @@ export class VectorStore {
 
     // Check if cooldown period has elapsed
     if (this.ftsLastFailure && Date.now() - this.ftsLastFailure > FTS_COOLDOWN_MS) {
-      // Check if another call is already handling recovery
-      if (this.ftsRecoveryPromise) {
-        // Recovery in progress - don't allow FTS until it completes
-        return false
-      }
-
-      // Atomically create the recovery promise before any state changes
-      // This ensures only one caller can enter recovery mode
-      this.ftsRecoveryPromise = Promise.resolve()
-        .then(() => {
-          this.ftsFailureCount = 0
-          this.ftsLastFailure = null
-          this.ftsRecoveryPromise = null
-          console.error('VectorStore: FTS circuit breaker reset - attempting recovery')
-          return true
-        })
-        .catch((err) => {
-          // Reset promise on failure to allow retry
-          this.ftsRecoveryPromise = null
-          console.error('VectorStore: FTS circuit breaker reset failed:', err)
-          return false
-        })
-
+      // Reset synchronously — no interleaving possible before the caller's FTS attempt
+      this.ftsFailureCount = 0
+      this.ftsLastFailure = null
+      console.error('VectorStore: FTS circuit breaker reset - attempting recovery')
       return true
     }
 
@@ -914,20 +909,74 @@ export class VectorStore {
   }
 
   /**
-   * Rebuild FTS index after data changes (insert/delete)
-   * LanceDB OSS requires explicit optimize() call to update FTS index
-   * Also cleans up old index versions to prevent storage bloat
+   * Schedule FTS index rebuild after data changes (insert/delete).
+   *
+   * Uses trailing-edge debounce: rapid writes within the debounce window
+   * collapse into a single optimize() call. All callers await the same
+   * shared promise, so queries after the debounce see updated FTS results.
+   *
+   * For a single file re-ingestion (insert + delete-old), this turns
+   * 2 optimize calls into 1. For bulk N-file ingestion, 2N → 1.
    */
   private async rebuildFtsIndex(): Promise<void> {
     if (!this.table || !this.ftsEnabled) {
       return
     }
 
-    // TODO(perf): optimize() after every write keeps FTS correct, but can be expensive at scale.
-    // If ingestion throughput becomes an issue, consider debouncing or batching optimize calls.
-    // Optimize table and clean up old versions
-    const cleanupThreshold = new Date(Date.now() - FTS_CLEANUP_THRESHOLD_MS)
-    await this.table.optimize({ cleanupOlderThan: cleanupThreshold })
+    // No debounce: execute immediately (default for tests or explicit opt-out)
+    if (FTS_REBUILD_DEBOUNCE_MS <= 0) {
+      const cleanupThreshold = new Date(Date.now() - FTS_CLEANUP_THRESHOLD_MS)
+      await this.table.optimize({ cleanupOlderThan: cleanupThreshold })
+      return
+    }
+
+    // If no pending rebuild, create a new shared promise
+    if (!this.ftsRebuildPromise) {
+      this.ftsRebuildPromise = new Promise<void>((resolve, reject) => {
+        this.ftsRebuildResolve = resolve
+        this.ftsRebuildReject = reject
+      })
+    }
+
+    // Reset the debounce timer (trailing edge)
+    if (this.ftsRebuildTimer) {
+      clearTimeout(this.ftsRebuildTimer)
+    }
+
+    const pending = this.ftsRebuildPromise
+
+    this.ftsRebuildTimer = setTimeout(() => {
+      this.executeOptimize()
+    }, FTS_REBUILD_DEBOUNCE_MS)
+
+    // All callers await the same promise
+    return pending
+  }
+
+  /**
+   * Execute the actual optimize() call and resolve/reject the shared promise.
+   */
+  private async executeOptimize(): Promise<void> {
+    const resolve = this.ftsRebuildResolve
+    const reject = this.ftsRebuildReject
+
+    // Clear state before executing so new writes during optimize get their own batch
+    this.ftsRebuildPromise = null
+    this.ftsRebuildResolve = null
+    this.ftsRebuildReject = null
+    this.ftsRebuildTimer = null
+
+    try {
+      if (!this.table) {
+        resolve?.()
+        return
+      }
+      const cleanupThreshold = new Date(Date.now() - FTS_CLEANUP_THRESHOLD_MS)
+      await this.table.optimize({ cleanupOlderThan: cleanupThreshold })
+      resolve?.()
+    } catch (error) {
+      reject?.(error as Error)
+    }
   }
 
   /**
@@ -1318,6 +1367,18 @@ export class VectorStore {
    */
   async close(): Promise<void> {
     const errors: Error[] = []
+
+    // Flush any pending FTS rebuild before closing
+    if (this.ftsRebuildTimer) {
+      clearTimeout(this.ftsRebuildTimer)
+      this.ftsRebuildTimer = null
+      try {
+        await this.executeOptimize()
+      } catch (error) {
+        console.error('Error flushing FTS rebuild on close:', error)
+        errors.push(error as Error)
+      }
+    }
 
     // Close table first (releases cached index data)
     if (this.table) {

@@ -4,6 +4,7 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { getFeedbackStore } from '../flywheel/feedback.js'
 import { buildRAGConfig, validateAllowedScanRoots, validateRAGConfig } from '../utils/config.js'
 import {
   onShutdown,
@@ -86,6 +87,16 @@ async function main(): Promise<void> {
 
     // Initialize with the configured database
     await dbManager.initialize(dbPath)
+
+    // Load persisted feedback data (pins, dismissals) from previous sessions
+    await getFeedbackStore().loadFromDisk(dbPath)
+
+    // Save feedback on shutdown
+    onShutdown(async () => {
+      console.error('Saving feedback data...')
+      const currentConfig = dbManager.getServer().getConfig()
+      await getFeedbackStore().saveToDisk(currentConfig.dbPath)
+    })
 
     // Create and start HTTP server with DatabaseManager
     const httpConfig: Parameters<typeof createHttpServerWithManager>[1] = {

@@ -4,6 +4,7 @@ import { existsSync, realpathSync } from 'node:fs'
 import { mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
+import { getFeedbackStore } from '../flywheel/feedback.js'
 import type { RAGServer, RAGServerConfig } from '../server/index.js'
 import { RecentDatabasesFileSchema, StatusResponseSchema } from '../server/schemas.js'
 import { atomicWriteFile } from '../utils/file-utils.js'
@@ -70,14 +71,45 @@ async function writeUserAllowedRoots(roots: string[]): Promise<void> {
 }
 
 /**
+ * Resolve a path to its real filesystem location, handling non-existent paths
+ * by walking up to the nearest existing ancestor and resolving symlinks there.
+ *
+ * This prevents symlink-based traversal: if /allowed/link -> /outside, then
+ * /allowed/link/newdir resolves to /outside/newdir (rejected) instead of
+ * /allowed/link/newdir (would incorrectly pass prefix check).
+ */
+function resolveWithAncestorSymlinks(targetPath: string): string {
+  const absolute = path.resolve(targetPath)
+
+  // Fast path: target exists, resolve directly
+  if (existsSync(absolute)) {
+    return realpathSync(absolute)
+  }
+
+  // Walk up to the nearest existing ancestor, collecting the non-existent tail
+  let current = absolute
+  const tail: string[] = []
+
+  while (!existsSync(current)) {
+    tail.unshift(path.basename(current))
+    const parent = path.dirname(current)
+    if (parent === current) break // filesystem root
+    current = parent
+  }
+
+  // Resolve symlinks on the existing ancestor, re-append the non-existent suffix
+  const resolvedAncestor = existsSync(current) ? realpathSync(current) : current
+  return path.join(resolvedAncestor, ...tail)
+}
+
+/**
  * Check if a path is within a set of allowed roots
  */
 function isPathWithinRoots(targetPath: string, allowedRoots: string[]): boolean {
   let resolvedPath: string
 
   try {
-    // Resolve to absolute path and resolve symlinks
-    resolvedPath = existsSync(targetPath) ? realpathSync(targetPath) : path.resolve(targetPath)
+    resolvedPath = resolveWithAncestorSymlinks(targetPath)
   } catch {
     // If we can't resolve the path, reject it
     return false
@@ -408,6 +440,11 @@ export class DatabaseManager {
    * Internal method to perform the actual database switch
    */
   private async performSwitch(resolvedPath: string, modelName?: string): Promise<void> {
+    // Save feedback for current database before switching
+    if (this.currentConfig) {
+      await getFeedbackStore().saveToDisk(this.currentConfig.dbPath)
+    }
+
     // Close current server
     if (this.currentServer) {
       await this.currentServer.close()
@@ -433,6 +470,9 @@ export class DatabaseManager {
       // Success - update state
       this.currentServer = newServer
       this.currentConfig = config
+
+      // Load feedback data for the new database
+      await getFeedbackStore().loadFromDisk(resolvedPath)
 
       // Update recent databases with the model name
       await this.addToRecent(resolvedPath, effectiveModelName)
@@ -631,12 +671,28 @@ export class DatabaseManager {
 
   /**
    * Add a user-allowed root
+   *
+   * Security: user-added roots must be within admin-configured boundaries
+   * (ALLOWED_SCAN_ROOTS env var, or the home directory default).
+   * This prevents a local API caller from expanding access beyond what
+   * the administrator intended.
    */
   async addUserAllowedRoot(rootPath: string): Promise<void> {
     const resolved = path.resolve(expandTilde(rootPath))
     if (!existsSync(resolved)) {
       throw new Error(`Path does not exist: ${resolved}`)
     }
+
+    // Validate that the new root is within admin-configured boundaries
+    const adminRoots = getEnvAllowedScanRoots()
+    if (!isPathWithinRoots(resolved, adminRoots)) {
+      throw new Error(
+        `Path is outside allowed scan roots. ` +
+          `Allowed roots: ${adminRoots.join(', ')}. ` +
+          `Set ALLOWED_SCAN_ROOTS to expand access.`
+      )
+    }
+
     const roots = await readUserAllowedRoots()
     if (!roots.includes(resolved)) {
       roots.push(resolved)

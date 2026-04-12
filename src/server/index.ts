@@ -13,6 +13,7 @@ import { getErrorMessage } from '../errors/index.js'
 import { explainChunkSimilarity } from '../explainability/keywords.js'
 import { type ChunkRef, getFeedbackStore } from '../flywheel/feedback.js'
 import { parseHtml } from '../parser/html-parser.js'
+import { withTimeout } from '../utils/timeout.js'
 import { DocumentParser } from '../parser/index.js'
 import { matchesFilters, parseQuery, shouldExclude, toSemanticQuery } from '../query/index.js'
 import { type GroupingMode, type VectorChunk, VectorStore } from '../vectordb/index.js'
@@ -48,28 +49,6 @@ const VECTORSTORE_INIT_TIMEOUT_MS = Number.parseInt(
 
 /** Timeout for MCP transport connect (default: 10 seconds) */
 const MCP_CONNECT_TIMEOUT_MS = Number.parseInt(process.env['MCP_CONNECT_TIMEOUT_MS'] || '10000', 10)
-
-/**
- * Wrap a promise with a timeout
- */
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
-      ms
-    )
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      }
-    )
-  })
-}
 
 // ============================================
 // Type Definitions
@@ -238,6 +217,12 @@ export class RAGServer {
     // Use type assertion to work around Zod version incompatibility
     // biome-ignore lint/suspicious/noExplicitAny: Required for Zod version compatibility between project and SDK
     type ToolSchema = any
+
+    // Error handling policy:
+    // - Core tools (query, ingest, delete, list, status) let errors propagate as MCP protocol errors.
+    //   These are data operations where failures should surface clearly to the client.
+    // - Feedback tools (pin, dismiss, stats) use try/catch with isError:true returns.
+    //   Feedback is advisory — a failed pin should not break the client's workflow.
 
     // query_documents tool
     target.tool(

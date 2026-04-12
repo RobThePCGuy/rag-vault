@@ -2,6 +2,7 @@
 // Entry point for RAG MCP Server
 
 import { run as runSkillsInstall } from './bin/install-skills.js'
+import { getFeedbackStore } from './flywheel/feedback.js'
 import { RAGServer } from './server/index.js'
 import { startRemoteTransport } from './server/remote-transport.js'
 import { applyEmbeddingDeviceCliOverride } from './utils/embedding-device-cli.js'
@@ -88,11 +89,17 @@ async function main(): Promise<void> {
 
     // Register cleanup callback for graceful shutdown
     onShutdown(async () => {
+      console.error('Saving feedback data...')
+      await getFeedbackStore().saveToDisk(config.dbPath)
       console.error('Closing RAG server...')
       await server.close()
     })
 
     await server.initialize()
+
+    // Load persisted feedback data (pins, dismissals) from previous sessions
+    await getFeedbackStore().loadFromDisk(config.dbPath)
+
     await server.run()
 
     console.error('RAG MCP Server started successfully')
@@ -122,11 +129,16 @@ async function mainRemote(args: string[]): Promise<void> {
     const ragServer = new RAGServer(config)
 
     onShutdown(async () => {
+      console.error('Saving feedback data...')
+      await getFeedbackStore().saveToDisk(config.dbPath)
       console.error('Closing RAG server...')
       await ragServer.close()
     })
 
     await ragServer.initialize()
+
+    // Load persisted feedback data (pins, dismissals) from previous sessions
+    await getFeedbackStore().loadFromDisk(config.dbPath)
 
     // Start remote transport - creates per-session MCP servers sharing the same backend
     const transportOptions: Parameters<typeof startRemoteTransport>[0] = {

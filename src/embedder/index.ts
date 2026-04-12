@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { env, pipeline } from '@huggingface/transformers'
 import { EmbeddingError } from '../errors/index.js'
+import { withTimeout } from '../utils/timeout.js'
 
 // Re-export error class for backwards compatibility
 export { EmbeddingError } from '../errors/index.js'
@@ -65,28 +66,6 @@ function getInitTimeoutMs(configValue?: number): number {
     if (!Number.isNaN(parsed) && parsed > 0) return parsed
   }
   return DEFAULT_INIT_TIMEOUT_MS
-}
-
-/**
- * Wrap a promise with a timeout
- */
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new EmbeddingError(`${label} timed out after ${Math.round(ms / 1000)}s`)),
-      ms
-    )
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      }
-    )
-  })
 }
 
 // ============================================

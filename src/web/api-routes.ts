@@ -137,7 +137,7 @@ export function createApiRouter(serverOrAccessor: RAGServer | ServerAccessor): R
         throw new ValidationError('Content is required and must be a string')
       }
 
-      if (!metadata || !metadata.source || !metadata.format) {
+      if (!metadata?.source || !metadata.format) {
         throw new ValidationError('Metadata with source and format is required')
       }
 

@@ -3,6 +3,7 @@
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { pipeline } from '@huggingface/transformers'
+import { withTimeout } from '../utils/timeout.js'
 
 // ============================================
 // Type Definitions
@@ -66,25 +67,6 @@ function getInitTimeoutMs(configValue?: number): number {
     if (!Number.isNaN(parsed) && parsed > 0) return parsed
   }
   return DEFAULT_INIT_TIMEOUT_MS
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)),
-      ms
-    )
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      }
-    )
-  })
 }
 
 // ============================================

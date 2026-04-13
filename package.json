@@ -89,7 +89,7 @@
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "express": "^5.2.1",
-    "file-type": "^21.3.0",
+    "file-type": "^22.0.1",
     "helmet": "^8.1.0",
     "jsdom": "^29.0.1",
     "mammoth": "^1.11.0",

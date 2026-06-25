@@ -253,7 +253,6 @@ export class DocumentParser {
       const pdf = await getDocument({
         data: new Uint8Array(buffer),
         useSystemFonts: true,
-        isEvalSupported: false,
       }).promise
 
       // Extract text with position information from each page

@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # Note: actions/setup-node "cache: pnpm" is intentionally omitted because
+      # this repo gitignores pnpm-lock.yaml (no committed lockfile), which makes
+      # the cache step fail with "Dependencies lock file is not found".
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install web-ui dependencies
+        run: pnpm --prefix web-ui install
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test:unit

@@ -56,6 +56,88 @@ describe('VectorStore', () => {
     return vector.map((x) => x / norm)
   }
 
+  describe('Path handling and SQL-injection safety', () => {
+    it('ingests and deletes non-ASCII (CJK) file paths', async () => {
+      const store = new VectorStore({ dbPath: testDbPath, tableName: 'chunks' })
+      await store.initialize()
+      const cjkPath = '/docs/日本語のファイル.txt'
+      await store.insertChunks([createTestChunk('内容テキスト', cjkPath, 0)])
+      expect((await store.getDocumentChunks(cjkPath)).length).toBe(1)
+      await store.deleteChunks(cjkPath)
+      expect((await store.getDocumentChunks(cjkPath)).length).toBe(0)
+      await store.close()
+    })
+
+    it('ingests and deletes paths with apostrophes', async () => {
+      const store = new VectorStore({ dbPath: testDbPath, tableName: 'chunks' })
+      await store.initialize()
+      const apostrophePath = "/docs/O'Brien's plan.md"
+      await store.insertChunks([createTestChunk('body', apostrophePath, 0)])
+      expect((await store.getDocumentChunks(apostrophePath)).length).toBe(1)
+      await store.deleteChunks(apostrophePath)
+      expect((await store.getDocumentChunks(apostrophePath)).length).toBe(0)
+      await store.close()
+    })
+
+    it('ingests and deletes paths containing a double dash', async () => {
+      const store = new VectorStore({ dbPath: testDbPath, tableName: 'chunks' })
+      await store.initialize()
+      const doubleDashPath = '/docs/report--final.md'
+      await store.insertChunks([createTestChunk('body', doubleDashPath, 0)])
+      expect((await store.getDocumentChunks(doubleDashPath)).length).toBe(1)
+      await store.deleteChunks(doubleDashPath)
+      expect((await store.getDocumentChunks(doubleDashPath)).length).toBe(0)
+      await store.close()
+    })
+
+    it('re-ingesting a CJK path replaces chunks instead of duplicating them', async () => {
+      const store = new VectorStore({ dbPath: testDbPath, tableName: 'chunks' })
+      await store.initialize()
+      const p = '/docs/设计文档.md'
+      // First ingest: 2 chunks
+      await store.insertChunks([createTestChunk('one', p, 0), createTestChunk('two', p, 1)])
+      // Re-ingest new batch, then remove old chunks (mirrors RAGServer.executeIngestFile)
+      const secondBatch = [createTestChunk('one-v2', p, 0), createTestChunk('two-v2', p, 1)]
+      await store.insertChunks(secondBatch)
+      await store.deleteChunksExcluding(p, new Set(secondBatch.map((c) => c.id)))
+      // Only the new batch remains — no duplicate accumulation on re-ingest
+      expect((await store.getDocumentChunks(p)).length).toBe(2)
+      await store.close()
+    })
+
+    it('neutralizes SQL injection attempts in file paths (escaping, not charset)', async () => {
+      const store = new VectorStore({ dbPath: testDbPath, tableName: 'chunks' })
+      await store.initialize()
+      await store.insertChunks([createTestChunk('keep me', '/docs/keep.txt', 0)])
+
+      // Unescaped, this WHERE fragment (' OR '1'='1) would match every row.
+      // Single-quote escaping turns it into a literal that matches nothing.
+      const injection = "/docs/keep.txt' OR '1'='1"
+      await store.deleteChunks(injection)
+
+      // The bystander chunk is still present -> the injection did not execute.
+      expect((await store.getDocumentChunks('/docs/keep.txt')).length).toBe(1)
+
+      // Sanity: an exact, correct path still deletes normally.
+      await store.deleteChunks('/docs/keep.txt')
+      expect((await store.getDocumentChunks('/docs/keep.txt')).length).toBe(0)
+      await store.close()
+    })
+
+    it('rejects path-traversal segments before they reach a query', async () => {
+      const store = new VectorStore({ dbPath: testDbPath, tableName: 'chunks' })
+      await store.initialize()
+      await store.insertChunks([createTestChunk('keep me', '/docs/keep.txt', 0)])
+
+      await expect(store.deleteChunks('/docs/../../etc/passwd')).rejects.toThrow(
+        /Invalid file path/
+      )
+      // The traversal attempt did not delete unrelated data.
+      expect((await store.getDocumentChunks('/docs/keep.txt')).length).toBe(1)
+      await store.close()
+    })
+  })
+
   describe('Custom metadata schema compatibility', () => {
     it('should keep ingesting when later chunks introduce new custom metadata keys', async () => {
       const metadataSchemaDbPath = makeTestDbPath('test-vectordb-custom-metadata-schema')

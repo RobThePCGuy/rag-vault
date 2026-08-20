@@ -15,6 +15,7 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import express, { type Request, type Response } from 'express'
+import { isAllInterfacesHost, resolveBindHost } from '../utils/config-parsers.js'
 import { withTimeout } from '../utils/timeout.js'
 
 /** Timeout for MCP transport connect (default: 10 seconds) */
@@ -33,6 +34,11 @@ interface RemoteTransportOptions {
   apiKey?: string
   /** Allowed CORS origins (default: "*" for dev, restrict in production) */
   corsOrigins?: string | string[]
+  /**
+   * Network interface to bind (default: loopback via RAG_BIND_HOST / RAG_HOST).
+   * Set to "0.0.0.0" to expose on all interfaces — only alongside an API key.
+   */
+  host?: string
 }
 
 // =============================================================================
@@ -53,6 +59,7 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
     port = Number.parseInt(process.env['WEB_PORT'] || '3001', 10),
     apiKey = process.env['RAG_API_KEY'],
     corsOrigins = process.env['CORS_ORIGINS'] || '*',
+    host = resolveBindHost(),
   } = options
 
   const app = express()
@@ -216,18 +223,26 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
   // ---------------------------------------------------------------------------
   // START
   // ---------------------------------------------------------------------------
-  app.listen(port, () => {
-    console.error(`RAG Vault MCP server (remote) listening on port ${port}`)
-    console.error(`  Streamable HTTP: http://localhost:${port}/mcp`)
-    console.error(`  SSE (legacy):    http://localhost:${port}/sse`)
-    console.error(`  Health check:    http://localhost:${port}/health`)
+  const displayHost = isAllInterfacesHost(host) ? 'localhost' : host
+  app.listen(port, host, () => {
+    console.error(`RAG Vault MCP server (remote) listening on ${host}:${port}`)
+    console.error(`  Streamable HTTP: http://${displayHost}:${port}/mcp`)
+    console.error(`  SSE (legacy):    http://${displayHost}:${port}/sse`)
+    console.error(`  Health check:    http://${displayHost}:${port}/health`)
     console.error()
     console.error('To connect from Claude.ai or Claude Desktop:')
-    console.error(`  URL: http://localhost:${port}/mcp`)
+    console.error(`  URL: http://${displayHost}:${port}/mcp`)
     if (apiKey) {
       console.error('  Auth: Bearer token required (RAG_API_KEY is set)')
     } else {
       console.error('  Auth: None (set RAG_API_KEY for production)')
+    }
+    if (isAllInterfacesHost(host)) {
+      console.error(
+        `[SECURITY] Server is bound to ${host} (all network interfaces) and is reachable from ` +
+          'other machines. Set RAG_API_KEY to require authentication, or set RAG_BIND_HOST=127.0.0.1 ' +
+          'to restrict access to this machine.'
+      )
     }
   })
 }

@@ -152,6 +152,8 @@ npx github:RobThePCGuy/rag-vault web
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+> By default the web server binds to `127.0.0.1` (loopback), so it is reachable only from this machine. To use it from another device on your network, set `RAG_BIND_HOST=0.0.0.0` — and set `RAG_API_KEY` as well, since the API is otherwise unauthenticated.
+
 ### What You Can Do
 
 - **Upload documents**: Drag and drop PDF, DOCX, Markdown, TXT, JSON, JSONL, and NDJSON files
@@ -259,7 +261,7 @@ For Claude.ai (Pro/Max/Team/Enterprise), add as a custom connector with URL `htt
 cloudflared tunnel --url http://localhost:3001
 ```
 
-Set `RAG_API_KEY` for authentication when exposing remotely. The server supports both Streamable HTTP (`/mcp`) and legacy SSE (`/sse`) transports, plus a health check at `/health`.
+The remote server also binds to `127.0.0.1` (loopback) by default. To accept connections from other machines directly, set `RAG_BIND_HOST=0.0.0.0`. Set `RAG_API_KEY` for authentication whenever you expose the server beyond loopback (including via a tunnel). The server supports both Streamable HTTP (`/mcp`) and legacy SSE (`/sse`) transports, plus a health check at `/health`.
 
 ## Real-World Examples
 
@@ -415,6 +417,7 @@ npx github:RobThePCGuy/rag-vault --gpu-auto
 | Variable | Default | What it does |
 |----------|---------|--------------|
 | `RAG_API_KEY` | unset | API key for authentication |
+| `RAG_BIND_HOST` | `127.0.0.1` | Interface the web/remote servers bind to. Loopback only by default; set to `0.0.0.0` to expose on the network (do this only with `RAG_API_KEY` set). `RAG_HOST` is an alias. |
 | `CORS_ORIGINS` | localhost | Allowed origins (comma-separated, or `*`) |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit time window (ms) |
 | `RATE_LIMIT_MAX_REQUESTS` | `100` | Max requests per window |

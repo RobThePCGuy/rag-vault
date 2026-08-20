@@ -82,3 +82,39 @@ export function parseRrfK(value: string | undefined): number | undefined {
   }
   return parsed
 }
+
+/**
+ * Default network interface for the web and remote HTTP servers.
+ *
+ * Binds to loopback only, so the API is not reachable from other machines on
+ * the network by default. The HTTP API is unauthenticated unless RAG_API_KEY
+ * is set, so defaulting to all interfaces would silently expose it to the LAN.
+ */
+export const DEFAULT_BIND_HOST = '127.0.0.1'
+
+/**
+ * Resolve the network host the web/remote HTTP servers should bind to.
+ *
+ * Precedence: RAG_BIND_HOST, then the RAG_HOST alias, then the loopback
+ * default. Operators can opt in to exposing the server on other interfaces
+ * (for example "0.0.0.0" for LAN or container access) by setting one of these
+ * variables. That is an explicit, deliberate choice — pair it with RAG_API_KEY
+ * so the exposed API still requires authentication.
+ *
+ * @param env - Environment source (defaults to process.env; injectable for tests)
+ * @returns The host string to pass to `app.listen`
+ */
+export function resolveBindHost(env: NodeJS.ProcessEnv = process.env): string {
+  const raw = env['RAG_BIND_HOST'] ?? env['RAG_HOST']
+  const trimmed = raw?.trim()
+  return trimmed ? trimmed : DEFAULT_BIND_HOST
+}
+
+/**
+ * Return true when a bind host exposes the server on all network interfaces
+ * (IPv4 0.0.0.0 or IPv6 unspecified address). Used to warn operators that the
+ * server is reachable beyond the local machine.
+ */
+export function isAllInterfacesHost(host: string): boolean {
+  return host === '0.0.0.0' || host === '::' || host === '[::]'
+}

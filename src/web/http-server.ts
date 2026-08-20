@@ -10,6 +10,7 @@ import express, { type Express, type Request, type Response, type NextFunction }
 import { fileTypeFromBuffer } from 'file-type'
 import helmet from 'helmet'
 import multer from 'multer'
+import { isAllInterfacesHost, resolveBindHost } from '../utils/config-parsers.js'
 import { createApiRouter } from './api-routes.js'
 import { createConfigRouter } from './config-routes.js'
 import type { DatabaseManager } from './database-manager.js'
@@ -368,10 +369,23 @@ async function createHttpServerInternal(
 
 /**
  * Start HTTP server
+ *
+ * Binds to loopback (127.0.0.1) by default so the API is not exposed to other
+ * machines on the network. Set RAG_BIND_HOST (or RAG_HOST) to override, e.g.
+ * RAG_BIND_HOST=0.0.0.0 to expose on all interfaces — do this only alongside
+ * RAG_API_KEY, since the API is otherwise unauthenticated.
+ *
+ * @param app - Configured Express application
+ * @param port - Port to listen on
+ * @param host - Interface to bind (defaults to the resolved bind host)
  */
-export function startServer(app: Express, port: number): Promise<void> {
+export function startServer(
+  app: Express,
+  port: number,
+  host: string = resolveBindHost()
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const server = app.listen(port)
+    const server = app.listen(port, host)
 
     const onError = (error: Error): void => {
       server.off('listening', onListening)
@@ -380,7 +394,15 @@ export function startServer(app: Express, port: number): Promise<void> {
 
     const onListening = (): void => {
       server.off('error', onError)
-      console.log(`Web server running at http://localhost:${port}`)
+      const displayHost = isAllInterfacesHost(host) ? 'localhost' : host
+      console.log(`Web server running at http://${displayHost}:${port}`)
+      if (isAllInterfacesHost(host)) {
+        console.warn(
+          `[SECURITY] Web server is bound to ${host} (all network interfaces) and is reachable ` +
+            'from other machines. Set RAG_API_KEY to require authentication, or set ' +
+            'RAG_BIND_HOST=127.0.0.1 to restrict access to this machine.'
+        )
+      }
       resolve()
     }
 

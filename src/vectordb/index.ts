@@ -116,13 +116,6 @@ const CUSTOM_METADATA_SCHEMA_MISMATCH_REGEX =
 const CUSTOM_METADATA_ALL_FIELDS = '__all__'
 
 /**
- * Regex for validating file paths before use in queries.
- * Allows alphanumeric characters, slashes, dots, underscores, hyphens, colons (Windows), and spaces.
- * Rejects paths with SQL injection attempts or path traversal.
- */
-const SAFE_PATH_REGEX = /^[a-zA-Z0-9\\/_.:\- ]+$/
-
-/**
  * Retry a read-only async operation with exponential backoff.
  * Used for transient disk/IO errors on VectorStore reads.
  */
@@ -151,22 +144,47 @@ async function withRetry<T>(
 }
 
 /**
- * Validate file path to prevent SQL injection and path traversal attacks.
+ * Validate a document file path before it is embedded in a LanceDB SQL filter.
+ *
+ * Security model (see the PR that introduced boundary-based validation):
+ * - SQL-injection safety comes from escaping at each call site, NOT from a
+ *   restrictive character allowlist. Every query wraps the path in a
+ *   single-quoted string literal and doubles embedded single quotes
+ *   (`'` -> `''`), which is the correct and sufficient escape for
+ *   DataFusion/LanceDB string literals. Characters such as apostrophes, double
+ *   quotes, `;`, `--` and backticks are therefore inert data inside the literal.
+ * - Path traversal and BASE_DIR containment are enforced upstream by
+ *   DocumentParser.validateFilePath() (realpath + relative-boundary check) at
+ *   ingest and delete time.
+ *
+ * This function is a lightweight structural guard. It rejects only values that
+ * can never be a legitimate stored path — non-strings, empty strings, ASCII
+ * control characters (NUL, newlines, etc.), and `..` path segments
+ * (defense-in-depth against traversal). It intentionally ACCEPTS non-ASCII
+ * (e.g. CJK) characters, apostrophes and `--`, so documents with such names can
+ * be deleted and re-ingested instead of leaving orphaned or duplicated chunks.
+ *
  * @param filePath - The file path to validate
- * @returns true if path is safe for use in queries
- */
-/**
- * Validate file path to prevent SQL injection and path traversal attacks.
- * @param filePath - The file path to validate
- * @returns true if path is safe for use in queries
+ * @returns true if the path is structurally safe to use in a query
  */
 export function isValidFilePath(filePath: string): boolean {
   if (!filePath || typeof filePath !== 'string') return false
-  if (filePath.includes('..')) return false // Path traversal
-  if (filePath.includes("'") || filePath.includes('"')) return false // Quote injection
-  if (filePath.includes(';')) return false // SQL terminator
-  if (filePath.includes('--')) return false // SQL comment
-  return SAFE_PATH_REGEX.test(filePath)
+
+  // Reject ASCII control characters (NUL, tab, CR/LF, etc.). These never appear
+  // in real paths and are a red flag for injected/broken content. Scanning code
+  // points avoids a control-character regex literal.
+  for (let i = 0; i < filePath.length; i++) {
+    const code = filePath.charCodeAt(i)
+    if (code <= 0x1f || code === 0x7f) return false
+  }
+
+  // Defense-in-depth traversal guard: reject any `..` path segment. Splitting on
+  // both separators keeps legitimate names like `report--v2.txt` (a hyphenated
+  // segment) or `notes..bak` (dots inside a longer segment) valid.
+  const segments = filePath.split(/[/\\]/)
+  if (segments.includes('..')) return false
+
+  return true
 }
 
 // ============================================
@@ -709,8 +727,10 @@ export class VectorStore {
     const escapedFilePath = filePath.replace(/'/g, "''")
 
     try {
-      // Use LanceDB delete API to remove records matching filePath
-      // Path is pre-validated, escaping is belt-and-suspenders defense
+      // Use LanceDB delete API to remove records matching filePath.
+      // SQL-injection safety comes from wrapping the value in a single-quoted
+      // literal and doubling embedded single quotes (escapedFilePath). Path
+      // containment is enforced upstream (DocumentParser.validateFilePath).
 
       // LanceDB's delete method doesn't throw errors if targets don't exist,
       // so call delete directly

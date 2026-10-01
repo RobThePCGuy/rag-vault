@@ -1066,6 +1066,36 @@ export class VectorStore {
   }
 
   /**
+   * Build a SQL predicate for custom-metadata filters (case-insensitive substring match).
+   *
+   * @returns the predicate, undefined when there are no filters, or null when no row
+   * can match (a filter names a field the table has never stored).
+   */
+  private async metadataFilterClause(
+    table: Table,
+    filters: { field: string; value: string }[]
+  ): Promise<string | undefined | null> {
+    if (filters.length === 0) return undefined
+
+    const schema = await table.schema()
+    const metadataField = schema.fields.find((f) => f.name === 'metadata')
+    const customField = metadataField?.type.children?.find(
+      (f: { name: string }) => f.name === 'custom'
+    )
+    const storedKeys = new Set(
+      (customField?.type.children ?? []).map((f: { name: string }) => f.name)
+    )
+
+    const clauses: string[] = []
+    for (const { field, value } of filters) {
+      if (!storedKeys.has(field)) return null
+      const pattern = value.toLowerCase().replace(/'/g, "''")
+      clauses.push(`lower(metadata.custom.\`${field}\`) LIKE '%${pattern}%'`)
+    }
+    return clauses.join(' AND ')
+  }
+
+  /**
    * Execute vector search with quality filtering
    *
    * Supports two search modes (configured via RAG_SEARCH_MODE):
@@ -1086,7 +1116,8 @@ export class VectorStore {
     queryVector: number[],
     queryText?: string,
     limit = 10,
-    additionalVectors?: { vector: number[]; weight: number }[]
+    additionalVectors?: { vector: number[]; weight: number }[],
+    metadataFilters: { field: string; value: string }[] = []
   ): Promise<SearchResult[]> {
     if (!this.table) {
       console.error('VectorStore: Returning empty results as table does not exist')
@@ -1100,6 +1131,12 @@ export class VectorStore {
     const table = this.table
     return withRetry(async () => {
       try {
+        // Filter inside the query, before the candidate limit. Filtering the top
+        // candidates afterwards returns nothing whenever unfiltered documents
+        // outrank every matching one.
+        const filterClause = await this.metadataFilterClause(table, metadataFilters)
+        if (filterClause === null) return []
+
         const candidateLimit = limit * HYBRID_SEARCH_CANDIDATE_MULTIPLIER
         const hybridWeight = this.getHybridWeight()
         const useRRF = (this.config.searchMode ?? SEARCH_MODE) === 'rrf'
@@ -1116,6 +1153,7 @@ export class VectorStore {
 
         // Step 1: Primary vector search
         let vectorQuery = table.vectorSearch(queryVector).distanceType('dot').limit(candidateLimit)
+        if (filterClause) vectorQuery = vectorQuery.where(filterClause)
         if (!useRRF && this.config.maxDistance !== undefined) {
           vectorQuery = vectorQuery.distanceRange(undefined, this.config.maxDistance)
         }
@@ -1133,7 +1171,8 @@ export class VectorStore {
           // Run additional vector searches (HyDE expansions) in parallel if provided
           if (additionalVectors && additionalVectors.length > 0) {
             const additionalSearches = additionalVectors.map(async ({ vector, weight }) => {
-              const addlQuery = table.vectorSearch(vector).distanceType('dot').limit(candidateLimit)
+              let addlQuery = table.vectorSearch(vector).distanceType('dot').limit(candidateLimit)
+              if (filterClause) addlQuery = addlQuery.where(filterClause)
               const addlRaw = await addlQuery.toArray()
               return {
                 results: addlRaw.map((r) => toSearchResult(r)),
@@ -1171,8 +1210,9 @@ export class VectorStore {
             hybridWeight > 0
           ) {
             try {
-              const ftsResults = await table
-                .search(queryText, 'fts', 'text')
+              let ftsQuery = table.search(queryText, 'fts', 'text')
+              if (filterClause) ftsQuery = ftsQuery.where(filterClause)
+              const ftsResults = await ftsQuery
                 .select(['filePath', 'chunkIndex', 'text', 'metadata', '_score'])
                 .limit(candidateLimit)
                 .toArray()
@@ -1234,7 +1274,8 @@ export class VectorStore {
             try {
               const uniqueFilePaths = [...new Set(results.map((r) => r.filePath))]
               const escapedPaths = uniqueFilePaths.map((p) => `'${p.replace(/'/g, "''")}'`)
-              const whereClause = `\`filePath\` IN (${escapedPaths.join(', ')})`
+              const pathClause = `\`filePath\` IN (${escapedPaths.join(', ')})`
+              const whereClause = filterClause ? `${pathClause} AND (${filterClause})` : pathClause
 
               const ftsResults = await table
                 .search(queryText, 'fts', 'text')

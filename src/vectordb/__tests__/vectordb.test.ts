@@ -249,6 +249,60 @@ describe('VectorStore', () => {
         }
       }
     })
+
+    it('should apply a metadata filter before the result limit', async () => {
+      const filterDbPath = makeTestDbPath('test-vectordb-metadata-filter')
+      if (fs.existsSync(filterDbPath)) {
+        fs.rmSync(filterDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: filterDbPath,
+          tableName: 'chunks',
+        })
+        await store.initialize()
+
+        // Many unfiltered chunks that all outrank the one matching chunk.
+        const voiceChunks = Array.from({ length: 30 }, (_, i) => {
+          const chunk = createTestChunk(
+            `Quinn voice note ${i}`,
+            '/test/voice.md',
+            i,
+            createNormalizedVector(1)
+          )
+          chunk.metadata.custom = { domain: 'avd' }
+          return chunk
+        })
+        await store.insertChunks(voiceChunks)
+
+        const kbChunk = createTestChunk(
+          'Quinn character entry',
+          '/test/kb.md',
+          0,
+          createNormalizedVector(40)
+        )
+        kbChunk.metadata.custom = { domain: 'kb' }
+        await store.insertChunks([kbChunk])
+
+        // Regression check: filtering the top candidates afterwards returned
+        // nothing here, because every candidate was a voice chunk.
+        const results = await store.search(createNormalizedVector(1), 'Quinn', 3, undefined, [
+          { field: 'domain', value: 'KB' },
+        ])
+        expect(results.map((r) => r.filePath)).toEqual(['/test/kb.md'])
+
+        // A field the table has never stored cannot match any row.
+        const none = await store.search(createNormalizedVector(1), 'Quinn', 3, undefined, [
+          { field: 'chapter', value: '1' },
+        ])
+        expect(none).toEqual([])
+      } finally {
+        if (fs.existsSync(filterDbPath)) {
+          fs.rmSync(filterDbPath, { recursive: true })
+        }
+      }
+    })
   })
 
   describe('FTS Index Creation and Migration', () => {

@@ -346,14 +346,26 @@ function isDocumentMetadata(value: unknown): value is DocumentMetadata {
   ) {
     return false
   }
-  // Optional custom field must be an object if present
-  if (
-    obj['custom'] !== undefined &&
-    (typeof obj['custom'] !== 'object' || obj['custom'] === null)
-  ) {
+  // Optional custom field must be an object if present. LanceDB stores `custom` as a
+  // struct column, so a row written without it reads back as null, not undefined.
+  if (obj['custom'] !== undefined && obj['custom'] !== null && typeof obj['custom'] !== 'object') {
     return false
   }
   return true
+}
+
+/**
+ * Drop the nulls LanceDB fills in for struct fields a row never had: a null `custom`,
+ * and null keys inside `custom` that only other rows set.
+ */
+function withoutNullCustom(metadata: DocumentMetadata): DocumentMetadata {
+  const custom: Record<string, string | null> | null | undefined = metadata.custom
+  if (custom === undefined) return metadata
+  const { custom: _custom, ...rest } = metadata
+  const present = Object.entries(custom ?? {}).filter(
+    (entry): entry is [string, string] => entry[1] !== null && entry[1] !== undefined
+  )
+  return present.length > 0 ? { ...rest, custom: Object.fromEntries(present) } : rest
 }
 
 /**
@@ -400,7 +412,7 @@ function toSearchResult(raw: unknown): SearchResult {
     chunkIndex: raw.chunkIndex,
     text: raw.text,
     score: raw._distance ?? raw._score ?? 0,
-    metadata: raw.metadata,
+    metadata: withoutNullCustom(raw.metadata),
   }
   // Include fingerprint if present, otherwise generate on-the-fly for backwards compatibility
   if (raw.fingerprint) {
@@ -1466,7 +1478,7 @@ export class VectorStore {
             chunkIndex: record.chunkIndex as number,
             text,
             score: 0, // No distance score for direct retrieval
-            metadata: record.metadata as DocumentMetadata,
+            metadata: withoutNullCustom(record.metadata as DocumentMetadata),
             // Include fingerprint - generate if not stored (backwards compatibility)
             fingerprint:
               (record.fingerprint as string | undefined) || generateChunkFingerprint(text),

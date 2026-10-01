@@ -197,6 +197,58 @@ describe('VectorStore', () => {
         }
       }
     })
+
+    it('should keep searching when a later chunk shares no custom keys with the table schema', async () => {
+      const disjointDbPath = makeTestDbPath('test-vectordb-custom-metadata-disjoint')
+      if (fs.existsSync(disjointDbPath)) {
+        fs.rmSync(disjointDbPath, { recursive: true })
+      }
+
+      try {
+        const store = new VectorStore({
+          dbPath: disjointDbPath,
+          tableName: 'chunks',
+        })
+        await store.initialize()
+
+        const firstChunk = createTestChunk(
+          'Voice document chunk',
+          '/test/voice.md',
+          0,
+          createNormalizedVector(1)
+        )
+        firstChunk.metadata.custom = { domain: 'avd' }
+        await store.insertChunks([firstChunk])
+
+        // Every key here is unknown to the schema, so the whole custom object is
+        // stripped on insert and LanceDB stores the struct as null for this row.
+        const secondChunk = createTestChunk(
+          'Chapter chunk',
+          '/test/chapter.md',
+          0,
+          createNormalizedVector(2)
+        )
+        secondChunk.metadata.custom = { type: 'chapter', chapter_id: 'chapter-01' }
+        await store.insertChunks([secondChunk])
+
+        // Regression check: the null struct used to fail the result type guard,
+        // so every search that reached this row threw "Failed to search vectors".
+        const results = await store.search(createNormalizedVector(2), 'chapter', 10)
+        const chapterResult = results.find((r) => r.filePath === '/test/chapter.md')
+        expect(chapterResult).toBeDefined()
+        expect(chapterResult?.metadata.custom).toBeUndefined()
+        expect(results.find((r) => r.filePath === '/test/voice.md')?.metadata.custom).toEqual({
+          domain: 'avd',
+        })
+
+        const chunks = await store.getDocumentChunks('/test/chapter.md')
+        expect(chunks[0]?.metadata.custom).toBeUndefined()
+      } finally {
+        if (fs.existsSync(disjointDbPath)) {
+          fs.rmSync(disjointDbPath, { recursive: true })
+        }
+      }
+    })
   })
 
   describe('FTS Index Creation and Migration', () => {

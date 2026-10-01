@@ -523,7 +523,8 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
       queryVector,
       args.query,
       rerankerLimit,
-      additionalVectors
+      additionalVectors,
+      parsed.filters
     )
 
     // Cross-encoder reranking: re-score top candidates for better relevance

@@ -39,9 +39,11 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
 
   if (authHeader) {
     // Support "Bearer <key>" and "ApiKey <key>" formats
-    const match = authHeader.match(/^(?:Bearer|ApiKey)\s+(.+)$/i)
-    if (match?.[1]) {
-      providedKey = match[1]
+    const spaceIdx = authHeader.search(/\s/)
+    const scheme = spaceIdx === -1 ? '' : authHeader.slice(0, spaceIdx).toLowerCase()
+    const key = spaceIdx === -1 ? '' : authHeader.slice(spaceIdx + 1).trim()
+    if ((scheme === 'bearer' || scheme === 'apikey') && key) {
+      providedKey = key
     }
   } else if (typeof xApiKey === 'string') {
     providedKey = xApiKey

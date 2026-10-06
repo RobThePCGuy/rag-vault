@@ -718,8 +718,15 @@ export class DatabaseManager {
   async listDirectory(dirPath: string, showHidden = false): Promise<DirectoryEntry[]> {
     const resolved = path.resolve(expandTilde(dirPath))
 
-    // Allow browsing root directories and paths within allowed roots
-    // For security, we still allow browsing but the user can only add paths as allowed roots
+    // Browsing is limited to the admin-configured scan roots (ALLOWED_SCAN_ROOTS,
+    // or the home directory by default) - the same boundary addUserAllowedRoot enforces
+    const adminRoots = getEnvAllowedScanRoots()
+    if (!isPathWithinRoots(resolved, adminRoots)) {
+      throw new Error(
+        'Path is outside allowed scan roots. Set ALLOWED_SCAN_ROOTS to expand access.'
+      )
+    }
+
     if (!existsSync(resolved)) {
       throw new Error(`Directory does not exist: ${resolved}`)
     }

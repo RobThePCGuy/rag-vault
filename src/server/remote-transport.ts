@@ -17,6 +17,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import express, { type Request, type Response } from 'express'
 import { isAllInterfacesHost, resolveBindHost } from '../utils/config-parsers.js'
 import { withTimeout } from '../utils/timeout.js'
+import { safeCompare } from '../web/middleware/auth.js'
 
 /** Timeout for MCP transport connect (default: 10 seconds) */
 const MCP_CONNECT_TIMEOUT_MS = Number.parseInt(process.env['MCP_CONNECT_TIMEOUT_MS'] || '10000', 10)
@@ -89,7 +90,7 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
     if (!apiKey) return next()
 
     const authHeader = req.headers.authorization
-    if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
+    if (!authHeader || !safeCompare(authHeader, `Bearer ${apiKey}`)) {
       res.status(401).json({ error: 'Unauthorized' })
       return
     }

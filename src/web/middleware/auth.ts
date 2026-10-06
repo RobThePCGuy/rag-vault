@@ -68,7 +68,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
  * Length comparison is computed BEFORE timing-safe comparison to prevent
  * timing leaks from short-circuit evaluation.
  */
-function safeCompare(a: string, b: string): boolean {
+export function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
   const bufB = Buffer.from(b)
 

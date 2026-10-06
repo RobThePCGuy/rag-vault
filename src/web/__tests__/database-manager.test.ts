@@ -268,6 +268,28 @@ describe('DatabaseManager', () => {
     })
   })
 
+  describe('listDirectory', () => {
+    it('lists directories inside ALLOWED_SCAN_ROOTS and rejects others', async () => {
+      const originalRoots = process.env['ALLOWED_SCAN_ROOTS']
+      process.env['ALLOWED_SCAN_ROOTS'] = testDir
+      try {
+        const dbManager = new DatabaseManager(
+          vi.fn().mockReturnValue(createMockServer()),
+          testConfig
+        )
+        const entries = await dbManager.listDirectory(testDir)
+        expect(entries.map((e) => e.name)).toContain('test-db')
+        await expect(dbManager.listDirectory('/etc')).rejects.toThrow('outside allowed scan roots')
+        await expect(dbManager.listDirectory(`${testDir}-sibling`)).rejects.toThrow(
+          'outside allowed scan roots'
+        )
+      } finally {
+        if (originalRoots === undefined) delete process.env['ALLOWED_SCAN_ROOTS']
+        else process.env['ALLOWED_SCAN_ROOTS'] = originalRoots
+      }
+    })
+  })
+
   describe('mutation path policy', () => {
     it('should reject switchDatabase outside allowed roots', async () => {
       const originalRoots = process.env['ALLOWED_SCAN_ROOTS']

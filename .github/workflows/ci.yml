@@ -11,30 +11,34 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Version comes from "packageManager" in package.json
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
-        with:
-          version: 10
 
-      # Note: actions/setup-node "cache: pnpm" is intentionally omitted because
-      # this repo gitignores pnpm-lock.yaml (no committed lockfile), which makes
-      # the cache step fail with "Dependencies lock file is not found".
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            web-ui/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Install web-ui dependencies
-        run: pnpm --prefix web-ui install
+        run: pnpm -C web-ui install --frozen-lockfile
 
       - name: Type check
         run: pnpm type-check

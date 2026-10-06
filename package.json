@@ -46,13 +46,13 @@
   },
   "scripts": {
     "prepare": "npm run build",
-    "setup:web": "pnpm --prefix web-ui install",
+    "setup:web": "pnpm -C web-ui install",
     "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "dev:remote": "tsx src/index.ts --remote",
     "check": "pnpm type-check && pnpm lint && pnpm format:check",
-    "check:all": "pnpm check && pnpm --prefix web-ui check && pnpm check:unused && pnpm check:deps && pnpm build && pnpm test:unit",
+    "check:all": "pnpm check && pnpm -C web-ui check && pnpm check:unused && pnpm check:deps && pnpm build && pnpm test:unit",
     "check:deps": "madge --circular --extensions ts src || echo \"check:deps skipped: madge 8 is incompatible with TypeScript 7 - re-enable once madge supports TS7\"",
     "check:deps:graph": "madge --extensions ts --image graph.svg src",
     "check:unused": "node scripts/check-unused-exports.cjs",
@@ -69,11 +69,11 @@
     "format:check": "biome format src",
     "web": "tsx src/web/index.ts",
     "web:start": "node dist/web/index.js",
-    "web:dev": "concurrently -n api,ui -c blue,magenta \"pnpm web:watch\" \"pnpm --prefix web-ui dev\"",
+    "web:dev": "concurrently -n api,ui -c blue,magenta \"pnpm web:watch\" \"pnpm -C web-ui dev\"",
     "web:watch": "tsx watch src/web/index.ts",
-    "ui:build": "pnpm --prefix web-ui build",
-    "ui:dev": "pnpm --prefix web-ui dev",
-    "clean": "rm -rf .test-tmp .narrative-project .mcpregistry* node_modules tmp uploads models lancedb dist && pnpm --prefix web-ui exec rm -rf dist node_modules",
+    "ui:build": "pnpm -C web-ui build",
+    "ui:dev": "pnpm -C web-ui dev",
+    "clean": "rm -rf .test-tmp .narrative-project .mcpregistry* node_modules tmp uploads models lancedb dist && pnpm -C web-ui exec rm -rf dist node_modules",
     "cleanup:processes": "bash ./scripts/cleanup-test-processes.sh",
     "hooks:install": "git config core.hooksPath .githooks",
     "release": "bash ./scripts/release-npm.sh --bump patch",
@@ -121,16 +121,5 @@
     "node": ">=20"
   },
   "mcpName": "io.github.RobThePCGuy/rag-vault",
-  "pnpm": {
-    "overrides": {
-      "tar": ">=7.5.7",
-      "diff": ">=4.0.4"
-    },
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "onnxruntime-node",
-      "protobufjs",
-      "sharp"
-    ]
-  }
+  "packageManager": "pnpm@10.28.0"
 }

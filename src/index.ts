@@ -82,7 +82,10 @@ async function main(): Promise<void> {
     validateRAGConfig(config)
 
     console.error('Starting RAG MCP Server...')
-    console.error('Configuration:', config)
+    console.error('Configuration:', {
+      ...config,
+      hydeApiKey: config.hydeApiKey ? '[set]' : undefined,
+    })
 
     // Start RAGServer
     const server = new RAGServer(config)
@@ -123,7 +126,10 @@ async function mainRemote(args: string[]): Promise<void> {
     const port = portArg ? Number.parseInt(portArg, 10) : undefined
 
     console.error('Starting RAG MCP Server (remote)...')
-    console.error('Configuration:', config)
+    console.error('Configuration:', {
+      ...config,
+      hydeApiKey: config.hydeApiKey ? '[set]' : undefined,
+    })
 
     // Create and initialize a shared RAGServer for backend resources
     const ragServer = new RAGServer(config)

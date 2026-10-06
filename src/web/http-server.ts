@@ -326,7 +326,7 @@ async function createHttpServerInternal(
             await unlink(file.path)
           } catch (unlinkError) {
             // Log deletion errors for debugging (may indicate permission issues)
-            console.warn(`Failed to delete invalid upload file: ${file.path}`, unlinkError)
+            console.warn('Failed to delete invalid upload file: %s', file.path, unlinkError)
           }
           res.status(400).json({
             error: 'File content does not match allowed types',

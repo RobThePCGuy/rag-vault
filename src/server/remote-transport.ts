@@ -64,7 +64,7 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
   } = options
 
   const app = express()
-  app.use(express.json())
+  app.use(express.json({ limit: process.env['JSON_BODY_LIMIT'] || '5mb' }))
 
   // ---------------------------------------------------------------------------
   // CORS - required for Claude.ai to connect

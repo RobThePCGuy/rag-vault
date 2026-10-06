@@ -525,7 +525,7 @@ Copy the `DB_PATH` directory (default: `./lancedb/`).
 git clone https://github.com/RobThePCGuy/rag-vault.git
 cd rag-vault
 pnpm install
-pnpm --prefix web-ui install
+pnpm -C web-ui install
 
 # Install local git hooks (recommended, even for solo dev)
 pnpm hooks:install

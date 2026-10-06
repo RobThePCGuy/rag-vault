@@ -103,7 +103,7 @@ log "Installing root dependencies"
 pnpm install --frozen-lockfile
 
 log "Installing web-ui dependencies"
-pnpm --prefix web-ui install --frozen-lockfile
+pnpm -C web-ui install --frozen-lockfile
 
 log "Running checks/tests/build gate"
 pnpm check:all

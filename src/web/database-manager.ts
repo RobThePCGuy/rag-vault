@@ -833,7 +833,7 @@ export class DatabaseManager {
         }
       } catch (error) {
         // Ignore permission errors on individual directories
-        console.error(`Failed to scan directory ${dirPath}:`, error)
+        console.error('Failed to scan directory %s:', dirPath, error)
       }
     }
 

@@ -350,7 +350,7 @@ class FeedbackStore {
         return
       }
       // JSON parse error or other issues - log warning and start fresh
-      console.warn(`FeedbackStore: Could not load from ${filePath}:`, error)
+      console.warn('FeedbackStore: Could not load from %s:', filePath, error)
     }
   }
 }

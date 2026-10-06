@@ -52,7 +52,7 @@ const QUESTION_PATTERN =
   /^(what|how|why|when|where|who|which|can|does|is|are|was|were|do|did|should|could|would)\s+/i
 
 /** Common technical/code patterns */
-const CODE_PATTERN = /`[^`]+`|[A-Z][a-z]+[A-Z]|[a-z]+_[a-z]+|\.[a-z]+\(|ERR_|ERROR_|[A-Z_]{3,}/
+const CODE_PATTERN = /`[^`]+`|[A-Z][a-z]{1,40}[A-Z]|[a-z]_[a-z]|\.[a-z]+\(|ERR_|ERROR_|[A-Z_]{3}/
 
 /** Error message patterns */
 const ERROR_PATTERN = /error|exception|fail|crash|bug|issue|problem|broken|not working/i
@@ -86,7 +86,9 @@ function ruleBasedExpansion(query: string, numExpansions: number): string[] {
   const expansions: string[] = []
 
   // Strip question marks for declarative reformulation
-  const cleanQuery = query.replace(/\?+$/, '').trim()
+  let end = query.length
+  while (end > 0 && query[end - 1] === '?') end--
+  const cleanQuery = query.slice(0, end).trim()
 
   switch (queryType) {
     case 'question': {

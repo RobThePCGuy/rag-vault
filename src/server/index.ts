@@ -708,7 +708,8 @@ Results include a score (0 = best match, higher = less relevant). Set explain=tr
     } catch (deleteError) {
       // Non-fatal: duplicates are better than data loss
       console.warn(
-        `Failed to clean up old chunks for ${args.filePath}. Duplicates may exist until next re-ingestion.`,
+        'Failed to clean up old chunks for %s. Duplicates may exist until next re-ingestion.',
+        args.filePath,
         deleteError
       )
     }

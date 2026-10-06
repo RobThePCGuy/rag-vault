@@ -242,7 +242,9 @@ async function createHttpServerInternal(
 
   // Request ID tracking for tracing and debugging
   app.use((req, res, next) => {
-    const requestId = (req.headers['x-request-id'] as string) || randomUUID()
+    const incoming = req.headers['x-request-id']
+    const requestId =
+      typeof incoming === 'string' && /^[\w-]{1,64}$/.test(incoming) ? incoming : randomUUID()
     res.setHeader('X-Request-ID', requestId)
     next()
   })

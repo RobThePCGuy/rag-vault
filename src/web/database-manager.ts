@@ -117,7 +117,14 @@ function isPathWithinRoots(targetPath: string, allowedRoots: string[]): boolean 
 
   // Check if the resolved path is within any allowed root
   return allowedRoots.some((root) => {
-    const normalizedRoot = path.normalize(root)
+    // Resolve the root the same way as the target, so a root that sits under a
+    // symlink (macOS /tmp and /var -> /private/...) still contains its children
+    let normalizedRoot: string
+    try {
+      normalizedRoot = path.normalize(resolveWithAncestorSymlinks(root))
+    } catch {
+      normalizedRoot = path.normalize(root)
+    }
     const normalizedTarget = path.normalize(resolvedPath)
     // Ensure exact prefix match (avoid /home/user matching /home/username)
     return (

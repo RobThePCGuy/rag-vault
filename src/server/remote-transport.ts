@@ -16,8 +16,10 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import express, { type Request, type Response } from 'express'
 import { isAllInterfacesHost, resolveBindHost } from '../utils/config-parsers.js'
+import { parseCorsOrigins } from '../utils/cors-origins.js'
 import { withTimeout } from '../utils/timeout.js'
 import { safeCompare } from '../web/middleware/auth.js'
+import { createRateLimiter, getRateLimitConfigFromEnv } from '../web/middleware/rate-limit.js'
 
 /** Timeout for MCP transport connect (default: 10 seconds) */
 const MCP_CONNECT_TIMEOUT_MS = Number.parseInt(process.env['MCP_CONNECT_TIMEOUT_MS'] || '10000', 10)
@@ -33,7 +35,7 @@ interface RemoteTransportOptions {
   createServer: () => McpServer
   /** Optional API key for authentication (uses RAG_API_KEY env if not set) */
   apiKey?: string
-  /** Allowed CORS origins (default: "*" for dev, restrict in production) */
+  /** Allowed CORS origins (default: CORS_ORIGINS env, else localhost dev origins; "*" allows all) */
   corsOrigins?: string | string[]
   /**
    * Network interface to bind (default: loopback via RAG_BIND_HOST / RAG_HOST).
@@ -59,7 +61,7 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
     createServer,
     port = Number.parseInt(process.env['WEB_PORT'] || '3001', 10),
     apiKey = process.env['RAG_API_KEY'],
-    corsOrigins = process.env['CORS_ORIGINS'] || '*',
+    corsOrigins = parseCorsOrigins(process.env['CORS_ORIGINS']),
     host = resolveBindHost(),
   } = options
 
@@ -67,16 +69,26 @@ export async function startRemoteTransport(options: RemoteTransportOptions): Pro
   app.use(express.json({ limit: process.env['JSON_BODY_LIMIT'] || '5mb' }))
 
   // ---------------------------------------------------------------------------
-  // CORS - required for Claude.ai to connect
+  // CORS - only for browser-based clients; server-side clients (Claude.ai
+  // connectors, Claude Desktop) don't send an Origin and are unaffected.
+  // Reflect the request origin only when it is allowed.
   // ---------------------------------------------------------------------------
-  app.use((_req, res, next) => {
-    const origin = Array.isArray(corsOrigins) ? corsOrigins.join(', ') : corsOrigins
-    res.header('Access-Control-Allow-Origin', origin)
+  const allowedOrigins = Array.isArray(corsOrigins) ? corsOrigins : [corsOrigins]
+  app.use((req, res, next) => {
+    const requestOrigin = req.headers.origin
+    if (allowedOrigins.includes('*')) {
+      res.header('Access-Control-Allow-Origin', '*')
+    } else if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+      res.header('Access-Control-Allow-Origin', requestOrigin)
+      res.header('Vary', 'Origin')
+    }
     res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id')
     res.header('Access-Control-Expose-Headers', 'Mcp-Session-Id')
     next()
   })
+
+  app.use(createRateLimiter(getRateLimitConfigFromEnv()))
 
   // Handle preflight separately to avoid return-type issues
   app.options('{*path}', (_req, res) => {

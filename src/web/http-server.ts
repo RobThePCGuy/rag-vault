@@ -11,6 +11,7 @@ import { fileTypeFromBuffer } from 'file-type'
 import helmet from 'helmet'
 import multer from 'multer'
 import { isAllInterfacesHost, resolveBindHost } from '../utils/config-parsers.js'
+import { parseCorsOrigins } from '../utils/cors-origins.js'
 import { createApiRouter } from './api-routes.js'
 import { createConfigRouter } from './config-routes.js'
 import type { DatabaseManager } from './database-manager.js'
@@ -31,14 +32,6 @@ import type { ServerAccessor } from './types.js'
 
 /** Default JSON body limit (5MB) - prevents DoS from large payloads */
 const DEFAULT_JSON_LIMIT = '5mb'
-
-/** Default allowed CORS origins (localhost only for security) */
-const DEFAULT_CORS_ORIGINS = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:3000',
-]
 
 /** File size limit for uploads (100MB) */
 const FILE_SIZE_LIMIT_BYTES = 100 * 1024 * 1024
@@ -176,23 +169,6 @@ function requestTimeout(defaultTimeoutMs: number) {
 
     next()
   }
-}
-
-/**
- * Parse CORS origins from environment variable with validation
- */
-function parseCorsOrigins(env: string | undefined): string | string[] {
-  if (!env || env.trim() === '') return DEFAULT_CORS_ORIGINS
-  if (env === '*') {
-    console.warn(
-      '[SECURITY] CORS_ORIGINS="*" allows all origins. This is not recommended for production environments.'
-    )
-    return '*'
-  }
-  return env
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean)
 }
 
 async function createHttpServerInternal(
